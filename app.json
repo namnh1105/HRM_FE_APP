@@ -1,4 +1,28 @@
 {
-  "name": "scrolla_fe",
-  "displayName": "scrolla_fe"
+  "expo": {
+    "name": "Scrolla FE",
+    "slug": "scrolla-fe",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "platforms": ["ios", "android", "web"],
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "newArchEnabled": true
+  }
 }
