@@ -6,17 +6,18 @@ type SignUpProps = {
 };
 
 export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
-  const [username, setUsername] = useState('');
   const [givenName, setGivenName] = useState('');
   const [familyName, setFamilyName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    if (!username) return Alert.alert('Error', 'Username không được bỏ trống');
+  
     if (!givenName) return Alert.alert('Error', 'Tên không được bỏ trống');
     if (!familyName) return Alert.alert('Error', 'Họ không được bỏ trống');
+    if (!username) return Alert.alert('Error', 'Username không được bỏ trống');
     if (!password) return Alert.alert('Error', 'Password không được bỏ trống');
     if (!confirmPassword) return Alert.alert('Error', 'Xác nhận mật khẩu không được bỏ trống');
     if (password !== confirmPassword) return Alert.alert('Error', 'Xác nhận mật khẩu không khớp');
@@ -24,10 +25,10 @@ export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('https://your-api.com/api/v1/auth/register', {
+      const response = await fetch('https://scrolla.bitoj.io.vn/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, givenName, familyName, password }),
+        body: JSON.stringify({ givenName, familyName, username, password }),
       });
       const data = await response.json();
 
@@ -50,28 +51,38 @@ export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
       <Text style={styles.title}>Sign Up</Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Given Name<Text style={styles.required}>(*)</Text></Text>
+        <Text style={styles.label}>
+          Given Name<Text style={styles.required}>(*)</Text>
+        </Text>
         <TextInput style={styles.input} value={givenName} onChangeText={setGivenName} />
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Family Name<Text style={styles.required}>(*)</Text></Text>
+        <Text style={styles.label}>
+          Family Name<Text style={styles.required}>(*)</Text>
+        </Text>
         <TextInput style={styles.input} value={familyName} onChangeText={setFamilyName} />
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Password<Text style={styles.required}>(*)</Text></Text>
+        <Text style={styles.label}>
+          Username<Text style={styles.required}>(*)</Text>
+        </Text>
+        <TextInput style={styles.input} value={username} onChangeText={setUsername} />
+      </View>
+
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>
+          Password<Text style={styles.required}>(*)</Text>
+        </Text>
         <TextInput style={styles.input} secureTextEntry value={password} onChangeText={setPassword} />
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Confirm Password<Text style={styles.required}>(*)</Text></Text>
+        <Text style={styles.label}>
+          Confirm Password<Text style={styles.required}>(*)</Text>
+        </Text>
         <TextInput style={styles.input} secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Username<Text style={styles.required}>(*)</Text></Text>
-        <TextInput style={styles.input} value={username} onChangeText={setUsername} />
       </View>
 
       <View style={styles.buttonWrapper}>
@@ -80,7 +91,7 @@ export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
 
       <View style={styles.loginContainer}>
         <Text style={styles.loginText}>Bạn đã có tài khoản? </Text>
-        <Text style={styles.loginLink}  onPress={() => navigation.navigate('Login')}>
+        <Text style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
           Đăng nhập
         </Text>
       </View>
@@ -142,7 +153,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 12,
-    color: '##fe2c55',
+    color: '#fe2c55',
     textAlign: 'center',
     marginBottom: 25,
   },
