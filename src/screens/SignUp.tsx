@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, Alert, StyleSheet, ScrollView } from 'react-native';
 
-type SignUpProps = {
-  navigation: any;
-};
-
-export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
+const SignUp = ({ navigation }: any) => {
   const [givenName, setGivenName] = useState('');
   const [familyName, setFamilyName] = useState('');
   const [username, setUsername] = useState('');
@@ -14,7 +10,6 @@ export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-  
     if (!givenName) return Alert.alert('Error', 'Tên không được bỏ trống');
     if (!familyName) return Alert.alert('Error', 'Họ không được bỏ trống');
     if (!username) return Alert.alert('Error', 'Username không được bỏ trống');
@@ -28,9 +23,19 @@ export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
       const response = await fetch('https://scrolla.bitoj.io.vn/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ givenName, familyName, username, password }),
+        body: JSON.stringify({ username, givenName, familyName, password }),
       });
+
       const data = await response.json();
+
+      if (!response.ok) {
+        Alert.alert(
+          'Registration Failed',
+          `Status: ${response.status}\nError: ${data.error || 'Unknown'}\nMessage: ${data.message || 'No message'}`
+        );
+        console.log('Full API response:', data);
+        return;
+      }
 
       if (data.success) {
         Alert.alert('Success', 'Đăng ký thành công!', [
@@ -38,9 +43,12 @@ export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
         ]);
       } else {
         Alert.alert('Error', data.message || 'Đăng ký thất bại');
+        console.log('API returned success=false:', data);
       }
+
     } catch (error) {
-      Alert.alert('Error', 'Không thể kết nối đến server');
+      Alert.alert('Error', `Không thể kết nối đến server.\n${error}`);
+      console.error('Fetch error:', error);
     } finally {
       setLoading(false);
     }
@@ -102,59 +110,17 @@ export const SignUp: React.FC<SignUpProps> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    justifyContent: 'flex-start',
-  },
-  title: {
-    fontSize: 28,
-    marginTop: 50,
-    marginBottom: 25,
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  inputGroup: {
-    marginBottom: 18,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 5,
-    flexDirection: 'row',
-  },
-  required: {
-    color: 'red',
-    fontSize: 12,
-    marginLeft: 5,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 12,
-    borderRadius: 5,
-  },
-  buttonWrapper: {
-    marginTop: 15,
-    marginBottom: 20,
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 15,
-  },
-  loginText: {
-    fontSize: 14,
-    color: '#555',
-  },
-  loginLink: {
-    fontSize: 14,
-    color: '#fe2c55',
-    fontWeight: '600',
-  },
-  hint: {
-    fontSize: 12,
-    color: '#fe2c55',
-    textAlign: 'center',
-    marginBottom: 25,
-  },
+  container: { padding: 20, justifyContent: 'flex-start' },
+  title: { fontSize: 28, marginTop: 50, marginBottom: 25, textAlign: 'center', fontWeight: 'bold' },
+  inputGroup: { marginBottom: 18 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 5, flexDirection: 'row' },
+  required: { color: 'red', fontSize: 12, marginLeft: 5 },
+  input: { borderWidth: 1, borderColor: '#ccc', padding: 12, borderRadius: 5 },
+  buttonWrapper: { marginTop: 15, marginBottom: 20 },
+  loginContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15 },
+  loginText: { fontSize: 14, color: '#555' },
+  loginLink: { fontSize: 14, color: '#fe2c55', fontWeight: '600' },
+  hint: { fontSize: 12, color: '#fe2c55', textAlign: 'center', marginBottom: 25 },
 });
+
+export default SignUp;
