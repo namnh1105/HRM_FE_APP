@@ -15,10 +15,40 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
-  const handleLogin = (): void => {
-    console.log('Tài khoản:', username);
-    console.log('Mật khẩu:', password);
-  };
+  const handleLogin = async (): Promise<void> => {
+  if (!username) return alert('Tài khoản không được bỏ trống');
+  if (!password) return alert('Mật khẩu không được bỏ trống');
+
+  try {
+    const response = await fetch('https://scrolla.bitoj.io.vn/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(`Đăng nhập thất bại\nStatus: ${response.status}\n${data.message || 'Sai tài khoản hoặc mật khẩu'}`);
+      console.log('Full API response:', data);
+      return;
+    }
+
+    if (data.success) {
+      alert('Đăng nhập thành công!');
+      console.log('Thông tin user:', data.user || data);
+      //nếu dùng navigation:
+      //navigation.navigate('Home');
+    } else {
+      alert(data.message || 'Đăng nhập thất bại');
+      console.log('API returned success=false:', data);
+    }
+  } catch (error) {
+    alert(`Không thể kết nối server\n${error}`);
+    console.error('Fetch error:', error);
+  }
+};
+
 
   return (
     <View style={styles.container}>
