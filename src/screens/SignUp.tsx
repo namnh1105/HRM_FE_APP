@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, Alert, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+
+const PRIMARY_BUTTON_COLOR = '#333333';
+const GOOGLE_BUTTON_COLOR = '#F7F7F7';
+const FACEBOOK_BUTTON_COLOR = '#1877F2';
 
 const SignUp = ({ navigation }: any) => {
   const [givenName, setGivenName] = useState('');
@@ -10,13 +14,13 @@ const SignUp = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    if (!givenName) return Alert.alert('Error', 'Tên không được bỏ trống');
-    if (!familyName) return Alert.alert('Error', 'Họ không được bỏ trống');
-    if (!username) return Alert.alert('Error', 'Username không được bỏ trống');
-    if (!password) return Alert.alert('Error', 'Password không được bỏ trống');
-    if (!confirmPassword) return Alert.alert('Error', 'Xác nhận mật khẩu không được bỏ trống');
-    if (password !== confirmPassword) return Alert.alert('Error', 'Xác nhận mật khẩu không khớp');
-
+    if (!givenName || !familyName || !username || !password || !confirmPassword) {
+      return Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
+    }
+    if (password !== confirmPassword) {
+      return Alert.alert('Lỗi', 'Xác nhận mật khẩu không khớp');
+    }
+    
     setLoading(true);
 
     try {
@@ -30,97 +34,150 @@ const SignUp = ({ navigation }: any) => {
 
       if (!response.ok) {
         Alert.alert(
-          'Registration Failed',
-          `Status: ${response.status}\nError: ${data.error || 'Unknown'}\nMessage: ${data.message || 'No message'}`
+          'Đăng ký Thất bại',
+          `Trạng thái: ${response.status}\nLỗi: ${data.error || 'Không rõ'}\nThông báo: ${data.message || 'Không có thông báo'}`
         );
-        console.log('Full API response:', data);
         return;
       }
 
       if (data.success) {
-        Alert.alert('Success', 'Đăng ký thành công!', [
+        Alert.alert('Thành công', 'Đăng ký thành công!', [
           { text: 'OK', onPress: () => navigation.navigate('Login') },
         ]);
       } else {
-        Alert.alert('Error', data.message || 'Đăng ký thất bại');
-        console.log('API returned success=false:', data);
+        Alert.alert('Lỗi', data.message || 'Đăng ký thất bại');
       }
 
     } catch (error) {
-      Alert.alert('Error', `Không thể kết nối đến server.\n${error}`);
-      console.error('Fetch error:', error);
+      Alert.alert('Lỗi', `Không thể kết nối đến server.\n${error}`);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSocialSignIn = (provider: string) => {
+   // Alert.alert('Thông báo', `Bạn chọn Đăng nhập với ${provider}`);
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Sign Up</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Đăng kí vào Scrolla</Text>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>
-          Given Name<Text style={styles.required}>(*)</Text>
-        </Text>
-        <TextInput style={styles.input} value={givenName} onChangeText={setGivenName} />
+      <View style={styles.formContainer}>
+        <TextInput style={styles.input} value={givenName} onChangeText={setGivenName} placeholder="Tên" />
+        <TextInput style={styles.input} value={familyName} onChangeText={setFamilyName} placeholder="Họ" />
+        <TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="Tên đăng nhập" autoCapitalize="none" />
+        <TextInput style={styles.input} secureTextEntry value={password} onChangeText={setPassword} placeholder="Mật khẩu" />
+        <TextInput style={styles.input} secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Xác nhận mật khẩu" />
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>
-          Family Name<Text style={styles.required}>(*)</Text>
-        </Text>
-        <TextInput style={styles.input} value={familyName} onChangeText={setFamilyName} />
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: PRIMARY_BUTTON_COLOR, opacity: loading ? 0.7 : 1 }]}
+        onPress={handleSignUp}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#ffffff" />
+        ) : (
+          <Text style={styles.buttonText}>Đăng kí</Text>
+        )}
+      </TouchableOpacity>
+      
+      <View style={styles.socialButtonsContainer}>
+          <TouchableOpacity
+              style={[styles.socialButton, { backgroundColor: GOOGLE_BUTTON_COLOR, borderColor: '#ccc', borderWidth: 1 }]}
+              onPress={() => handleSocialSignIn('Google')}
+              disabled={loading}
+          >
+              <Image 
+                  source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} 
+                  style={styles.googleIcon} 
+              />
+              <Text style={[styles.socialButtonText, { color: '#333' }]}>Continue with Google</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+              style={[styles.socialButton, { backgroundColor: FACEBOOK_BUTTON_COLOR }]}
+              onPress={() => handleSocialSignIn('Facebook')}
+              disabled={loading}
+          >
+              <Image 
+                  source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/facebook-new.png' }} 
+                  style={styles.socialIcon} 
+              />
+              <Text style={styles.socialButtonText}>Continue with Facebook</Text>
+          </TouchableOpacity>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>
-          Username<Text style={styles.required}>(*)</Text>
-        </Text>
-        <TextInput style={styles.input} value={username} onChangeText={setUsername} />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>
-          Password<Text style={styles.required}>(*)</Text>
-        </Text>
-        <TextInput style={styles.input} secureTextEntry value={password} onChangeText={setPassword} />
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>
-          Confirm Password<Text style={styles.required}>(*)</Text>
-        </Text>
-        <TextInput style={styles.input} secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} />
-      </View>
-
-      <View style={styles.buttonWrapper}>
-        <Button title={loading ? 'Signing Up...' : 'Sign Up'} onPress={handleSignUp} disabled={loading} />
-      </View>
-
-      <View style={styles.loginContainer}>
-        <Text style={styles.loginText}>Bạn đã có tài khoản? </Text>
-        <Text style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
-          Đăng nhập
-        </Text>
-      </View>
-
-      <Text style={styles.hint}>Các mục chứa (*) không được bỏ trống</Text>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 20, justifyContent: 'flex-start' },
-  title: { fontSize: 28, marginTop: 50, marginBottom: 25, textAlign: 'center', fontWeight: 'bold' },
-  inputGroup: { marginBottom: 18 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 5, flexDirection: 'row' },
-  required: { color: 'red', fontSize: 12, marginLeft: 5 },
-  input: { borderWidth: 1, borderColor: '#ccc', padding: 12, borderRadius: 5 },
-  buttonWrapper: { marginTop: 15, marginBottom: 20 },
-  loginContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 15 },
-  loginText: { fontSize: 14, color: '#555' },
-  loginLink: { fontSize: 14, color: '#fe2c55', fontWeight: '600' },
-  hint: { fontSize: 12, color: '#fe2c55', textAlign: 'center', marginBottom: 25 },
+  container: { 
+    flex: 1, 
+    paddingHorizontal: 35, 
+    justifyContent: 'center', 
+    backgroundColor: '#ffffff'
+  },
+  title: { 
+    fontSize: 22, 
+    marginBottom: 30, 
+    textAlign: 'center', 
+    fontWeight: '600', 
+    color: '#333' 
+  },
+  formContainer: {
+    marginBottom: 30, 
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#ccc', 
+    padding: 15, 
+    borderRadius: 5, 
+    marginBottom: 10, 
+    fontSize: 14 
+  },
+  button: {
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    height: 50,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  socialButtonsContainer: {
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 15,
+    borderRadius: 5,
+    marginBottom: 15, 
+    height: 50,
+  },
+  socialIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 10,
+    tintColor: '#ffffff'
+  },
+  googleIcon: { 
+    width: 20,
+    height: 20,
+    marginRight: 10,
+  },
+  socialButtonText: { 
+    fontSize: 16, 
+    fontWeight: '600',
+    color: '#ffffff',
+  }
 });
 
 export default SignUp;
