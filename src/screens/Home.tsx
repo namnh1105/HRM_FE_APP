@@ -1,29 +1,142 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
-  ScrollView,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  StatusBar,
+  ViewToken,
 } from 'react-native';
+import { Video } from '../types/api';
+import { videoService } from '../services/api';
+import VideoCard from '../components/VideoCard';
+
+const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 const Home: React.FC = () => {
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 80,
+  });
+
+  const fetchVideos = async (pageNum: number = 1) => {
+    try {
+      if (pageNum === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const response = await videoService.getVideos(pageNum, 10);
+      
+      if (response.success && response.data) {
+        if (pageNum === 1) {
+          setVideos(response.data.videos);
+        } else {
+          setVideos(prev => [...prev, ...response.data.videos]);
+        }
+        
+        setHasMore(pageNum < response.data.totalPages);
+        setPage(pageNum);
+      }
+    } catch (error) {
+      console.error('Error fetching videos:', error);
+      Alert.alert(
+        'Lỗi',
+        'Không thể tải video. Vui lòng thử lại.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVideos();
+  }, []);
+
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchVideos(page + 1);
+    }
+  };
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0) {
+      const index = viewableItems[0].index;
+      if (index !== null) {
+        setCurrentIndex(index);
+      }
+    }
+  }).current;
+
+  const renderVideo = ({ item, index }: { item: Video; index: number }) => (
+    <VideoCard 
+      video={item} 
+      isActive={index === currentIndex} 
+      onLoadMore={index === videos.length - 2 ? handleLoadMore : undefined}
+    />
+  );
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>Chưa có video nào</Text>
+      <Text style={styles.emptySubText}>Hãy thử làm mới trang</Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        <ActivityIndicator size="large" color="#fff" />
+        <Text style={styles.loadingText}>Đang tải video...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Trang chủ</Text>
-          </View>
-          
-          <View style={styles.mainContent}>
-            <Text style={styles.welcomeText}>Chào mừng đến với Scrolla!</Text>
-            <Text style={styles.descriptionText}>
-              Khám phá những video thú vị và chia sẻ những khoảnh khắc đặc biệt của bạn.
-            </Text>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+      <StatusBar barStyle="light-content" backgroundColor="#000" hidden />
+      <FlatList
+        ref={flatListRef}
+        data={videos}
+        renderItem={renderVideo}
+        keyExtractor={(item) => item.id}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        snapToInterval={screenHeight}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig.current}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.1}
+        ListEmptyComponent={renderEmpty}
+        getItemLayout={(data, index) => ({
+          length: screenHeight,
+          offset: screenHeight * index,
+          index,
+        })}
+        contentContainerStyle={styles.flatListContent}
+        style={styles.flatList}
+      />
+      
+      {loadingMore && (
+        <View style={styles.loadMoreContainer}>
+          <ActivityIndicator size="small" color="#fff" />
+        </View>
+      )}
     </View>
   );
 };
@@ -31,43 +144,50 @@ const Home: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
-  safeArea: {
+  flatList: {
     flex: 1,
   },
-  content: {
+  flatListContent: {
+    flexGrow: 1,
+  },
+  loadingContainer: {
     flex: 1,
-    paddingHorizontal: 16,
-  },
-  header: {
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-  },
-  mainContent: {
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
   },
-  welcomeText: {
+  loadingText: {
+    fontSize: 16,
+    color: '#fff',
+    marginTop: 12,
+    fontWeight: '500',
+  },
+  loadMoreContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+    height: screenHeight,
+  },
+  emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 16,
+    color: '#fff',
+    marginBottom: 8,
   },
-  descriptionText: {
+  emptySubText: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 24,
+    color: '#ccc',
   },
 });
 
