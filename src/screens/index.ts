@@ -1,2 +1,8 @@
 // Export all screens from this directory
-// Example: export { default as HomeScreen } from './HomeScreen';
+export { default as Home } from './Home';
+export { default as Shop } from './Shop';
+export { default as AddVideo } from './AddVideo';
+export { default as Messages } from './Messages';
+export { default as Profile } from './Profile';
+export { default as Login } from './Login';
+export { default as SignUp } from './SignUp';
