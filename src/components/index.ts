@@ -1,2 +1,2 @@
-// Export all components from this directory
-// Example: export { default as MyComponent } from './MyComponent';
+export { default as BottomNavbar } from './BottomNavbar';
+export { default as VideoCard } from './VideoCard';
