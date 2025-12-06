@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,12 +20,15 @@ import VideoCard from '../components/VideoCard';
 import { COLORS, SPACING } from '../utils/constants';
 
 const { width } = Dimensions.get('window');
-const itemWidth = (width - SPACING.LG * 2 - SPACING.SM * 2) / 3;
+const itemWidth = width / 3;
 
 const Profile = () => {
   const navigation = useNavigation();
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+  const [currentModalIndex, setCurrentModalIndex] = useState(0);
+  const videoModalRef = useRef<FlatList>(null);
 
   const {
     userInfo,
@@ -43,8 +46,10 @@ const Profile = () => {
     }, [refreshUserInfo])
   );
 
-  const openVideoModal = (video: Video) => {
+  const openVideoModal = (video: Video, index: number) => {
     setSelectedVideo(video);
+    setSelectedVideoIndex(index);
+    setCurrentModalIndex(index);
     setIsVideoModalVisible(true);
   };
 
@@ -77,7 +82,7 @@ const Profile = () => {
   const renderVideoItem = ({ item, index }: { item: Video; index: number }) => (
     <TouchableOpacity
       style={styles.videoItem}
-      onPress={() => openVideoModal(item)}
+      onPress={() => openVideoModal(item, index)}
     >
       {item.thumbnailUrl ? (
         <Image
@@ -212,24 +217,48 @@ const Profile = () => {
         presentationStyle="fullScreen"
         onRequestClose={closeVideoModal}
       >
-        {selectedVideo && (
-          <View style={styles.videoPlayerContainer}>
-            <VideoCard
-              video={selectedVideo}
-              isActive={true}
-            />
+        <View style={styles.videoPlayerContainer}>
+          <FlatList
+            ref={videoModalRef}
+            data={userVideos}
+            renderItem={({ item, index }) => (
+              <VideoCard
+                video={item}
+                isActive={index === currentModalIndex}
+              />
+            )}
+            keyExtractor={(item) => item.id}
+            pagingEnabled
+            showsVerticalScrollIndicator={false}
+            snapToInterval={Dimensions.get('window').height}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            initialScrollIndex={selectedVideoIndex}
+            getItemLayout={(data, index) => ({
+              length: Dimensions.get('window').height,
+              offset: Dimensions.get('window').height * index,
+              index,
+            })}
+            onViewableItemsChanged={({ viewableItems }) => {
+              if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+                setCurrentModalIndex(viewableItems[0].index);
+              }
+            }}
+            viewabilityConfig={{
+              itemVisiblePercentThreshold: 50,
+            }}
+          />
 
-            {/* Close Button Overlay */}
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={closeVideoModal}
-            >
-              <View style={styles.closeButtonBackground}>
-                <Text style={styles.closeButtonText}>✕</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
+          {/* Close Button Overlay */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={closeVideoModal}
+          >
+            <View style={styles.closeButtonBackground}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -327,13 +356,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   videosSection: {
-    padding: SPACING.LG,
+    paddingTop: SPACING.LG,
+    paddingBottom: SPACING.LG,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.TEXT,
     marginBottom: SPACING.MD,
+    paddingHorizontal: SPACING.LG,
   },
   videosLoading: {
     alignItems: 'center',
@@ -343,13 +374,11 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.LG,
   },
   videoRow: {
-    justifyContent: 'space-between',
-    marginBottom: SPACING.SM,
+    justifyContent: 'flex-start',
   },
   videoItem: {
     width: itemWidth,
     aspectRatio: 9/16,
-    borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
   },
