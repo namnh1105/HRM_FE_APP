@@ -1,84 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  Alert,
   Dimensions,
   StatusBar,
-  ViewToken,
 } from 'react-native';
 import { Video } from '../types/api';
-import { videoService } from '../services/api';
 import VideoCard from '../components/VideoCard';
+import { useVideoData, useVideoVisibility } from '../hooks';
 
-const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get('window');
 
 const Home: React.FC = () => {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 80,
-  });
 
-  const fetchVideos = async (pageNum: number = 1) => {
-    try {
-      if (pageNum === 1) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
+  const {
+    videos,
+    loading,
+    loadingMore,
+    handleLoadMore,
+  } = useVideoData();
 
-      const response = await videoService.getVideos(pageNum, 10);
-      
-      if (response.success && response.data) {
-        if (pageNum === 1) {
-          setVideos(response.data.videos);
-        } else {
-          setVideos(prev => [...prev, ...response.data.videos]);
-        }
-        
-        setHasMore(pageNum < response.data.totalPages);
-        setPage(pageNum);
-      }
-    } catch (error) {
-      console.error('Error fetching videos:', error);
-      Alert.alert(
-        'Lỗi',
-        'Không thể tải video. Vui lòng thử lại.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchVideos();
-  }, []);
-
-  const handleLoadMore = () => {
-    if (!loadingMore && hasMore) {
-      fetchVideos(page + 1);
-    }
-  };
-
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    if (viewableItems.length > 0) {
-      const index = viewableItems[0].index;
-      if (index !== null) {
-        setCurrentIndex(index);
-      }
-    }
-  }).current;
+  const {
+    currentIndex,
+    viewabilityConfig,
+    onViewableItemsChanged,
+  } = useVideoVisibility();
 
   const renderVideo = ({ item, index }: { item: Video; index: number }) => (
     <VideoCard 
@@ -119,7 +69,7 @@ const Home: React.FC = () => {
         snapToAlignment="start"
         decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig.current}
+        viewabilityConfig={viewabilityConfig}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.1}
         ListEmptyComponent={renderEmpty}
