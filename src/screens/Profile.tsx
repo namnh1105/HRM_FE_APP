@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,175 +7,230 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  FlatList,
+  Image,
+  Dimensions,
+  ScrollView,
+  Modal,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useUserProfile } from '../hooks';
+import { Video } from '../types/api';
+import VideoCard from '../components/VideoCard';
+import { COLORS, SPACING } from '../utils/constants';
+
+const { width } = Dimensions.get('window');
+const itemWidth = (width - SPACING.LG * 2 - SPACING.SM * 2) / 3;
 
 const Profile = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [userInfo, setUserInfo] = useState<any>(null);
   const navigation = useNavigation();
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+
+  const {
+    userInfo,
+    isAuthenticated,
+    loading,
+    userVideos,
+    videosLoading,
+    handleLogout,
+    refreshUserInfo,
+  } = useUserProfile();
 
   useFocusEffect(
     React.useCallback(() => {
-      checkAuthenticationStatus();
-    }, [])
+      refreshUserInfo();
+    }, [refreshUserInfo])
   );
 
-  const checkAuthenticationStatus = async () => {
-    try {
-      // Check for auth token
-      const authToken = await AsyncStorage.getItem('authToken');
-
-      if (!authToken) {
-        setIsAuthenticated(false);
-        setLoading(false);
-        // Don't auto-redirect, let user choose to login
-        return;
-      }
-
-      // If token exists, get user info
-      const userInfoString = await AsyncStorage.getItem('userInfo');
-      if (userInfoString) {
-        const userData = JSON.parse(userInfoString);
-        setUserInfo(userData);
-      }
-
-      setIsAuthenticated(true);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error checking authentication:', error);
-      setIsAuthenticated(false);
-      setLoading(false);
-      // Don't auto-redirect on error, let user choose to login
-    }
+  const openVideoModal = (video: Video) => {
+    setSelectedVideo(video);
+    setIsVideoModalVisible(true);
   };
 
-  const handleLogout = async () => {
+  const closeVideoModal = () => {
+    setSelectedVideo(null);
+    setIsVideoModalVisible(false);
+  };
+
+  const onLogoutPress = () => {
     Alert.alert(
       'Đăng xuất',
       'Bạn có chắc chắn muốn đăng xuất?',
       [
-        {
-          text: 'Hủy',
-          style: 'cancel',
-        },
+        { text: 'Hủy', style: 'cancel' },
         {
           text: 'Đăng xuất',
           style: 'destructive',
           onPress: async () => {
-            try {
-              // Clear all auth data
-              await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
-
-              // Navigate to Login
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' as never }],
-              });
-            } catch (error) {
-              console.error('Error during logout:', error);
-              Alert.alert('Lỗi', 'Có lỗi xảy ra khi đăng xuất');
-            }
+            await handleLogout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
           },
         },
-      ],
+      ]
     );
   };
 
-  // Show loading spinner while checking authentication
+  const renderVideoItem = ({ item, index }: { item: Video; index: number }) => (
+    <TouchableOpacity
+      style={styles.videoItem}
+      onPress={() => openVideoModal(item)}
+    >
+      {item.thumbnailUrl ? (
+        <Image
+          source={{ uri: item.thumbnailUrl }}
+          style={styles.videoThumbnail}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.placeholderThumbnail}>
+          <Text style={styles.placeholderText}>Video {index + 1}</Text>
+        </View>
+      )}
+      <View style={styles.videoStats}>
+        <Text style={styles.videoViews}>{item.stats.views}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Đang kiểm tra đăng nhập...</Text>
+          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+          <Text style={styles.loadingText}>Đang tải...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // If not authenticated, show login option
   if (!isAuthenticated) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <View style={styles.notAuthContainer}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>?</Text>
-            </View>
-            <Text style={styles.title}>Chưa đăng nhập</Text>
-            <Text style={styles.description}>
-              Bạn cần đăng nhập để sử dụng tính năng này
-            </Text>
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={() => navigation.navigate('Login' as never)}
-            >
-              <Text style={styles.loginButtonText}>Đăng nhập</Text>
-            </TouchableOpacity>
+        <View style={styles.notAuthContainer}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>?</Text>
           </View>
+          <Text style={styles.title}>Chưa đăng nhập</Text>
+          <Text style={styles.description}>
+            Bạn cần đăng nhập để sử dụng tính năng này
+          </Text>
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={() => navigation.navigate('Login' as never)}
+          >
+            <Text style={styles.loginButtonText}>Đăng nhập</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Show profile content for authenticated users
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-
-      </View>
-
-      <View style={styles.content}>
-        {userInfo ? (
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
           <View style={styles.userInfoContainer}>
             <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
-                {userInfo.givenName ? userInfo.givenName[0].toUpperCase() : 'U'}
-              </Text>
+              {userInfo?.avatarUrl ? (
+                <Image
+                  source={{ uri: userInfo.avatarUrl }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {userInfo?.givenName?.[0]?.toUpperCase() || 'U'}
+                </Text>
+              )}
             </View>
 
             <Text style={styles.userName}>
-              {userInfo.givenName} {userInfo.familyName}
+              {userInfo?.givenName} {userInfo?.familyName}
             </Text>
+            <Text style={styles.userUsername}>@{userInfo?.username}</Text>
 
-            <Text style={styles.userEmail}>
-              {userInfo.username || userInfo.email}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.userInfoContainer}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>U</Text>
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>
+                  {userInfo?.followingCount || 0}
+                </Text>
+                <Text style={styles.statLabel}>Đang follow</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>
+                  {userInfo?.followersCount || 0}
+                </Text>
+                <Text style={styles.statLabel}>Follower</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{userVideos.length}</Text>
+                <Text style={styles.statLabel}>Video</Text>
+              </View>
             </View>
-            <Text style={styles.userName}>Người dùng</Text>
           </View>
-        )}
 
-        <View style={styles.menuContainer}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>Thông tin cá nhân</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>Cài đặt</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>Hỗ trợ</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuItemText}>Điều khoản sử dụng</Text>
+          <TouchableOpacity style={styles.logoutButton} onPress={onLogoutPress}>
+            <Text style={styles.logoutButtonText}>Đăng xuất</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Đăng xuất</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.videosSection}>
+          <Text style={styles.sectionTitle}>Video của tôi</Text>
+
+          {videosLoading ? (
+            <View style={styles.videosLoading}>
+              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              <Text style={styles.loadingText}>Đang tải video...</Text>
+            </View>
+          ) : userVideos.length > 0 ? (
+            <FlatList
+              data={userVideos}
+              renderItem={renderVideoItem}
+              keyExtractor={(item) => item.id}
+              numColumns={3}
+              scrollEnabled={false}
+              contentContainerStyle={styles.videosGrid}
+              columnWrapperStyle={styles.videoRow}
+            />
+          ) : (
+            <View style={styles.emptyVideos}>
+              <Text style={styles.emptyText}>Chưa có video nào</Text>
+              <Text style={styles.emptySubText}>
+                Hãy tải lên video đầu tiên của bạn
+              </Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <Modal
+        visible={isVideoModalVisible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={closeVideoModal}
+      >
+        {selectedVideo && (
+          <View style={styles.videoPlayerContainer}>
+            <VideoCard
+              video={selectedVideo}
+              isActive={true}
+            />
+
+            {/* Close Button Overlay */}
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={closeVideoModal}
+            >
+              <View style={styles.closeButtonBackground}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -183,22 +238,7 @@ const Profile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
+    backgroundColor: COLORS.BACKGROUND,
   },
   loadingContainer: {
     flex: 1,
@@ -206,87 +246,210 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: SPACING.SM,
     fontSize: 16,
-    color: '#666',
+    color: COLORS.TEXT_SECONDARY,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    backgroundColor: COLORS.BACKGROUND,
+    paddingTop: SPACING.LG,
+    paddingHorizontal: SPACING.LG,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   userInfoContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: SPACING.LG,
   },
   avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#007AFF',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.PRIMARY,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: SPACING.MD,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   avatarText: {
-    color: '#fff',
-    fontSize: 32,
+    color: COLORS.BACKGROUND,
+    fontSize: 36,
     fontWeight: 'bold',
   },
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    color: COLORS.TEXT,
+    marginBottom: SPACING.XS,
   },
-  userEmail: {
+  userUsername: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.MD,
   },
-  menuContainer: {
-    marginBottom: 30,
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    paddingHorizontal: SPACING.LG,
   },
-  menuItem: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    backgroundColor: '#f8f8f8',
-    marginBottom: 10,
-    borderRadius: 8,
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  logoutButton: {
-    backgroundColor: '#FF3B30',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+  statItem: {
     alignItems: 'center',
   },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.TEXT,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: SPACING.XS,
+  },
+  logoutButton: {
+    backgroundColor: COLORS.ERROR,
+    paddingVertical: SPACING.SM,
+    paddingHorizontal: SPACING.LG,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: SPACING.LG,
+  },
   logoutButtonText: {
-    color: '#fff',
+    color: COLORS.BACKGROUND,
     fontSize: 16,
     fontWeight: 'bold',
   },
-  description: {
+  videosSection: {
+    padding: SPACING.LG,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.TEXT,
+    marginBottom: SPACING.MD,
+  },
+  videosLoading: {
+    alignItems: 'center',
+    paddingVertical: SPACING.LG,
+  },
+  videosGrid: {
+    paddingBottom: SPACING.LG,
+  },
+  videoRow: {
+    justifyContent: 'space-between',
+    marginBottom: SPACING.SM,
+  },
+  videoItem: {
+    width: itemWidth,
+    aspectRatio: 9/16,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  videoThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholderThumbnail: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.TEXT_SECONDARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    color: COLORS.BACKGROUND,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  videoStats: {
+    position: 'absolute',
+    bottom: SPACING.XS,
+    right: SPACING.XS,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: SPACING.XS,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  videoViews: {
+    color: COLORS.BACKGROUND,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  emptyVideos: {
+    alignItems: 'center',
+    paddingVertical: SPACING.XL,
+  },
+  emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginBottom: SPACING.XS,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
   },
   notAuthContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACING.LG,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.TEXT,
+    marginBottom: SPACING.SM,
+  },
+  description: {
+    fontSize: 16,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginBottom: SPACING.LG,
   },
   loginButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
+    backgroundColor: COLORS.PRIMARY,
+    paddingVertical: SPACING.MD,
+    paddingHorizontal: SPACING.XL,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 20,
     minWidth: 150,
   },
   loginButtonText: {
-    color: '#fff',
+    color: COLORS.BACKGROUND,
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  videoPlayerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1000,
+  },
+  closeButtonBackground: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: 'bold',
   },
 });

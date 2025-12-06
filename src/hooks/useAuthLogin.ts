@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useLoginMutation } from '../store/api/authApi';
+import { useLoginMutation, LoginResponse } from '../store/api/authApi';
 
 export const useAuthLogin = (navigation: any) => {
   const [username, setUsername] = useState('');
@@ -33,21 +33,30 @@ export const useAuthLogin = (navigation: any) => {
     if (!validateInputs()) return;
 
     try {
-      const result = await login({ username, password }).unwrap();
+      const response = await login({ username, password });
 
-      if (result.success && result.data.accessToken) {
-        await saveAuthData(result.data.accessToken, result.data.user);
+      if ('data' in response && response.data) {
+        const result = response.data as LoginResponse;
 
-        Alert.alert('Đăng nhập thành công', 'Chào mừng bạn đã quay trở lại!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.navigate('MainTabs', { screen: 'Profile' });
-            }
-          },
-        ]);
-      } else {
-        Alert.alert('Đăng nhập thất bại', result.message || 'Có lỗi xảy ra trong quá trình đăng nhập');
+        if (result.success && result.data.accessToken) {
+          await saveAuthData(result.data.accessToken, result.data.user);
+
+          Alert.alert('Đăng nhập thành công', 'Chào mừng bạn đã quay trở lại!', [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'MainTabs', params: { screen: 'Profile' } }],
+                });
+              }
+            },
+          ]);
+        } else {
+          Alert.alert('Đăng nhập thất bại', result.message || 'Có lỗi xảy ra trong quá trình đăng nhập');
+        }
+      } else if ('error' in response) {
+        throw new Error('Login failed');
       }
     } catch (error: any) {
       const errorMessage = error?.data?.message || error?.message || 'Không thể kết nối đến server';
@@ -60,7 +69,10 @@ export const useAuthLogin = (navigation: any) => {
   };
 
   const navigateBack = () => {
-    navigation.navigate('MainTabs', { screen: 'Profile' });
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'MainTabs', params: { screen: 'Profile' } }],
+    });
   };
 
   const navigateToSignUp = () => {

@@ -5,6 +5,9 @@ export interface User {
   givenName: string;
   familyName: string;
   avatarUrl: string | null;
+  followersCount?: number;
+  followingCount?: number;
+  isFollowing?: boolean;
 }
 
 export interface VideoStats {
@@ -75,4 +78,12 @@ export interface CreateRoomDto {
 export interface GetMessagesDto {
   limit?: string;
   offset?: string;
+}
+
+export interface UserVideosResponse {
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  videos: Video[];
 }

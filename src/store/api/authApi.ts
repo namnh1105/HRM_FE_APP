@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiResponse, UserVideosResponse } from '../../types/api';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: 'https://scrolla.bitoj.io.vn/api/v1',
@@ -23,12 +24,15 @@ export interface LoginResponse {
   message: string;
   data: {
     accessToken: string;
+    refreshToken: string;
     user: {
       id: string;
       username: string;
       givenName: string;
       familyName: string;
-      email: string;
+      followersCount: number;
+      followingCount: number;
+      isFollowing: boolean;
     };
   };
 }
@@ -36,7 +40,7 @@ export interface LoginResponse {
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery,
-  tagTypes: ['Auth'],
+  tagTypes: ['Auth', 'UserVideos'],
   endpoints: (builder: any) => ({
     login: builder.mutation({
       query: (credentials: LoginRequest) => ({
@@ -46,7 +50,14 @@ export const authApi = createApi({
       }),
       invalidatesTags: ['Auth'],
     }),
+    getUserVideos: builder.query({
+      query: (params: { page?: number; size?: number } = {}) => ({
+        url: `/videos/me?page=${params.page || 1}&size=${params.size || 10}`,
+        method: 'GET',
+      }),
+      providesTags: ['UserVideos'],
+    }),
   }),
 });
 
-export const { useLoginMutation } = authApi;
+export const { useLoginMutation, useGetUserVideosQuery } = authApi;
