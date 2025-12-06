@@ -7,8 +7,9 @@ import {
   TextInput,
   Image,
   Alert,
+  SafeAreaView,
 } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../utils/constants';
 
@@ -32,23 +33,37 @@ const Login = ({ navigation }: any) => {
       });
 
       const data = await response.json();
+      console.log('Login API Response:', data);
 
       if (!response.ok) {
         Alert.alert('Đăng nhập thất bại', data.message || 'Sai tài khoản hoặc mật khẩu');
-        console.log('Full API response:', data);
         return;
       }
 
-      if (data.success) {
-        //Lưu accessToken vào AsyncStorage
-        await AsyncStorage.setItem('accessToken', data.accessToken);
+      if (data.success && data.data.accessToken) {
+        // Lưu token với key nhất quán với Profile.tsx
+        await AsyncStorage.setItem('authToken', data.data.accessToken);
 
-        Alert.alert('Thành công', 'Đăng nhập thành công!', [
-          { text: 'OK', onPress: () => navigation.navigate('Home') },
+        // Lưu thông tin user nếu có
+        if (data.data.user) {
+          await AsyncStorage.setItem('userInfo', JSON.stringify(data.data.user));
+          console.log('Saved user info:', data.data.user);
+        }
+
+        console.log('Login successful, token saved');
+
+        Alert.alert('Đăng nhập thành công', 'Chào mừng bạn đã quay trở lại!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navigate về MainTabs với Profile tab được chọn
+              navigation.navigate('MainTabs', { screen: 'Profile' });
+            }
+          },
         ]);
       } else {
-        Alert.alert('Đăng nhập thất bại', data.message || 'Có lỗi xảy ra');
-        console.log('API returned success=false:', data);
+        Alert.alert('Đăng nhập thất bại', data.message || 'Có lỗi xảy ra trong quá trình đăng nhập');
+        console.log('API returned success=false or missing token:', data);
       }
     } catch (error) {
       Alert.alert('Lỗi', `Không thể kết nối đến server.\n${error}`);
@@ -59,7 +74,21 @@ const Login = ({ navigation }: any) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      {/* Top Navigator Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Profile' })}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.TEXT} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Đăng nhập</Text>
+        <View style={styles.placeholder} />
+      </View>
+
+      <View style={styles.container}>
+        {/* ...existing code... */}
       <Image
         source={{
           uri: 'https://i.pinimg.com/236x/81/63/78/81637861f1566bb718979b454ce94eed.jpg',
@@ -135,12 +164,38 @@ const Login = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
     </View>
+    </SafeAreaView>
   );
 };
 
 export default Login;
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.SECONDARY,
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  backButton: {
+    padding: 5,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.TEXT,
+  },
+  placeholder: {
+    width: 34, // Same width as back button to center the title
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.BACKGROUND,

@@ -39,3 +39,40 @@ export interface ApiResponse<T> {
   message: string;
   data: T;
 }
+
+// Chat Types
+export interface ChatRoom {
+  id: string;
+  name: string | null;
+  type: 'private' | 'group';
+  participants: User[];
+  lastMessage: ChatMessage | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: User;
+  room: ChatRoom;
+  content: string;
+  type: 'text' | 'image' | 'video' | 'file';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SendMessageDto {
+  roomId: string;
+  content: string;
+  type?: 'text' | 'image' | 'video' | 'file';
+}
+
+export interface CreateRoomDto {
+  userIds: string[];
+  name?: string;
+}
+
+export interface GetMessagesDto {
+  limit?: string;
+  offset?: string;
+}
