@@ -17,17 +17,20 @@ interface VideoCardProps {
   video: Video;
   isActive: boolean;
   onLoadMore?: () => void;
+  customHeight?: number;
 }
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
-const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) => {
+const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, customHeight }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showThumbnail, setShowThumbnail] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(video.stats.likes);
   const videoRef = useRef<ExpoVideo>(null);
+
+  const videoHeight = customHeight || screenHeight;
 
   useEffect(() => {
     if (onLoadMore) {
@@ -114,17 +117,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) =>
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: videoHeight }]}>
       {/* Video Player */}
       <TouchableOpacity 
-        style={styles.videoContainer} 
+        style={[styles.videoContainer, { height: videoHeight }]} 
         activeOpacity={1}
         onPress={togglePlayback}
       >
         <ExpoVideo
           ref={videoRef}
           source={{ uri: video.videoUrl }}
-          style={styles.video}
+          style={[styles.video, { height: videoHeight }]}
           resizeMode={ResizeMode.COVER}
           shouldPlay={isActive}
           isLooping
@@ -140,7 +143,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) =>
         {showThumbnail && (
           <Image 
             source={{ uri: video.thumbnailUrl }} 
-            style={styles.thumbnail}
+            style={[styles.thumbnail, { height: videoHeight }]}
             resizeMode="cover"
           />
         )}

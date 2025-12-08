@@ -13,6 +13,8 @@ import VideoCard from '../components/VideoCard';
 import { useVideoData, useVideoVisibility } from '../hooks';
 
 const { height: screenHeight } = Dimensions.get('window');
+const TAB_BAR_HEIGHT = 80; // Approximate height of bottom tab bar
+const adjustedHeight = screenHeight - TAB_BAR_HEIGHT;
 
 const Home: React.FC = () => {
   const flatListRef = useRef<FlatList>(null);
@@ -35,6 +37,7 @@ const Home: React.FC = () => {
       video={item} 
       isActive={index === currentIndex} 
       onLoadMore={index === videos.length - 2 ? handleLoadMore : undefined}
+      customHeight={adjustedHeight}
     />
   );
 
@@ -65,7 +68,7 @@ const Home: React.FC = () => {
         keyExtractor={(item) => item.id}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={screenHeight}
+        snapToInterval={adjustedHeight}
         snapToAlignment="start"
         decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged}
@@ -74,8 +77,8 @@ const Home: React.FC = () => {
         onEndReachedThreshold={0.1}
         ListEmptyComponent={renderEmpty}
         getItemLayout={(data, index) => ({
-          length: screenHeight,
-          offset: screenHeight * index,
+          length: adjustedHeight,
+          offset: adjustedHeight * index,
           index,
         })}
         contentContainerStyle={styles.flatListContent}
