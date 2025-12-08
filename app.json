@@ -23,6 +23,9 @@
     "web": {
       "bundler": "metro"
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "extra": {
+      "apiBaseUrl": "https://scrolla.bitoj.io.vn/api/v1"
+    }
   }
 }

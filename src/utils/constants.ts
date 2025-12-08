@@ -1,6 +1,11 @@
+import Constants from 'expo-constants';
+
 // App constants
 export const APP_NAME = 'Scrolla FE';
 export const VERSION = '1.0.0';
+
+// API Configuration
+export const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || 'https://scrolla.bitoj.io.vn/api/v1';
 
 // Colors
 export const COLORS = {

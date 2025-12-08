@@ -17,55 +17,82 @@ interface VideoCardProps {
   video: Video;
   isActive: boolean;
   onLoadMore?: () => void;
+  customHeight?: number;
 }
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
-const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) => {
+const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, customHeight }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showThumbnail, setShowThumbnail] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(video.stats.likes);
   const videoRef = useRef<ExpoVideo>(null);
+  const isMounted = useRef(true);
+
+  const videoHeight = customHeight || screenHeight;
 
   useEffect(() => {
+    isMounted.current = true;
     if (onLoadMore) {
       onLoadMore();
     }
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (isActive && videoRef.current) {
+    if (isActive && videoRef.current && isMounted.current) {
       playVideo();
-    } else if (!isActive && videoRef.current) {
+    } else if (!isActive && videoRef.current && isMounted.current) {
       pauseVideo();
     }
   }, [isActive]);
 
   const playVideo = async () => {
+    if (!isMounted.current) return;
+    
     try {
       if (videoRef.current) {
         setIsLoading(true);
-        await videoRef.current.playAsync();
-        setIsPlaying(true);
-        setShowThumbnail(false);
+        const status = await videoRef.current.getStatusAsync();
+        if (status.isLoaded && isMounted.current) {
+          await videoRef.current.playAsync();
+          if (isMounted.current) {
+            setIsPlaying(true);
+            setShowThumbnail(false);
+          }
+        }
       }
     } catch (error) {
-      console.error('Error playing video:', error);
+      // Silently handle errors when component is unmounting
+      if (isMounted.current) {
+        console.error('Error playing video:', error);
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   const pauseVideo = async () => {
+    if (!isMounted.current) return;
+    
     try {
       if (videoRef.current) {
-        await videoRef.current.pauseAsync();
-        setIsPlaying(false);
+        const status = await videoRef.current.getStatusAsync();
+        if (status.isLoaded && isMounted.current) {
+          await videoRef.current.pauseAsync();
+          if (isMounted.current) {
+            setIsPlaying(false);
+          }
+        }
       }
     } catch (error) {
-      console.error('Error pausing video:', error);
+      // Silently handle pause errors when component is unmounting
     }
   };
 
@@ -108,17 +135,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) =>
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: videoHeight }]}>
       {/* Video Player */}
       <TouchableOpacity 
-        style={styles.videoContainer} 
+        style={[styles.videoContainer, { height: videoHeight }]} 
         activeOpacity={1}
         onPress={togglePlayback}
       >
         <ExpoVideo
           ref={videoRef}
           source={{ uri: video.videoUrl }}
-          style={styles.video}
+          style={[styles.video, { height: videoHeight }]}
           resizeMode={ResizeMode.COVER}
           shouldPlay={isActive}
           isLooping
@@ -134,7 +161,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) =>
         {showThumbnail && (
           <Image 
             source={{ uri: video.thumbnailUrl }} 
-            style={styles.thumbnail}
+            style={[styles.thumbnail, { height: videoHeight }]}
             resizeMode="cover"
           />
         )}
@@ -156,10 +183,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) =>
 
       {/* User info and caption - Bottom left */}
       <View style={styles.bottomLeftContent}>
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.6)']}
-          style={styles.contentGradient}
-        >
+        <View style={styles.contentContainer}>
           <View style={styles.userInfo}>
             <View style={styles.userAvatar}>
               {video.user.avatarUrl ? (
@@ -173,9 +197,11 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) =>
             <Text style={styles.username}>@{video.user.username}</Text>
           </View>
           
-          <Text style={styles.caption} numberOfLines={3}>
-            {video.caption}
-          </Text>
+          {video.caption && video.caption.trim() !== '' && (
+            <Text style={styles.caption} numberOfLines={3}>
+              {video.caption}
+            </Text>
+          )}
           
           {video.hashtags && video.hashtags.length > 0 && (
             <Text style={styles.hashtags}>
@@ -183,10 +209,12 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore }) =>
             </Text>
           )}
           
-          <Text style={styles.duration}>
-            {formatDuration(video.duration)}
-          </Text>
-        </LinearGradient>
+          {video.duration && !isNaN(video.duration) && (
+            <Text style={styles.duration}>
+              {formatDuration(video.duration)}
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* Right side - Action buttons */}
@@ -266,14 +294,14 @@ const styles = StyleSheet.create({
   },
   bottomLeftContent: {
     position: 'absolute',
-    bottom: 100, // Space for bottom navigation
+    bottom: 30, // Đưa xuống sát đáy hơn
     left: 0,
     right: 80, // Space for right actions
     maxHeight: 250,
   },
-  contentGradient: {
+  contentContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 8, // Giảm padding vertical
   },
   userInfo: {
     flexDirection: 'row',
@@ -304,28 +332,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   caption: {
     color: '#fff',
     fontSize: 16,
     lineHeight: 22,
     marginBottom: 6,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   hashtags: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 6,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   duration: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 14,
     fontWeight: '500',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   rightActions: {
     position: 'absolute',
     right: 12,
-    bottom: 120, // Space for bottom navigation
+    bottom: 50, // Điều chỉnh để phù hợp với bottomLeftContent
     alignItems: 'center',
   },
   actionButton: {
