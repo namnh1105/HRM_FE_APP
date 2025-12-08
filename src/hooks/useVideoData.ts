@@ -1,57 +1,55 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { Video } from '../types/api';
-import { videoService } from '../services/api';
+import { useGetVideosQuery } from '../store/api/videoApi';
 
 export const useVideoData = () => {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [allVideos, setAllVideos] = useState<Video[]>([]);
 
-  const fetchVideos = useCallback(async (pageNum: number = 1) => {
-    try {
-      if (pageNum === 1) {
-        setLoading(true);
+  const { 
+    data, 
+    isLoading, 
+    isFetching,
+    error,
+    refetch,
+  } = useGetVideosQuery({ page, size: 10 });
+
+  // Update videos when data changes
+  useEffect(() => {
+    if (data?.success && data.data) {
+      if (page === 1) {
+        setAllVideos(data.data.videos);
       } else {
-        setLoadingMore(true);
+        setAllVideos(prev => [...prev, ...data.data.videos]);
       }
-
-      const response = await videoService.getVideos(pageNum, 10);
-
-      if (response.success && response.data) {
-        if (pageNum === 1) {
-          setVideos(response.data.videos);
-        } else {
-          setVideos(prev => [...prev, ...response.data.videos]);
-        }
-
-        setHasMore(pageNum < response.data.totalPages);
-        setPage(pageNum);
-      }
-    } catch (error) {
-      console.error('Error fetching videos:', error);
-      Alert.alert(
-        'Lỗi',
-        'Không thể tải video. Vui lòng thử lại.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
     }
-  }, []);
+  }, [data, page]);
+
+  const videos = data?.success ? (page === 1 ? data.data.videos : allVideos) : allVideos;
+  const loading = isLoading && page === 1;
+  const loadingMore = isFetching && page > 1;
+  const hasMore = data?.data ? page < data.data.totalPages : true;
 
   const handleLoadMore = useCallback(() => {
-    if (!loadingMore && hasMore) {
-      fetchVideos(page + 1);
+    if (!isFetching && hasMore) {
+      setPage(prev => prev + 1);
     }
-  }, [loadingMore, hasMore, page, fetchVideos]);
+  }, [isFetching, hasMore]);
 
-  useEffect(() => {
-    fetchVideos();
-  }, [fetchVideos]);
+  const fetchVideos = useCallback(() => {
+    setPage(1);
+    setAllVideos([]);
+    refetch();
+  }, [refetch]);
+
+  if (error) {
+    Alert.alert(
+      'Lỗi',
+      'Không thể tải video. Vui lòng thử lại.',
+      [{ text: 'OK', onPress: fetchVideos }]
+    );
+  }
 
   return {
     videos,

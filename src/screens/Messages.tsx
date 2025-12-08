@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,132 +7,127 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  Image,
+  ScrollView,
 } from 'react-native';
-import { chatService } from '../services/api';
-import { ChatRoom, ChatMessage, SendMessageDto } from '../types/api';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useMessages } from '../hooks';
+import { ChatRoom, User } from '../types/api';
 
 const Messages: React.FC = () => {
-  const [rooms, setRooms] = useState<ChatRoom[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [messageText, setMessageText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
+  const navigation = useNavigation();
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const {
+    rooms,
+    following,
+    loading,
+    error,
+    createOrOpenChatWithUser,
+  } = useMessages();
 
-  useEffect(() => {
-    loadUserRooms();
-  }, []);
+  const openChat = (room: ChatRoom) => {
+    // TODO: Navigate to conversation screen
+    console.log('Open chat with room:', room.id);
+  };
 
-  useEffect(() => {
-    if (selectedRoom) {
-      loadMessages(selectedRoom.id);
-    }
-  }, [selectedRoom]);
-
-  const loadUserRooms = async () => {
-    try {
-      setLoading(true);
-      const response = await chatService.getUserRooms();
-      if (response.success) {
-        setRooms(response.data);
-        if (response.data.length > 0) {
-          setSelectedRoom(response.data[0]);
-        }
-      } else {
-        Alert.alert('Lỗi', response.message);
-      }
-    } catch (error) {
-      Alert.alert('Lỗi', 'Không thể tải danh sách phòng chat');
-      console.error('Error loading rooms:', error);
-    } finally {
-      setLoading(false);
+  const openChatWithUser = async (user: User) => {
+    const room = await createOrOpenChatWithUser(user);
+    if (room) {
+      openChat(room);
     }
   };
 
-  const loadMessages = async (roomId: string) => {
-    try {
-      const response = await chatService.getMessages(roomId);
-      if (response.success) {
-        setMessages(response.data.reverse()); // Reverse to show latest messages at bottom
-      } else {
-        Alert.alert('Lỗi', response.message);
-      }
-    } catch (error) {
-      Alert.alert('Lỗi', 'Không thể tải tin nhắn');
-      console.error('Error loading messages:', error);
-    }
+  const formatLastMessageTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'now';
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.getDay()];
+    return date.toLocaleDateString();
   };
 
-  const sendMessage = async () => {
-    if (!messageText.trim() || !selectedRoom || sending) return;
-
-    const messageDto: SendMessageDto = {
-      roomId: selectedRoom.id,
-      content: messageText.trim(),
-      type: 'text',
-    };
-
-    try {
-      setSending(true);
-      const response = await chatService.sendMessage(messageDto);
-      if (response.success) {
-        setMessages(prev => [...prev, response.data]);
-        setMessageText('');
-        // Scroll to bottom after sending message
-        setTimeout(() => {
-          flatListRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-      } else {
-        Alert.alert('Lỗi', response.message);
-      }
-    } catch (error) {
-      Alert.alert('Lỗi', 'Không thể gửi tin nhắn');
-      console.error('Error sending message:', error);
-    } finally {
-      setSending(false);
+  const getOtherParticipant = (room: ChatRoom): User | null => {
+    // For private chats, get the other user
+    if (room.type === 'private' && room.participants.length > 0) {
+      return room.participants[0]; // Assuming current user is filtered out by API
     }
+    return null;
   };
 
-  const renderRoomItem = ({ item }: { item: ChatRoom }) => (
-    <TouchableOpacity
-      style={[
-        styles.roomItem,
-        selectedRoom?.id === item.id && styles.selectedRoomItem
-      ]}
-      onPress={() => setSelectedRoom(item)}
-    >
-      <Text style={styles.roomName}>
-        {item.name || `Chat với ${item.participants.length} người`}
+  const renderStoryItem = ({ item }: { item: User }) => (
+    <TouchableOpacity style={styles.storyItem} onPress={() => openChatWithUser(item)}>
+      <View style={styles.storyAvatarContainer}>
+        {item.avatarUrl ? (
+          <Image source={{ uri: item.avatarUrl }} style={styles.storyAvatar} />
+        ) : (
+          <View style={[styles.storyAvatar, styles.defaultAvatar]}>
+            <Ionicons name="person" size={24} color="#999" />
+          </View>
+        )}
+      </View>
+      <Text style={styles.storyName} numberOfLines={1}>
+        {item.givenName || item.username}
       </Text>
-      {item.lastMessage && (
-        <Text style={styles.lastMessage} numberOfLines={1}>
-          {item.lastMessage.content}
-        </Text>
-      )}
     </TouchableOpacity>
   );
 
-  const renderMessageItem = ({ item }: { item: ChatMessage }) => (
-    <View style={styles.messageItem}>
-      <Text style={styles.senderName}>{item.sender.givenName} {item.sender.familyName}</Text>
-      <Text style={styles.messageContent}>{item.content}</Text>
-      <Text style={styles.messageTime}>
-        {new Date(item.createdAt).toLocaleTimeString()}
-      </Text>
-    </View>
-  );
+  const renderChatItem = ({ item }: { item: ChatRoom }) => {
+    const otherUser = getOtherParticipant(item);
+    const hasUnread = false; // TODO: Implement unread status
+    
+    return (
+      <TouchableOpacity style={styles.chatItem} onPress={() => openChat(item)}>
+        <View style={styles.avatarContainer}>
+          {otherUser?.avatarUrl ? (
+            <Image source={{ uri: otherUser.avatarUrl }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.defaultChatAvatar]}>
+              <Ionicons name="person" size={28} color="#999" />
+            </View>
+          )}
+          {/* Online status indicator - TODO: implement real status */}
+          <View style={styles.onlineIndicator} />
+        </View>
+
+        <View style={styles.chatContent}>
+          <View style={styles.chatHeader}>
+            <Text style={styles.chatName} numberOfLines={1}>
+              {item.name || otherUser?.givenName || otherUser?.username || 'Unknown'}
+            </Text>
+            {item.lastMessage && (
+              <Text style={styles.chatTime}>
+                {formatLastMessageTime(item.lastMessage.createdAt)}
+              </Text>
+            )}
+          </View>
+          
+          {item.lastMessage && (
+            <View style={styles.lastMessageContainer}>
+              <Text style={styles.lastMessage} numberOfLines={1}>
+                {item.lastMessage.content}
+              </Text>
+              {hasUnread && <View style={styles.unreadBadge} />}
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>Đang tải...</Text>
+          <ActivityIndicator size="large" color="#000" />
         </View>
       </SafeAreaView>
     );
@@ -140,73 +135,76 @@ const Messages: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Hộp thư</Text>
-
-      <View style={styles.content}>
-        {/* Rooms List */}
-        <View style={styles.roomsContainer}>
-          <Text style={styles.sectionTitle}>Cuộc trò chuyện</Text>
-          <FlatList
-            data={rooms}
-            keyExtractor={(item) => item.id}
-            renderItem={renderRoomItem}
-            style={styles.roomsList}
-            showsVerticalScrollIndicator={false}
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.headerButton}>
+          <Image 
+            source={{ uri: 'https://via.placeholder.com/40' }} 
+            style={styles.headerAvatar}
           />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Chats</Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.headerButton}>
+            <Ionicons name="camera-outline" size={28} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerButton}>
+            <Ionicons name="create-outline" size={28} color="#000" />
+          </TouchableOpacity>
         </View>
-
-        {/* Messages */}
-        {selectedRoom && (
-          <View style={styles.chatContainer}>
-            <Text style={styles.chatTitle}>
-              {selectedRoom.name || `Chat với ${selectedRoom.participants.length} người`}
-            </Text>
-
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              keyExtractor={(item) => item.id}
-              renderItem={renderMessageItem}
-              style={styles.messagesList}
-              showsVerticalScrollIndicator={false}
-              onContentSizeChange={() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
-              }}
-            />
-
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.inputContainer}
-            >
-              <TextInput
-                style={styles.textInput}
-                value={messageText}
-                onChangeText={setMessageText}
-                placeholder="Nhập tin nhắn..."
-                multiline
-                maxLength={500}
-              />
-              <TouchableOpacity
-                style={[styles.sendButton, (!messageText.trim() || sending) && styles.sendButtonDisabled]}
-                onPress={sendMessage}
-                disabled={!messageText.trim() || sending}
-              >
-                {sending ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.sendButtonText}>Gửi</Text>
-                )}
-              </TouchableOpacity>
-            </KeyboardAvoidingView>
-          </View>
-        )}
-
-        {!selectedRoom && rooms.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>Chưa có cuộc trò chuyện nào</Text>
-          </View>
-        )}
       </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search"
+          placeholderTextColor="#999"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* Stories/Following List */}
+      <View style={styles.storiesContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.storiesList}
+        >
+          {/* Add Story Button */}
+          <TouchableOpacity style={styles.storyItem}>
+            <View style={styles.addStoryContainer}>
+              <Ionicons name="add" size={24} color="#000" />
+            </View>
+            <Text style={styles.storyName}>Your story</Text>
+          </TouchableOpacity>
+
+          {/* Following Users */}
+          {following.map((user) => (
+            <View key={user.id}>
+              {renderStoryItem({ item: user })}
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Chat List */}
+      <FlatList
+        data={rooms}
+        keyExtractor={(item) => item.id}
+        renderItem={renderChatItem}
+        style={styles.chatList}
+        contentContainerStyle={styles.chatListContent}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No conversations yet</Text>
+            <Text style={styles.emptySubText}>Start chatting with people you follow</Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 };
@@ -214,146 +212,192 @@ const Messages: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  content: {
-    flex: 1,
-    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
-  roomsContainer: {
-    width: '40%',
-    borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  roomsList: {
-    flex: 1,
-  },
-  roomItem: {
-    padding: 16,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  selectedRoomItem: {
-    backgroundColor: '#E3F2FD',
+  headerButton: {
+    padding: 4,
   },
-  roomName: {
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+    flex: 1,
+    marginLeft: 12,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    color: '#000',
+    padding: 0,
+  },
+  storiesContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  storiesList: {
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  storyItem: {
+    alignItems: 'center',
+    marginHorizontal: 4,
+    width: 70,
+  },
+  storyAvatarContainer: {
+    marginBottom: 6,
+  },
+  storyAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: '#0095F6',
+  },
+  defaultAvatar: {
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addStoryContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  storyName: {
+    fontSize: 12,
+    color: '#000',
+    textAlign: 'center',
+  },
+  chatList: {
+    flex: 1,
+  },
+  chatListContent: {
+    flexGrow: 1,
+  },
+  chatItem: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  defaultChatAvatar: {
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#31A24C',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  chatContent: {
+    flex: 1,
+  },
+  chatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 4,
+  },
+  chatName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    flex: 1,
+  },
+  chatTime: {
+    fontSize: 13,
+    color: '#999',
+    marginLeft: 8,
+  },
+  lastMessageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   lastMessage: {
     fontSize: 14,
     color: '#666',
-  },
-  chatContainer: {
     flex: 1,
   },
-  chatTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+  unreadBadge: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#0095F6',
+    marginLeft: 8,
   },
-  messagesList: {
+  emptyContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
   },
-  messageItem: {
-    marginVertical: 8,
-    padding: 12,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
   },
-  senderName: {
+  emptySubText: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#007AFF',
-    marginBottom: 4,
-  },
-  messageContent: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 4,
-  },
-  messageTime: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    alignItems: 'flex-end',
-  },
-  textInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginRight: 12,
-    maxHeight: 100,
-    fontSize: 16,
-  },
-  sendButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#CCC',
-  },
-  sendButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 16,
     color: '#666',
-    textAlign: 'center',
   },
 });
 
