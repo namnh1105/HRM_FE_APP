@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiResponse, UserVideosResponse } from '../../types/api';
 import { API_BASE_URL } from '../../utils/constants';
+import { setCredentials } from '../slices/authSlice';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
@@ -49,6 +50,25 @@ export const authApi = createApi({
         method: 'POST',
         body: credentials,
       }),
+      async onQueryStarted(arg: any, { dispatch, queryFulfilled }: any) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data.success && data.data) {
+            // Lưu accessToken và user info vào Redux store và AsyncStorage
+            dispatch(setCredentials({
+              accessToken: data.data.accessToken,
+              user: {
+                id: data.data.user.id,
+                username: data.data.user.username,
+                givenName: data.data.user.givenName,
+                familyName: data.data.user.familyName,
+              },
+            }));
+          }
+        } catch (error) {
+          console.error('Login failed:', error);
+        }
+      },
       invalidatesTags: ['Auth'],
     }),
     getUserVideos: builder.query({

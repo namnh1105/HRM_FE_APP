@@ -87,3 +87,19 @@ export interface UserVideosResponse {
   totalElements: number;
   videos: Video[];
 }
+
+export interface FollowingListData {
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  following: User[];
+}
+
+export interface FollowersListData {
+  page: number;
+  size: number;
+  totalPages: number;
+  totalElements: number;
+  followers: User[];
+}

@@ -29,7 +29,6 @@ const Messages: React.FC = () => {
   } = useMessages();
 
   const openChat = (room: ChatRoom) => {
-    // TODO: Navigate to conversation screen
     console.log('Open chat with room:', room.id);
   };
 
@@ -123,6 +122,59 @@ const Messages: React.FC = () => {
     );
   };
 
+  const renderUserItem = ({ item }: { item: User }) => {
+    // Kiểm tra xem đã có room với user này chưa
+    const existingRoom = rooms.find(room => 
+      room.type === 'private' && 
+      room.participants.some(p => p.id === item.id)
+    );
+
+    return (
+      <TouchableOpacity style={styles.chatItem} onPress={() => openChatWithUser(item)}>
+        <View style={styles.avatarContainer}>
+          {item.avatarUrl ? (
+            <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.defaultChatAvatar]}>
+              <Ionicons name="person" size={28} color="#999" />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.chatContent}>
+          <View style={styles.chatHeader}>
+            <Text style={styles.chatName} numberOfLines={1}>
+              {item.givenName || item.username}
+            </Text>
+          </View>
+          
+          <View style={styles.lastMessageContainer}>
+            <Text style={[styles.lastMessage, styles.startChatText]} numberOfLines={1}>
+              {existingRoom?.lastMessage 
+                ? existingRoom.lastMessage.content 
+                : 'Hãy bắt đầu cuộc trò chuyện ngay bây giờ'}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // Kết hợp rooms và following users
+  const getCombinedList = () => {
+    const userIdsInRooms = new Set(
+      rooms.flatMap(room => room.participants.map(p => p.id))
+    );
+    
+    // Lấy users chưa có trong rooms
+    const usersWithoutRooms = following.filter(user => !userIdsInRooms.has(user.id));
+    
+    // Trả về combined list: rooms trước, sau đó là users chưa có chat
+    return [...rooms, ...usersWithoutRooms];
+  };
+
+  const combinedList = getCombinedList();
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -192,9 +244,16 @@ const Messages: React.FC = () => {
 
       {/* Chat List */}
       <FlatList
-        data={rooms}
-        keyExtractor={(item) => item.id}
-        renderItem={renderChatItem}
+        data={combinedList}
+        keyExtractor={(item) => 'id' in item ? item.id : `user-${item.id}`}
+        renderItem={({ item }) => {
+          // Kiểm tra xem item là ChatRoom hay User
+          if ('participants' in item) {
+            return renderChatItem({ item: item as ChatRoom });
+          } else {
+            return renderUserItem({ item: item as User });
+          }
+        }}
         style={styles.chatList}
         contentContainerStyle={styles.chatListContent}
         showsVerticalScrollIndicator={false}
@@ -375,6 +434,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     flex: 1,
+  },
+  startChatText: {
+    color: '#999',
+    fontStyle: 'italic',
   },
   unreadBadge: {
     width: 12,

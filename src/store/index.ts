@@ -3,9 +3,11 @@ import { authApi } from './api/authApi';
 import { videoApi } from './api/videoApi';
 import { chatApi } from './api/chatApi';
 import { followApi } from './api/followApi';
+import authReducer from './slices/authSlice';
 
 export const store = configureStore({
   reducer: {
+    auth: authReducer,
     [authApi.reducerPath]: authApi.reducer,
     [videoApi.reducerPath]: videoApi.reducer,
     [chatApi.reducerPath]: chatApi.reducer,

@@ -29,48 +29,66 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(video.stats.likes);
   const videoRef = useRef<ExpoVideo>(null);
+  const isMounted = useRef(true);
 
   const videoHeight = customHeight || screenHeight;
 
   useEffect(() => {
+    isMounted.current = true;
     if (onLoadMore) {
       onLoadMore();
     }
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (isActive && videoRef.current) {
+    if (isActive && videoRef.current && isMounted.current) {
       playVideo();
-    } else if (!isActive && videoRef.current) {
+    } else if (!isActive && videoRef.current && isMounted.current) {
       pauseVideo();
     }
   }, [isActive]);
 
   const playVideo = async () => {
+    if (!isMounted.current) return;
+    
     try {
       if (videoRef.current) {
         setIsLoading(true);
         const status = await videoRef.current.getStatusAsync();
-        if (status.isLoaded) {
+        if (status.isLoaded && isMounted.current) {
           await videoRef.current.playAsync();
-          setIsPlaying(true);
-          setShowThumbnail(false);
+          if (isMounted.current) {
+            setIsPlaying(true);
+            setShowThumbnail(false);
+          }
         }
       }
     } catch (error) {
-      console.error('Error playing video:', error);
+      // Silently handle errors when component is unmounting
+      if (isMounted.current) {
+        console.error('Error playing video:', error);
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   const pauseVideo = async () => {
+    if (!isMounted.current) return;
+    
     try {
       if (videoRef.current) {
         const status = await videoRef.current.getStatusAsync();
-        if (status.isLoaded) {
+        if (status.isLoaded && isMounted.current) {
           await videoRef.current.pauseAsync();
-          setIsPlaying(false);
+          if (isMounted.current) {
+            setIsPlaying(false);
+          }
         }
       }
     } catch (error) {

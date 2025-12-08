@@ -1,27 +1,35 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSelector } from 'react-redux';
 import { useGetUserRoomsQuery, useCreateRoomMutation } from '../store/api/chatApi';
 import { useGetFollowingQuery } from '../store/api/followApi';
 import { ChatRoom, User } from '../types/api';
+import { RootState } from '../store';
 
 export const useMessages = () => {
-  const [userId, setUserId] = useState<string | null>(null);
+  // Lấy userId từ Redux store
+  const userFromStore = useSelector((state: RootState) => state.auth.user);
+  const [userId, setUserId] = useState<string | null>(userFromStore?.id || null);
   
-  // Load user ID from storage
+  // Load user ID from storage nếu chưa có trong Redux
   useEffect(() => {
-    const loadUserId = async () => {
-      try {
-        const userDataStr = await AsyncStorage.getItem('userData');
-        if (userDataStr) {
-          const userData = JSON.parse(userDataStr);
-          setUserId(userData.id);
+    if (userFromStore?.id) {
+      setUserId(userFromStore.id);
+    } else {
+      const loadUserId = async () => {
+        try {
+          const userInfoStr = await AsyncStorage.getItem('userInfo');
+          if (userInfoStr) {
+            const userInfo = JSON.parse(userInfoStr);
+            setUserId(userInfo.id);
+          }
+        } catch (error) {
+          console.error('Error loading user ID:', error);
         }
-      } catch (error) {
-        console.error('Error loading user ID:', error);
-      }
-    };
-    loadUserId();
-  }, []);
+      };
+      loadUserId();
+    }
+  }, [userFromStore]);
 
   // RTK Query hooks
   const { 
@@ -36,7 +44,7 @@ export const useMessages = () => {
     isLoading: followingLoading,
     error: followingError,
   } = useGetFollowingQuery(userId || '', {
-    skip: !userId, // Skip query if userId is not loaded yet
+    skip: !userId,
   });
   
   const [createRoom] = useCreateRoomMutation();
@@ -54,7 +62,7 @@ export const useMessages = () => {
   };
 
   const rooms = roomsData?.data || [];
-  const following = followingData?.data || extractUsersFromRooms(rooms);
+  const following = followingData?.data?.following || extractUsersFromRooms(rooms);
   const loading = roomsLoading || followingLoading;
   const error = roomsError || followingError;
 
