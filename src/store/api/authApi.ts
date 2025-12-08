@@ -1,9 +1,10 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiResponse, UserVideosResponse } from '../../types/api';
+import { API_BASE_URL } from '../../utils/constants';
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: 'https://scrolla.bitoj.io.vn/api/v1',
+  baseUrl: API_BASE_URL,
   prepareHeaders: async (headers: any) => {
     const token = await AsyncStorage.getItem('authToken');
     if (token) {

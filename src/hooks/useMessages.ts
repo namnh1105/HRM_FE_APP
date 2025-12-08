@@ -41,11 +41,6 @@ export const useMessages = () => {
   
   const [createRoom] = useCreateRoomMutation();
 
-  const rooms = roomsData?.data || [];
-  const following = followingData?.data || extractUsersFromRooms(rooms);
-  const loading = roomsLoading || followingLoading;
-  const error = roomsError || followingError;
-
   const extractUsersFromRooms = (rooms: ChatRoom[]): User[] => {
     const uniqueUsers = new Map<string, User>();
     rooms.forEach(room => {
@@ -57,6 +52,11 @@ export const useMessages = () => {
     });
     return Array.from(uniqueUsers.values());
   };
+
+  const rooms = roomsData?.data || [];
+  const following = followingData?.data || extractUsersFromRooms(rooms);
+  const loading = roomsLoading || followingLoading;
+  const error = roomsError || followingError;
 
   const createOrOpenChatWithUser = async (user: User): Promise<ChatRoom | null> => {
     try {
