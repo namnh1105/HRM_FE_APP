@@ -2,37 +2,29 @@
   "expo": {
     "name": "Scrolla FE",
     "slug": "scrolla-fe",
-    "owner": "nghoanglong",
+    "owner": "ninhhainam12",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "scrolla",
+    "scheme": "scrolla-fe",
     "userInterfaceStyle": "light",
     "platforms": ["ios", "android", "web"],
+    "experiments": {
+      "reactCompiler": true
+    },
     "splash": { "backgroundColor": "#ffffff" },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.scrolla.fe",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "bundleIdentifier": "com.scrolla.fe"
     },
     "android": {
       "adaptiveIcon": { "backgroundColor": "#ffffff" },
-      "package": "com.scrolla.fe",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.scrolla.fe"
     },
     "web": { "bundler": "metro" },
     "newArchEnabled": true,
     "extra": {
-      "apiBaseUrl": "https://scrolla.bitoj.io.vn/api/v1",
-      "firebaseConfig": {
-        "apiKey": "AIzaSyDNcEObCdau80DEjD8Y0cJcp11VwO3AQBY",
-        "authDomain": "scrollaapp-5133b.firebaseapp.com",
-        "projectId": "scrollaapp-5133b",
-        "storageBucket": "scrollaapp-5133b.firebasestorage.app",
-        "messagingSenderId": "992738352132",
-        "appId": "1:992738352132:ios:a716172babfb40ade7e951",
-        "webClientId": "992738352132-or15eemh7l8e7vjerf5mcllck58u703u.apps.googleusercontent.com"
-      }
+      "apiBaseUrl": "https://scrolla.bitoj.io.vn/api/v1"
     },
     "plugins": ["expo-web-browser"]
   }

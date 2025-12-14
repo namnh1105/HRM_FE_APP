@@ -39,6 +39,26 @@ export interface LoginResponse {
   };
 }
 
+export interface RegisterRequest {
+  username: string;
+  givenName: string;
+  familyName: string;
+  password: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    user: {
+      id: string;
+      username: string;
+      givenName: string;
+      familyName: string;
+    };
+  };
+}
+
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery,
@@ -71,6 +91,14 @@ export const authApi = createApi({
       },
       invalidatesTags: ['Auth'],
     }),
+    register: builder.mutation({
+      query: (credentials: RegisterRequest) => ({
+        url: '/auth/register',
+        method: 'POST',
+        body: credentials,
+      }),
+      invalidatesTags: ['Auth'],
+    }),
     getUserVideos: builder.query({
       query: (params: { page?: number; size?: number } = {}) => ({
         url: `/videos/me?page=${params.page || 1}&size=${params.size || 10}`,
@@ -81,4 +109,4 @@ export const authApi = createApi({
   }),
 });
 
-export const { useLoginMutation, useGetUserVideosQuery } = authApi;
+export const { useLoginMutation, useRegisterMutation, useGetUserVideosQuery } = authApi;
