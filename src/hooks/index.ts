@@ -3,4 +3,5 @@ export { useVideoVisibility } from './useVideoVisibility';
 export { useAuthLogin } from './useAuthLogin';
 export { useUserProfile } from './useUserProfile';
 export { useMessages } from './useMessages';
+export { useVideoUpload } from './useVideoUpload';
 

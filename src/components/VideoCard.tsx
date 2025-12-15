@@ -7,11 +7,18 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Animated,
+  Share,
+  Alert,
 } from 'react-native';
 import { Video as ExpoVideo, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Video } from '../types/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFollowUserMutation } from '../store/api/followApi';
+import { useToggleSaveMutation, useCheckSaveQuery } from '../store/api/saveApi';
+import { useShareVideoMutation } from '../store/api/shareApi';
+import { useNavigation } from '@react-navigation/native';
 
 interface VideoCardProps {
   video: Video;
@@ -23,13 +30,37 @@ interface VideoCardProps {
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, customHeight }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const navigation = useNavigation();
+  const [isPlaying, setIsPlaying] = useState(true); // Start with autoplay
   const [isLoading, setIsLoading] = useState(false);
   const [showThumbnail, setShowThumbnail] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(video.stats.likes);
+  const [showControls, setShowControls] = useState(false); // Only show pause button when paused
+  const [isFollowing, setIsFollowing] = useState(video.user.isFollowing || false);
+  const [showFollowButton, setShowFollowButton] = useState(!video.user.isFollowing);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveCount, setSaveCount] = useState(video.stats.saves || 0);
+  const [shareCount, setShareCount] = useState(video.stats.shares);
   const videoRef = useRef<ExpoVideo>(null);
   const isMounted = useRef(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const followButtonScale = useRef(new Animated.Value(1)).current;
+  const followButtonOpacity = useRef(new Animated.Value(1)).current;
+  const checkmarkScale = useRef(new Animated.Value(0)).current;
+  const checkmarkOpacity = useRef(new Animated.Value(0)).current;
+  
+  const [followUser] = useFollowUserMutation();
+  const [toggleSave] = useToggleSaveMutation();
+  const [shareVideo] = useShareVideoMutation();
+  const { data: saveCheckData } = useCheckSaveQuery(video.id);
+
+  // Update save status from API
+  useEffect(() => {
+    if (saveCheckData?.success && saveCheckData.data) {
+      setIsSaved(saveCheckData.data.isSaved);
+    }
+  }, [saveCheckData]);
 
   const videoHeight = customHeight || screenHeight;
 
@@ -40,6 +71,9 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
     }
     return () => {
       isMounted.current = false;
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -48,6 +82,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       playVideo();
     } else if (!isActive && videoRef.current && isMounted.current) {
       pauseVideo();
+      setIsPlaying(false); // Force playing state to false when not active
     }
   }, [isActive]);
 
@@ -88,6 +123,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           await videoRef.current.pauseAsync();
           if (isMounted.current) {
             setIsPlaying(false);
+            setShowControls(true); // Show pause button when paused
           }
         }
       }
@@ -106,6 +142,8 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
         await pauseVideo();
       } else {
         await playVideo();
+        // Hide controls after playing
+        setShowControls(false);
       }
     } catch (error) {
       console.error('Error toggling playback:', error);
@@ -117,6 +155,100 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const handleLike = () => {
     setIsLiked(!isLiked);
     setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+  };
+
+  const handleFollow = async () => {
+    if (isFollowing) return;
+
+    try {
+      // Animation: + button scales down and fades
+      Animated.parallel([
+        Animated.timing(followButtonScale, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(followButtonOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Show checkmark
+        Animated.parallel([
+          Animated.spring(checkmarkScale, {
+            toValue: 1,
+            friction: 4,
+            useNativeDriver: true,
+          }),
+          Animated.timing(checkmarkOpacity, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // Wait a bit then fade out checkmark
+          setTimeout(() => {
+            Animated.parallel([
+              Animated.timing(checkmarkScale, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+              }),
+              Animated.timing(checkmarkOpacity, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+              }),
+            ]).start(() => {
+              setShowFollowButton(false);
+            });
+          }, 500);
+        });
+      });
+
+      // Call API
+      await followUser(video.user.id).unwrap();
+      setIsFollowing(true);
+    } catch (error) {
+      console.error('Follow error:', error);
+      // Reset animation on error
+      followButtonScale.setValue(1);
+      followButtonOpacity.setValue(1);
+      checkmarkScale.setValue(0);
+      checkmarkOpacity.setValue(0);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await toggleSave(video.id).unwrap();
+      const newSavedState = !isSaved;
+      setIsSaved(newSavedState);
+      setSaveCount(prev => newSavedState ? prev + 1 : prev - 1);
+    } catch (error) {
+      console.error('Save error:', error);
+      Alert.alert('Lỗi', 'Không thể lưu video. Vui lòng thử lại.');
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const result = await Share.share({
+        message: `Check out this video: ${video.caption || 'Amazing video!'} \n${video.videoUrl}`,
+        url: video.videoUrl,
+      });
+
+      if (result.action === Share.sharedAction) {
+        // Call API to track share
+        const response = await shareVideo(video.id).unwrap();
+        if (response.success && response.data) {
+          setShareCount(response.data.shareCount);
+        }
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+    }
   };
 
   const formatNumber = (num: number): string => {
@@ -147,7 +279,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           source={{ uri: video.videoUrl }}
           style={[styles.video, { height: videoHeight }]}
           resizeMode={ResizeMode.COVER}
-          shouldPlay={isActive}
+          shouldPlay={isActive && isPlaying}
           isLooping
           isMuted={false}
           onLoad={() => setShowThumbnail(false)}
@@ -173,30 +305,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           </View>
         )}
         
-        {/* Play/Pause button */}
-        {!isPlaying && !isLoading && (
+        {/* Pause button - only show when video is paused */}
+        {!isPlaying && !isLoading && showControls && (
           <View style={styles.playButton}>
             <Ionicons name="play" size={60} color="rgba(255,255,255,0.9)" />
           </View>
         )}
       </TouchableOpacity>
 
-      {/* User info and caption - Bottom left */}
+      {/* Caption - Bottom left */}
       <View style={styles.bottomLeftContent}>
         <View style={styles.contentContainer}>
-          <View style={styles.userInfo}>
-            <View style={styles.userAvatar}>
-              {video.user.avatarUrl ? (
-                <Image source={{ uri: video.user.avatarUrl }} style={styles.avatar} />
-              ) : (
-                <View style={styles.defaultAvatar}>
-                  <Ionicons name="person" size={20} color="#fff" />
-                </View>
-              )}
-            </View>
-            <Text style={styles.username}>@{video.user.username}</Text>
-          </View>
-          
           {video.caption && video.caption.trim() !== '' && (
             <Text style={styles.caption} numberOfLines={3}>
               {video.caption}
@@ -219,27 +338,78 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
 
       {/* Right side - Action buttons */}
       <View style={styles.rightActions}>
+        {/* Avatar with Follow Button */}
+        <View style={styles.avatarContainer}>
+          <TouchableOpacity 
+            style={styles.userAvatar}
+            onPress={() => navigation.navigate('UserProfile', { userId: video.user.id })}
+          >
+            {video.user.avatarUrl ? (
+              <Image source={{ uri: video.user.avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.defaultAvatar}>
+                <Ionicons name="person" size={16} color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+          {showFollowButton && (
+            <TouchableOpacity 
+              style={styles.followButton}
+              onPress={handleFollow}
+              disabled={isFollowing}
+            >
+              <Animated.View
+                style={[
+                  styles.followButtonInner,
+                  {
+                    transform: [{ scale: followButtonScale }],
+                    opacity: followButtonOpacity,
+                  },
+                ]}
+              >
+                <Ionicons name="add" size={12} color="#fff" />
+              </Animated.View>
+              <Animated.View
+                style={[
+                  styles.checkmarkContainer,
+                  {
+                    transform: [{ scale: checkmarkScale }],
+                    opacity: checkmarkOpacity,
+                  },
+                ]}
+              >
+                <Ionicons name="checkmark" size={12} color="#fff" />
+              </Animated.View>
+            </TouchableOpacity>
+          )}
+        </View>
+        
         <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
           <Ionicons 
             name={isLiked ? "heart" : "heart-outline"} 
-            size={36} 
+            size={28} 
             color={isLiked ? "#ff3040" : "#fff"} 
           />
           <Text style={styles.actionText}>{formatNumber(likeCount)}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="chatbubble-outline" size={34} color="#fff" />
+          <Ionicons name="chatbubble-outline" size={26} color="#fff" />
           <Text style={styles.actionText}>{formatNumber(video.stats.comments)}</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="paper-plane-outline" size={34} color="#fff" />
-          <Text style={styles.actionText}>{formatNumber(video.stats.shares)}</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+          <Ionicons name="paper-plane-outline" size={26} color="#fff" />
+          <Text style={styles.actionText}>{formatNumber(shareCount)}</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="bookmark-outline" size={34} color="#fff" />
+        <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
+          <Ionicons 
+            name={isSaved ? "bookmark" : "bookmark-outline"} 
+            size={26} 
+            color={isSaved ? "#ffd700" : "#fff"} 
+          />
+          <Text style={styles.actionText}>{formatNumber(saveCount)}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -308,25 +478,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    position: 'relative',
+  },
   userAvatar: {
-    marginRight: 10,
+    position: 'relative',
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 2,
     borderColor: '#fff',
   },
   defaultAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#fff',
+  },
+  followButton: {
+    position: 'absolute',
+    bottom: -6,
+    backgroundColor: '#ff3040',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  followButtonInner: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkmarkContainer: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   username: {
     color: '#fff',
@@ -370,13 +567,13 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 28,
-    padding: 8,
+    marginBottom: 20,
+    padding: 4,
   },
   actionText: {
     color: '#fff',
-    fontSize: 13,
-    marginTop: 6,
+    fontSize: 12,
+    marginTop: 4,
     fontWeight: '600',
     textAlign: 'center',
   },
