@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch } from 'react-redux';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
+import { logout } from '../store/slices/authSlice';
 
 interface GoogleUser {
   id: string;
@@ -26,12 +28,16 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const dispatch = useDispatch();
   const [user, setUser] = useState<GoogleUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   const { promptAsync } = useGoogleAuth({
-    onSuccess: (googleUser) => {
+    onSuccess: async (googleUser) => {
+      // Lưu user vào state
       setUser(googleUser);
+      // Đồng bộ với AsyncStorage để Profile có thể đọc được
+      await AsyncStorage.setItem('userInfo', JSON.stringify(googleUser));
     },
     onError: (error) => {
       console.error('Google auth error:', error);
@@ -42,10 +48,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkAuthState = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem('google_user');
-        const accessToken = await AsyncStorage.getItem('access_token');
-
-        if (storedUser && accessToken) {
+        const storedUser = await AsyncStorage.getItem('userInfo');
+        const authToken = await AsyncStorage.getItem('authToken');
+        if (storedUser && authToken) {
           const userData: GoogleUser = JSON.parse(storedUser);
           setUser(userData);
         }
@@ -65,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleSignOut = async (): Promise<void> => {
     try {
-      await AsyncStorage.multiRemove(['google_user', 'access_token']);
+      dispatch(logout());
       setUser(null);
     } catch (error) {
       console.error('Sign out error:', error);

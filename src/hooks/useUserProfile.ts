@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch } from 'react-redux';
 import { User } from '../types/api';
 import { useGetUserVideosQuery } from '../store/api/authApi';
+import { logout } from '../store/slices/authSlice';
 
 export const useUserProfile = () => {
+  const dispatch = useDispatch();
   const [userInfo, setUserInfo] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +42,7 @@ export const useUserProfile = () => {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
+      dispatch(logout());
       setUserInfo(null);
       setIsAuthenticated(false);
     } catch (error) {

@@ -59,6 +59,27 @@ export interface RegisterResponse {
   };
 }
 
+export interface GoogleAuthRequest {
+  idToken: string;
+}
+
+export interface GoogleAuthResponse {
+  success: boolean;
+  message: string;
+  data: {
+    accessToken: string;
+    refreshToken: string;
+    user: {
+      id: string;
+      username: string;
+      email: string;
+      givenName: string;
+      familyName: string;
+      picture?: string;
+    };
+  };
+}
+
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery,
@@ -99,6 +120,36 @@ export const authApi = createApi({
       }),
       invalidatesTags: ['Auth'],
     }),
+    googleAuth: builder.mutation({
+      query: (credentials: GoogleAuthRequest) => ({
+        url: '/auth/google',
+        method: 'POST',
+        body: credentials,
+      }),
+      async onQueryStarted(arg: any, { dispatch, queryFulfilled }: any) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data.success && data.data) {
+            await AsyncStorage.setItem('authToken', data.data.accessToken);
+            await AsyncStorage.setItem('refreshToken', data.data.refreshToken);
+            await AsyncStorage.setItem('userInfo', JSON.stringify(data.data.user));
+            
+            dispatch(setCredentials({
+              accessToken: data.data.accessToken,
+              user: {
+                id: data.data.user.id,
+                username: data.data.user.username,
+                givenName: data.data.user.givenName,
+                familyName: data.data.user.familyName,
+              },
+            }));
+          }
+        } catch (error) {
+          console.error('Google auth failed:', error);
+        }
+      },
+      invalidatesTags: ['Auth'],
+    }),
     getUserVideos: builder.query({
       query: (params: { page?: number; size?: number } = {}) => ({
         url: `/videos/me?page=${params.page || 1}&size=${params.size || 10}`,
@@ -109,4 +160,4 @@ export const authApi = createApi({
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useGetUserVideosQuery } = authApi;
+export const { useLoginMutation, useRegisterMutation, useGoogleAuthMutation, useGetUserVideosQuery } = authApi;

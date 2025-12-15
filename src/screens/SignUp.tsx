@@ -24,11 +24,16 @@ const SignUp = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
 
   const { signInWithGoogle, user } = useAuthContext();
+  const hasNavigated = React.useRef(false);
 
-  // Navigate to MainTabs when user is authenticated
+  // Navigate to Profile tab when user is authenticated via Google
   React.useEffect(() => {
-    if (user) {
-      navigation.navigate("MainTabs");
+    if (user && !hasNavigated.current) {
+      hasNavigated.current = true;
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs', params: { screen: 'Profile' } }],
+      });
     }
   }, [user, navigation]);
 
