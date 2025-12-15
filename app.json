@@ -26,6 +26,22 @@
     "extra": {
       "apiBaseUrl": "https://scrolla.bitoj.io.vn/api/v1"
     },
-    "plugins": ["expo-web-browser"]
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Ứng dụng cần quyền truy cập camera để quay video",
+          "microphonePermission": "Ứng dụng cần quyền truy cập microphone để ghi âm cho video",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để chọn thumbnail"
+        }
+      ]
+    ]
   }
 }

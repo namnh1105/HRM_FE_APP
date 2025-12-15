@@ -5,12 +5,15 @@ import { API_BASE_URL } from '../../utils/constants';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
-  prepareHeaders: async (headers: any) => {
+  prepareHeaders: async (headers: any, { endpoint }) => {
     const token = await AsyncStorage.getItem('authToken');
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
     }
-    headers.set('Content-Type', 'application/json');
+    // Don't set Content-Type for FormData (createVideo endpoint), let it be set automatically
+    if (endpoint !== 'createVideo') {
+      headers.set('Content-Type', 'application/json');
+    }
     return headers;
   },
 });
@@ -27,7 +30,15 @@ export const videoApi = createApi({
       }),
       providesTags: ['Videos'],
     }),
+    createVideo: builder.mutation<ApiResponse<any>, FormData>({
+      query: (formData) => ({
+        url: '/videos',
+        method: 'POST',
+        body: formData,
+      }),
+      invalidatesTags: ['Videos'],
+    }),
   }),
 });
 
-export const { useGetVideosQuery } = videoApi;
+export const { useGetVideosQuery, useCreateVideoMutation } = videoApi;

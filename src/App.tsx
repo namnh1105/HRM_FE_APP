@@ -6,6 +6,7 @@ import { store } from "./store";
 import MainTabs from "./navigation/MainTabs";
 import { SignUp, Login } from "./screens";
 import { AuthProvider } from "./context/AuthContext";
+import Toast from 'react-native-toast-message';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +21,7 @@ export default function App() {
             <Stack.Screen name="Login" component={Login} />
           </Stack.Navigator>
         </NavigationContainer>
+        <Toast />
       </AuthProvider>
     </Provider>
   );
