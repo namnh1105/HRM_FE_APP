@@ -2,30 +2,30 @@
   "expo": {
     "name": "Scrolla FE",
     "slug": "scrolla-fe",
+    "owner": "ninhhainam12",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "scrolla-fe",
     "userInterfaceStyle": "light",
     "platforms": ["ios", "android", "web"],
-    "splash": {
-      "backgroundColor": "#ffffff"
+    "experiments": {
+      "reactCompiler": true
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "splash": { "backgroundColor": "#ffffff" },
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.scrolla.fe"
     },
     "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
-      }
+      "adaptiveIcon": { "backgroundColor": "#ffffff" },
+      "package": "com.scrolla.fe"
     },
-    "web": {
-      "bundler": "metro"
-    },
+    "web": { "bundler": "metro" },
     "newArchEnabled": true,
     "extra": {
       "apiBaseUrl": "https://scrolla.bitoj.io.vn/api/v1"
-    }
+    },
+    "plugins": ["expo-web-browser"]
   }
 }

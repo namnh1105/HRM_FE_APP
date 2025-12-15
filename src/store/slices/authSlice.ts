@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Updates } from 'expo-updates';
 
 export interface UserInfo {
   id: string;
@@ -42,8 +43,10 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       
       // Xóa khỏi AsyncStorage
-      AsyncStorage.removeItem('authToken');
-      AsyncStorage.removeItem('userInfo');
+      AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']).then(() => {
+        // Reload app sau khi xóa xong
+        Updates.reloadAsync();
+      });
     },
     restoreAuth: (
       state,

@@ -18,6 +18,7 @@ import { useUserProfile } from '../hooks';
 import { Video } from '../types/api';
 import VideoCard from '../components/VideoCard';
 import { COLORS, SPACING } from '../utils/constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 const itemWidth = width / 3;
