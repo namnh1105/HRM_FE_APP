@@ -8,12 +8,16 @@ import {
   Dimensions,
   ActivityIndicator,
   Animated,
+  Share,
+  Alert,
 } from 'react-native';
 import { Video as ExpoVideo, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { Video } from '../types/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFollowUserMutation } from '../store/api/followApi';
+import { useToggleSaveMutation, useCheckSaveQuery } from '../store/api/saveApi';
+import { useShareVideoMutation } from '../store/api/shareApi';
 
 interface VideoCardProps {
   video: Video;
@@ -33,6 +37,9 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [showControls, setShowControls] = useState(false); // Only show pause button when paused
   const [isFollowing, setIsFollowing] = useState(video.user.isFollowing || false);
   const [showFollowButton, setShowFollowButton] = useState(!video.user.isFollowing);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveCount, setSaveCount] = useState(video.stats.saves || 0);
+  const [shareCount, setShareCount] = useState(video.stats.shares);
   const videoRef = useRef<ExpoVideo>(null);
   const isMounted = useRef(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,6 +49,16 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const checkmarkOpacity = useRef(new Animated.Value(0)).current;
   
   const [followUser] = useFollowUserMutation();
+  const [toggleSave] = useToggleSaveMutation();
+  const [shareVideo] = useShareVideoMutation();
+  const { data: saveCheckData } = useCheckSaveQuery(video.id);
+
+  // Update save status from API
+  useEffect(() => {
+    if (saveCheckData?.success && saveCheckData.data) {
+      setIsSaved(saveCheckData.data.isSaved);
+    }
+  }, [saveCheckData]);
 
   const videoHeight = customHeight || screenHeight;
 
@@ -200,6 +217,37 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
     }
   };
 
+  const handleSave = async () => {
+    try {
+      await toggleSave(video.id).unwrap();
+      const newSavedState = !isSaved;
+      setIsSaved(newSavedState);
+      setSaveCount(prev => newSavedState ? prev + 1 : prev - 1);
+    } catch (error) {
+      console.error('Save error:', error);
+      Alert.alert('Lỗi', 'Không thể lưu video. Vui lòng thử lại.');
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const result = await Share.share({
+        message: `Check out this video: ${video.caption || 'Amazing video!'} \n${video.videoUrl}`,
+        url: video.videoUrl,
+      });
+
+      if (result.action === Share.sharedAction) {
+        // Call API to track share
+        const response = await shareVideo(video.id).unwrap();
+        if (response.success && response.data) {
+          setShareCount(response.data.shareCount);
+        }
+      }
+    } catch (error) {
+      console.error('Share error:', error);
+    }
+  };
+
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
@@ -344,13 +392,18 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           <Text style={styles.actionText}>{formatNumber(video.stats.comments)}</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
           <Ionicons name="paper-plane-outline" size={26} color="#fff" />
-          <Text style={styles.actionText}>{formatNumber(video.stats.shares)}</Text>
+          <Text style={styles.actionText}>{formatNumber(shareCount)}</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="bookmark-outline" size={26} color="#fff" />
+        <TouchableOpacity style={styles.actionButton} onPress={handleSave}>
+          <Ionicons 
+            name={isSaved ? "bookmark" : "bookmark-outline"} 
+            size={26} 
+            color={isSaved ? "#ffd700" : "#fff"} 
+          />
+          <Text style={styles.actionText}>{formatNumber(saveCount)}</Text>
         </TouchableOpacity>
       </View>
     </View>

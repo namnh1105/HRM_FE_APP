@@ -3,6 +3,8 @@ import { authApi } from './api/authApi';
 import { videoApi } from './api/videoApi';
 import { chatApi } from './api/chatApi';
 import { followApi } from './api/followApi';
+import { saveApi } from './api/saveApi';
+import { shareApi } from './api/shareApi';
 import authReducer from './slices/authSlice';
 
 export const store = configureStore({
@@ -12,13 +14,17 @@ export const store = configureStore({
     [videoApi.reducerPath]: videoApi.reducer,
     [chatApi.reducerPath]: chatApi.reducer,
     [followApi.reducerPath]: followApi.reducer,
+    [saveApi.reducerPath]: saveApi.reducer,
+    [shareApi.reducerPath]: shareApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
       .concat(authApi.middleware)
       .concat(videoApi.middleware)
       .concat(chatApi.middleware)
-      .concat(followApi.middleware),
+      .concat(followApi.middleware)
+      .concat(saveApi.middleware)
+      .concat(shareApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

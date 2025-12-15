@@ -21,6 +21,7 @@ import { Video } from '../types/api';
 import VideoCard from '../components/VideoCard';
 import { COLORS, SPACING } from '../utils/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useGetSavedVideosQuery } from '../store/api/saveApi';
 
 const { width } = Dimensions.get('window');
 const itemWidth = width / 3;
@@ -32,6 +33,7 @@ const Profile = () => {
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [currentModalIndex, setCurrentModalIndex] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState<'videos' | 'saved'>('videos');
   const videoModalRef = useRef<FlatList>(null);
 
   const {
@@ -44,10 +46,23 @@ const Profile = () => {
     refreshUserInfo,
   } = useUserProfile();
 
+  const {
+    data: savedVideosData,
+    isLoading: savedVideosLoading,
+    refetch: refetchSavedVideos,
+  } = useGetSavedVideosQuery({ page: 1, size: 50 }, {
+    skip: !isAuthenticated,
+  });
+
+  const savedVideos = savedVideosData?.success ? savedVideosData.data.videos : [];
+
   useFocusEffect(
     React.useCallback(() => {
       refreshUserInfo();
-    }, [refreshUserInfo])
+      if (activeTab === 'saved') {
+        refetchSavedVideos();
+      }
+    }, [refreshUserInfo, activeTab, refetchSavedVideos])
   );
 
   const openVideoModal = (video: Video, index: number) => {
@@ -55,6 +70,10 @@ const Profile = () => {
     setSelectedVideoIndex(index);
     setCurrentModalIndex(index);
     setIsVideoModalVisible(true);
+  };
+
+  const getCurrentVideos = () => {
+    return activeTab === 'videos' ? userVideos : savedVideos;
   };
 
   const closeVideoModal = () => {
@@ -215,16 +234,45 @@ const Profile = () => {
         </View>
 
         <View style={styles.videosSection}>
-          <Text style={styles.sectionTitle}>Video của tôi</Text>
+          {/* Tabs */}
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'videos' && styles.activeTab,
+              ]}
+              onPress={() => setActiveTab('videos')}
+            >
+              <Ionicons
+                name="grid-outline"
+                size={24}
+                color={activeTab === 'videos' ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'saved' && styles.activeTab,
+              ]}
+              onPress={() => setActiveTab('saved')}
+            >
+              <Ionicons
+                name="bookmark-outline"
+                size={24}
+                color={activeTab === 'saved' ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
+              />
+            </TouchableOpacity>
+          </View>
 
-          {videosLoading ? (
+          {/* Content */}
+          {(activeTab === 'videos' ? videosLoading : savedVideosLoading) ? (
             <View style={styles.videosLoading}>
               <ActivityIndicator size="small" color={COLORS.PRIMARY} />
               <Text style={styles.loadingText}>Đang tải video...</Text>
             </View>
-          ) : userVideos.length > 0 ? (
+          ) : getCurrentVideos().length > 0 ? (
             <FlatList
-              data={userVideos}
+              data={getCurrentVideos()}
               renderItem={renderVideoItem}
               keyExtractor={(item) => item.id}
               numColumns={3}
@@ -234,9 +282,13 @@ const Profile = () => {
             />
           ) : (
             <View style={styles.emptyVideos}>
-              <Text style={styles.emptyText}>Chưa có video nào</Text>
+              <Text style={styles.emptyText}>
+                {activeTab === 'videos' ? 'Chưa có video nào' : 'Chưa lưu video nào'}
+              </Text>
               <Text style={styles.emptySubText}>
-                Hãy tải lên video đầu tiên của bạn
+                {activeTab === 'videos'
+                  ? 'Hãy tải lên video đầu tiên của bạn'
+                  : 'Nhấn vào biểu tượng đánh dấu để lưu video yêu thích'}
               </Text>
             </View>
           )}
@@ -252,7 +304,7 @@ const Profile = () => {
         <View style={styles.videoPlayerContainer}>
           <FlatList
             ref={videoModalRef}
-            data={userVideos}
+            data={getCurrentVideos()}
             renderItem={({ item, index }) => (
               <VideoCard
                 video={item}
@@ -424,6 +476,22 @@ const styles = StyleSheet.create({
   videosSection: {
     paddingTop: SPACING.LG,
     paddingBottom: SPACING.LG,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    marginBottom: SPACING.MD,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: SPACING.MD,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: COLORS.PRIMARY,
   },
   sectionTitle: {
     fontSize: 18,
