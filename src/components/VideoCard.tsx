@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFollowUserMutation } from '../store/api/followApi';
 import { useToggleSaveMutation, useCheckSaveQuery } from '../store/api/saveApi';
 import { useShareVideoMutation } from '../store/api/shareApi';
+import { useNavigation } from '@react-navigation/native';
 
 interface VideoCardProps {
   video: Video;
@@ -29,6 +30,7 @@ interface VideoCardProps {
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, customHeight }) => {
+  const navigation = useNavigation();
   const [isPlaying, setIsPlaying] = useState(true); // Start with autoplay
   const [isLoading, setIsLoading] = useState(false);
   const [showThumbnail, setShowThumbnail] = useState(true);
@@ -80,6 +82,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       playVideo();
     } else if (!isActive && videoRef.current && isMounted.current) {
       pauseVideo();
+      setIsPlaying(false); // Force playing state to false when not active
     }
   }, [isActive]);
 
@@ -276,7 +279,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           source={{ uri: video.videoUrl }}
           style={[styles.video, { height: videoHeight }]}
           resizeMode={ResizeMode.COVER}
-          shouldPlay={isActive}
+          shouldPlay={isActive && isPlaying}
           isLooping
           isMuted={false}
           onLoad={() => setShowThumbnail(false)}
@@ -337,7 +340,10 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       <View style={styles.rightActions}>
         {/* Avatar with Follow Button */}
         <View style={styles.avatarContainer}>
-          <View style={styles.userAvatar}>
+          <TouchableOpacity 
+            style={styles.userAvatar}
+            onPress={() => navigation.navigate('UserProfile', { userId: video.user.id })}
+          >
             {video.user.avatarUrl ? (
               <Image source={{ uri: video.user.avatarUrl }} style={styles.avatar} />
             ) : (
@@ -345,7 +351,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
                 <Ionicons name="person" size={16} color="#fff" />
               </View>
             )}
-          </View>
+          </TouchableOpacity>
           {showFollowButton && (
             <TouchableOpacity 
               style={styles.followButton}

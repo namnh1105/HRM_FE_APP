@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Dimensions,
   StatusBar,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { Video } from '../types/api';
 import VideoCard from '../components/VideoCard';
 import { useVideoData, useVideoVisibility } from '../hooks';
@@ -18,6 +19,7 @@ const adjustedHeight = screenHeight - TAB_BAR_HEIGHT;
 
 const Home: React.FC = () => {
   const flatListRef = useRef<FlatList>(null);
+  const isFocused = useIsFocused();
 
   const {
     videos,
@@ -35,7 +37,7 @@ const Home: React.FC = () => {
   const renderVideo = ({ item, index }: { item: Video; index: number }) => (
     <VideoCard 
       video={item} 
-      isActive={index === currentIndex} 
+      isActive={index === currentIndex && isFocused} 
       onLoadMore={index === videos.length - 2 ? handleLoadMore : undefined}
       customHeight={adjustedHeight}
     />

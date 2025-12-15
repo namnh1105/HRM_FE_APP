@@ -5,6 +5,7 @@ import { chatApi } from './api/chatApi';
 import { followApi } from './api/followApi';
 import { saveApi } from './api/saveApi';
 import { shareApi } from './api/shareApi';
+import { userApi } from './api/userApi';
 import authReducer from './slices/authSlice';
 
 export const store = configureStore({
@@ -16,6 +17,7 @@ export const store = configureStore({
     [followApi.reducerPath]: followApi.reducer,
     [saveApi.reducerPath]: saveApi.reducer,
     [shareApi.reducerPath]: shareApi.reducer,
+    [userApi.reducerPath]: userApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -24,7 +26,8 @@ export const store = configureStore({
       .concat(chatApi.middleware)
       .concat(followApi.middleware)
       .concat(saveApi.middleware)
-      .concat(shareApi.middleware),
+      .concat(shareApi.middleware)
+      .concat(userApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
