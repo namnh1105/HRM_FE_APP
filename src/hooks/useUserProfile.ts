@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { User } from '../types/api';
-import { useGetUserVideosQuery } from '../store/api/authApi';
+import { useGetUserVideosQuery, useGetUserProfileQuery, UserProfileResponse } from '../store/api/authApi';
 import { logout } from '../store/slices/authSlice';
 
 export const useUserProfile = () => {
@@ -11,6 +11,15 @@ export const useUserProfile = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Gọi API để lấy profile đầy đủ
+  const {
+    data: userProfileData,
+    isLoading: profileLoading,
+    refetch: refetchProfile,
+  } = useGetUserProfileQuery(undefined, {
+    skip: !isAuthenticated,
+  }) as { data: UserProfileResponse | undefined; isLoading: boolean; refetch: () => void };
+
   const {
     data: userVideosData,
     isLoading: videosLoading,
@@ -18,7 +27,7 @@ export const useUserProfile = () => {
   } = useGetUserVideosQuery(
     { page: 1, size: 20 },
     { skip: !isAuthenticated }
-  );
+  ) as any;
 
   const loadUserInfo = async () => {
     try {
@@ -40,6 +49,13 @@ export const useUserProfile = () => {
     }
   };
 
+  // Cập nhật userInfo khi có dữ liệu mới từ API
+  useEffect(() => {
+    if (userProfileData?.success && userProfileData.data) {
+      setUserInfo(userProfileData.data);
+    }
+  }, [userProfileData]);
+
   const handleLogout = async () => {
     try {
       dispatch(logout());
@@ -54,14 +70,21 @@ export const useUserProfile = () => {
     loadUserInfo();
   }, []);
 
+  const refreshUserInfo = async () => {
+    await loadUserInfo();
+    if (isAuthenticated) {
+      refetchProfile();
+    }
+  };
+
   return {
     userInfo,
     isAuthenticated,
-    loading,
+    loading: loading || profileLoading,
     userVideos: userVideosData?.success ? userVideosData.data.videos : [],
     videosLoading,
     refetchVideos,
     handleLogout,
-    refreshUserInfo: loadUserInfo,
+    refreshUserInfo,
   };
 };

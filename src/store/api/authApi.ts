@@ -32,6 +32,7 @@ export interface LoginResponse {
       username: string;
       givenName: string;
       familyName: string;
+      avatarUrl?: string;
       followersCount: number;
       followingCount: number;
       isFollowing: boolean;
@@ -75,8 +76,24 @@ export interface GoogleAuthResponse {
       email: string;
       givenName: string;
       familyName: string;
+      avatarUrl?: string;
       picture?: string;
     };
+  };
+}
+
+export interface UserProfileResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: string;
+    username: string;
+    givenName: string;
+    familyName: string;
+    avatarUrl: string;
+    followersCount: number;
+    followingCount: number;
+    isFollowing: boolean;
   };
 }
 
@@ -95,15 +112,15 @@ export const authApi = createApi({
         try {
           const { data } = await queryFulfilled;
           if (data.success && data.data) {
-            // Lưu accessToken và user info vào Redux store và AsyncStorage
+            // Lưu đầy đủ thông tin user
+            await AsyncStorage.setItem('authToken', data.data.accessToken);
+            await AsyncStorage.setItem('refreshToken', data.data.refreshToken);
+            await AsyncStorage.setItem('userInfo', JSON.stringify(data.data.user));
+            
+            // Lưu accessToken và user info vào Redux store
             dispatch(setCredentials({
               accessToken: data.data.accessToken,
-              user: {
-                id: data.data.user.id,
-                username: data.data.user.username,
-                givenName: data.data.user.givenName,
-                familyName: data.data.user.familyName,
-              },
+              user: data.data.user,
             }));
           }
         } catch (error) {
@@ -157,7 +174,24 @@ export const authApi = createApi({
       }),
       providesTags: ['UserVideos'],
     }),
+    getUserProfile: builder.query({
+      query: () => ({
+        url: '/auth/profile',
+        method: 'GET',
+      }),
+      async onQueryStarted(arg: any, { queryFulfilled }: any) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data.success && data.data) {
+            await AsyncStorage.setItem('userInfo', JSON.stringify(data.data));
+          }
+        } catch (error) {
+          console.error('Get user profile failed:', error);
+        }
+      },
+      providesTags: ['Auth'],
+    }),
   }),
 });
 
-export const { useLoginMutation, useRegisterMutation, useGoogleAuthMutation, useGetUserVideosQuery } = authApi;
+export const { useLoginMutation, useRegisterMutation, useGoogleAuthMutation, useGetUserVideosQuery, useGetUserProfileQuery } = authApi;

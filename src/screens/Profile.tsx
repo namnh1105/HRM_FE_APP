@@ -12,7 +12,9 @@ import {
   Dimensions,
   ScrollView,
   Modal,
+  Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUserProfile } from '../hooks';
 import { Video } from '../types/api';
@@ -29,6 +31,7 @@ const Profile = () => {
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [currentModalIndex, setCurrentModalIndex] = useState(0);
+  const [showMenu, setShowMenu] = useState(false);
   const videoModalRef = useRef<FlatList>(null);
 
   const {
@@ -60,6 +63,7 @@ const Profile = () => {
   };
 
   const onLogoutPress = () => {
+    setShowMenu(false);
     Alert.alert(
       'Đăng xuất',
       'Bạn có chắc chắn muốn đăng xuất?',
@@ -137,6 +141,37 @@ const Profile = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Dropdown Menu Button */}
+      <TouchableOpacity 
+        style={styles.menuButton}
+        onPress={() => setShowMenu(true)}
+      >
+        <Ionicons name="ellipsis-vertical" size={24} color="#333" />
+      </TouchableOpacity>
+
+      {/* Dropdown Menu Modal */}
+      <Modal
+        visible={showMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowMenu(false)}
+        >
+          <View style={styles.menuContainer}>
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={onLogoutPress}
+            >
+              <Ionicons name="log-out-outline" size={22} color="#333" />
+              <Text style={styles.menuText}>Đăng xuất</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.userInfoContainer}>
@@ -177,10 +212,6 @@ const Profile = () => {
               </View>
             </View>
           </View>
-
-          <TouchableOpacity style={styles.logoutButton} onPress={onLogoutPress}>
-            <Text style={styles.logoutButtonText}>Đăng xuất</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.videosSection}>
@@ -343,18 +374,52 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_SECONDARY,
     marginTop: SPACING.XS,
   },
-  logoutButton: {
-    backgroundColor: COLORS.ERROR,
-    paddingVertical: SPACING.SM,
-    paddingHorizontal: SPACING.LG,
-    borderRadius: 8,
+  menuButton: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.LG,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  logoutButtonText: {
-    color: COLORS.BACKGROUND,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  menuContainer: {
+    position: 'absolute',
+    top: 95,
+    right: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    minWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  menuText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 12,
+    fontWeight: '500',
   },
   videosSection: {
     paddingTop: SPACING.LG,
