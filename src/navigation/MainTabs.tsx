@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Shop, AddVideo, Messages, Profile } from '../screens';
+import { Home, Search, Shop, AddVideo, Messages, Profile } from '../screens';
 import BottomNavbar from '../components/BottomNavbar';
 
 const Tab = createBottomTabNavigator();
@@ -22,10 +22,10 @@ const MainTabs: React.FC = () => {
         }}
       />
       <Tab.Screen 
-        name="Shop" 
-        component={Shop}
+        name="Search" 
+        component={Search}
         options={{
-          tabBarLabel: 'Cửa hàng',
+          tabBarLabel: 'Tìm kiếm',
         }}
       />
       <Tab.Screen 

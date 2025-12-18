@@ -38,7 +38,16 @@ export const videoApi = createApi({
       }),
       invalidatesTags: ['Videos'],
     }),
+    searchVideos: builder.query<
+      ApiResponse<VideoListData>,
+      { keyword: string; sortBy?: string; page?: number; limit?: number }
+    >({
+      query: ({ keyword, sortBy = 'relevance', page = 1, limit = 10 }) => ({
+        url: `/videos/search?keyword=${encodeURIComponent(keyword)}&sortBy=${sortBy}&page=${page}&limit=${limit}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
-export const { useGetVideosQuery, useCreateVideoMutation } = videoApi;
+export const { useGetVideosQuery, useCreateVideoMutation, useSearchVideosQuery } = videoApi;

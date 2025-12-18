@@ -5,7 +5,7 @@ interface VideoUploadData {
   videoUri: string;
   thumbnailUri: string;
   caption?: string;
-  hashtags?: string;
+  hashtags?: string[];
 }
 
 export const useVideoUpload = () => {
@@ -38,8 +38,9 @@ export const useVideoUpload = () => {
       if (data.caption) {
         formData.append('caption', data.caption);
       }
-      if (data.hashtags) {
-        formData.append('hashtags', data.hashtags);
+      if (data.hashtags && data.hashtags.length > 0) {
+        // Send as comma-separated string, backend Transform will parse it
+        formData.append('hashtags', data.hashtags.join(','));
       }
 
       setUploadProgress(50); // Simulated progress
