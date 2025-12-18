@@ -1,5 +1,6 @@
 // Export all screens from this directory
 export { default as Home } from './Home';
+export { default as Search } from './Search';
 export { default as Shop } from './Shop';
 export { default as AddVideo } from './AddVideo';
 export { default as Messages } from './Messages';

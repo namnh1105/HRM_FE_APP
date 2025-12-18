@@ -316,6 +316,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       {/* Caption - Bottom left */}
       <View style={styles.bottomLeftContent}>
         <View style={styles.contentContainer}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('UserProfile', { userId: video.user.id })}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.username}>@{video.user.username}</Text>
+          </TouchableOpacity>
+          
           {video.caption && video.caption.trim() !== '' && (
             <Text style={styles.caption} numberOfLines={3}>
               {video.caption}
@@ -323,9 +330,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           )}
           
           {video.hashtags && video.hashtags.length > 0 && (
-            <Text style={styles.hashtags}>
-              {video.hashtags.map(tag => `#${tag}`).join(' ')}
-            </Text>
+            <View style={styles.hashtagsContainer}>
+              {video.hashtags.map((tag, index) => (
+                <TouchableOpacity 
+                  key={index}
+                  onPress={() => navigation.navigate('Search', { keyword: tag })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.hashtags}>#{tag} </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           )}
           
           {video.duration && !isNaN(video.duration) && (
@@ -529,6 +544,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+    marginBottom: 4,
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -542,11 +558,15 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  hashtags: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  hashtagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     marginBottom: 6,
+  },
+  hashtags: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 15,
+    fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,

@@ -24,7 +24,7 @@ const { width } = Dimensions.get('window');
 const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const tabs: TabConfig[] = [
     { id: 'Home', label: 'Trang chủ', icon: 'home', library: 'Ionicons' },
-    { id: 'Shop', label: 'Cửa hàng', icon: 'storefront', library: 'Ionicons' },
+    { id: 'Search', label: 'Tìm kiếm', icon: 'search', library: 'Ionicons' },
     { id: 'AddVideo', label: 'Thêm video', icon: 'add-circle', library: 'Ionicons', isSpecial: true },
     { id: 'Messages', label: 'Hộp thư', icon: 'chatbubble-ellipses', library: 'Ionicons' },
     { id: 'Profile', label: 'Hồ sơ', icon: 'person', library: 'Ionicons' },
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 4,
-    maxWidth: width / 5,
+    maxWidth: width / 6,
   },
   specialTab: {
     // No transform

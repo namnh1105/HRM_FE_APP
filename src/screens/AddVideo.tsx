@@ -9,6 +9,9 @@ import {
   Text,
   View,
   TextInput,
+  Image,
+  TouchableOpacity,
+  ScrollView,
 } from "react-native";
 import {
   CameraMode,
@@ -19,6 +22,7 @@ import {
 } from "expo-camera";
 import * as MediaLibrary from 'expo-media-library';
 import * as VideoThumbnails from 'expo-video-thumbnails';
+import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import LoadingIndicator from "../components/LoadingIndicator";
 import CustomAlert from "../components/CustomAlert";
@@ -207,6 +211,27 @@ export default function AddVideo() {
     }
   };
 
+  const handlePickThumbnail = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [9, 16],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setThumbnailUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking thumbnail:', error);
+    }
+  };
+
+  const handleHashtagChange = (text: string) => {
+    setHashtags(text);
+  };
+
   const handleUpload = async () => {
     if (!recordedVideoUri || !thumbnailUri) {
       setAlertTitle("Lỗi");
@@ -220,11 +245,16 @@ export default function AddVideo() {
     setLoadingMessage("Đang tải video lên...");
 
     try {
+      // Parse hashtags from string to array
+      const hashtagsArray = hashtags.trim()
+        ? hashtags.split(/\s+/).map(tag => tag.replace(/^#/, '').trim()).filter(tag => tag.length > 0)
+        : undefined;
+
       await uploadVideo({
         videoUri: recordedVideoUri,
         thumbnailUri: thumbnailUri,
         caption: caption.trim() || undefined,
-        hashtags: hashtags.trim() || undefined,
+        hashtags: hashtagsArray,
       });
 
       setAlertTitle("Thành công");
@@ -324,45 +354,81 @@ export default function AddVideo() {
   const renderCaptionInput = () => {
     return (
       <View style={styles.captionContainer}>
-        <Text style={styles.captionTitle}>Thêm thông tin video</Text>
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Nhập tiêu đề video..."
-          value={caption}
-          onChangeText={setCaption}
-          multiline
-          maxLength={200}
-        />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Thêm hashtags (VD: #funny #dance)"
-          value={hashtags}
-          onChangeText={setHashtags}
-          maxLength={100}
-        />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => {
+            setShowCaptionInput(false);
+            setRecordedVideoUri(null);
+            setThumbnailUri(null);
+            setCaption("");
+            setHashtags("");
+          }}>
+            <Ionicons name="arrow-back" size={28} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Thêm mô tả...</Text>
+          <View style={{ width: 28 }} />
+        </View>
 
-        <View style={styles.buttonRow}>
-          <Pressable 
-            style={[styles.actionButton, styles.cancelButton]} 
-            onPress={() => {
-              setShowCaptionInput(false);
-              setRecordedVideoUri(null);
-              setThumbnailUri(null);
-              setCaption("");
-              setHashtags("");
-            }}
+        <ScrollView style={styles.scrollContent}>
+          <View style={styles.contentRow}>
+            {/* Thumbnail Section */}
+            <View style={styles.thumbnailSection}>
+              {thumbnailUri && (
+                <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
+              )}
+              <View style={styles.thumbnailActions}>
+                <TouchableOpacity 
+                  style={styles.thumbnailButton}
+                  onPress={handlePickThumbnail}
+                >
+                  <Text style={styles.thumbnailButtonText}>Sửa ảnh bìa</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Caption Input */}
+            <View style={styles.inputSection}>
+              <TextInput
+                style={styles.captionInput}
+                placeholder="Thêm mô tả..."
+                value={caption}
+                onChangeText={setCaption}
+                multiline
+                maxLength={200}
+                placeholderTextColor="#999"
+              />
+            </View>
+          </View>
+
+          {/* Hashtags Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="pricetag" size={20} color="#000" />
+              <Text style={styles.sectionTitle}>Hashtag</Text>
+            </View>
+            <TextInput
+              style={styles.hashtagInput}
+              value={hashtags}
+              onChangeText={handleHashtagChange}
+              maxLength={100}
+              placeholderTextColor="#999"
+            />
+          </View>
+        </ScrollView>
+
+        {/* Bottom Buttons */}
+        <View style={styles.bottomButtons}>
+          <TouchableOpacity 
+            style={styles.draftButton}
           >
-            <Text style={styles.cancelButtonText}>Hủy</Text>
-          </Pressable>
-          
-          <Pressable 
-            style={[styles.actionButton, styles.uploadButton]} 
+            <Ionicons name="folder-outline" size={20} color="#000" />
+            <Text style={styles.draftButtonText}>Nhập</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.postButton}
             onPress={handleUpload}
           >
-            <Text style={styles.uploadButtonText}>Đăng video</Text>
-          </Pressable>
+            <Text style={styles.postButtonText}>Đăng</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -526,54 +592,124 @@ const styles = StyleSheet.create({
   },
   captionContainer: {
     flex: 1,
-    width: '100%',
-    padding: 20,
+    width: width,
     backgroundColor: '#fff',
-    justifyContent: 'center',
   },
-  captionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    padding: 15,
-    fontSize: 16,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    minHeight: 50,
-  },
-  buttonRow: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 15,
-    borderRadius: 10,
     alignItems: 'center',
-    marginHorizontal: 5,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  cancelButton: {
-    backgroundColor: '#ccc',
-  },
-  uploadButton: {
-    backgroundColor: '#007398',
-  },
-  cancelButtonText: {
-    color: '#333',
+  headerTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#000',
   },
-  uploadButtonText: {
-    color: 'white',
+  scrollContent: {
+    flex: 1,
+  },
+  contentRow: {
+    flexDirection: 'row',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  thumbnailSection: {
+    marginRight: 12,
+  },
+  thumbnail: {
+    width: 100,
+    height: 140,
+    borderRadius: 8,
+    backgroundColor: '#000',
+  },
+  thumbnailActions: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  thumbnailButton: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+  },
+  thumbnailButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  inputSection: {
+    flex: 1,
+    justifyContent: 'flex-start',
+  },
+  captionInput: {
+    fontSize: 16,
+    color: '#000',
+    textAlignVertical: 'top',
+    minHeight: 140,
+  },
+  section: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 8,
+    color: '#000',
+  },
+  hashtagInput: {
+    fontSize: 15,
+    color: '#000',
+    paddingVertical: 8,
+  },
+  bottomButtons: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  draftButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 4,
+    backgroundColor: '#f5f5f5',
+    gap: 6,
+  },
+  draftButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  postButton: {
+    flex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 4,
+    backgroundColor: '#FE2C55',
+  },
+  postButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
