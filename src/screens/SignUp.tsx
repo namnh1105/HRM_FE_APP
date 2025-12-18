@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../context/AuthContext';
 
 const PRIMARY_BUTTON_COLOR = '#333333';
@@ -24,16 +26,11 @@ const SignUp = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
 
   const { signInWithGoogle, user } = useAuthContext();
-  const hasNavigated = React.useRef(false);
 
-  // Navigate to Profile tab when user is authenticated via Google
+  // Close modal when authenticated - RootNavigator will handle navigation
   React.useEffect(() => {
-    if (user && !hasNavigated.current) {
-      hasNavigated.current = true;
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs', params: { screen: 'Profile' } }],
-      });
+    if (user) {
+      navigation.goBack();
     }
   }, [user, navigation]);
 
@@ -72,9 +69,16 @@ const SignUp = ({ navigation }: any) => {
       setLoading(false);
     }
   };
-
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* Close button */}
+      <TouchableOpacity 
+        style={styles.closeButton} 
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="close" size={28} color="#333" />
+      </TouchableOpacity>
+
       <Text style={styles.title}>Đăng kí vào Scrolla</Text>
 
       <View style={styles.formContainer}>
@@ -108,13 +112,20 @@ const SignUp = ({ navigation }: any) => {
         <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/facebook-new.png' }} style={styles.socialIcon} />
         <Text style={styles.socialButtonText}>Continue with Facebook</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
 // STYLES
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 35, justifyContent: "center", backgroundColor: "#fff" },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
   title: { fontSize: 22, marginBottom: 30, textAlign: "center", fontWeight: "600" },
   formContainer: { marginBottom: 30 },
   input: { borderWidth: 1, borderColor: "#ccc", padding: 15, borderRadius: 5, marginBottom: 10 },

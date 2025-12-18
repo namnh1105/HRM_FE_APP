@@ -8,7 +8,9 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthLogin } from '../hooks';
 import { useAuthContext } from '../context/AuthContext';
 
@@ -27,16 +29,11 @@ const Login = ({ navigation }: any) => {
   } = useAuthLogin(navigation);
 
   const { signInWithGoogle, user } = useAuthContext();
-  const hasNavigated = React.useRef(false);
 
-  // Navigate to Profile tab when user is authenticated via Google
+  // Close modal when authenticated - RootNavigator will handle navigation
   React.useEffect(() => {
-    if (user && !hasNavigated.current) {
-      hasNavigated.current = true;
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs', params: { screen: 'Profile' } }],
-      });
+    if (user) {
+      navigation.goBack();
     }
   }, [user, navigation]);
 
@@ -45,7 +42,15 @@ const Login = ({ navigation }: any) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* Close button */}
+      <TouchableOpacity 
+        style={styles.closeButton} 
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="close" size={28} color="#333" />
+      </TouchableOpacity>
+
       <Text style={styles.title}>Đăng nhập vào Scrolla</Text>
 
       <View style={styles.formContainer}>
@@ -95,7 +100,7 @@ const Login = ({ navigation }: any) => {
           <Text style={styles.register}>Đăng ký</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -107,6 +112,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 35, 
     justifyContent: "center", 
     backgroundColor: "#fff" 
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
   },
   title: { 
     fontSize: 22, 

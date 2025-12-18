@@ -70,7 +70,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleSignOut = async (): Promise<void> => {
     try {
+      // Clear AsyncStorage first
+      await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
+      // Dispatch logout action
       dispatch(logout());
+      // Clear local state
       setUser(null);
     } catch (error) {
       console.error('Sign out error:', error);

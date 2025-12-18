@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ApiResponse, ChatRoom, ChatMessage, SendMessageDto, CreateRoomDto } from '../../types/api';
+import { ApiResponse, ChatRoom, ChatMessage, SendMessageDto, CreateRoomDto, SearchUsersDto, User } from '../../types/api';
 import { API_BASE_URL } from '../../utils/constants';
 
 const baseQuery = fetchBaseQuery({
@@ -20,15 +20,16 @@ export const chatApi = createApi({
   baseQuery,
   tagTypes: ['ChatRooms', 'Messages'],
   endpoints: (builder) => ({
-    getUserRooms: builder.query<ApiResponse<ChatRoom[]>, void>({
-      query: () => ({
-        url: '/chat/rooms',
-        method: 'GET',
-      }),
+    getUserRooms: builder.query<ChatRoom[], void>({
+      query: () => '/chat/rooms',
+      transformResponse: (response: any) => {
+        // Backend trả về array trực tiếp
+        return Array.isArray(response) ? response : [];
+      },
       providesTags: ['ChatRooms'],
     }),
     
-    createRoom: builder.mutation<ApiResponse<ChatRoom>, CreateRoomDto>({
+    createRoom: builder.mutation<ChatRoom, CreateRoomDto>({
       query: (createRoomDto) => ({
         url: '/chat/rooms',
         method: 'POST',
@@ -37,32 +38,66 @@ export const chatApi = createApi({
       invalidatesTags: ['ChatRooms'],
     }),
     
-    getRoomById: builder.query<ApiResponse<ChatRoom>, string>({
-      query: (roomId) => ({
-        url: `/chat/rooms/${roomId}`,
-        method: 'GET',
-      }),
+    getOrCreatePrivateRoom: builder.mutation<ChatRoom, string>({
+      query: (otherUserId) => {
+        console.log('[ChatAPI] getOrCreatePrivateRoom called with:', {
+          otherUserId,
+          type: typeof otherUserId,
+          isValid: otherUserId && otherUserId.length > 0,
+        });
+        return {
+          url: '/chat/rooms/private',
+          method: 'POST',
+          body: { otherUserId },
+        };
+      },
+      invalidatesTags: ['ChatRooms'],
+    }),
+    
+    getRoomById: builder.query<ChatRoom, string>({
+      query: (roomId) => `/chat/rooms/${roomId}`,
       providesTags: (result, error, roomId) => [{ type: 'ChatRooms', id: roomId }],
     }),
     
-    getMessages: builder.query<ApiResponse<ChatMessage[]>, { roomId: string; limit?: number; offset?: number }>({
-      query: ({ roomId, limit = 50, offset = 0 }) => ({
-        url: `/chat/rooms/${roomId}/messages?limit=${limit}&offset=${offset}`,
-        method: 'GET',
-      }),
+    getMessages: builder.query<ChatMessage[], { roomId: string; limit?: number; offset?: number }>({
+      query: ({ roomId, limit = 50, offset = 0 }) => 
+        `/chat/rooms/${roomId}/messages?limit=${limit}&offset=${offset}`,
+      transformResponse: (response: any) => {
+        return Array.isArray(response) ? response : [];
+      },
       providesTags: (result, error, { roomId }) => [{ type: 'Messages', id: roomId }],
     }),
     
-    sendMessage: builder.mutation<ApiResponse<ChatMessage>, SendMessageDto>({
+    sendMessage: builder.mutation<ChatMessage, SendMessageDto>({
       query: (sendMessageDto) => ({
         url: '/chat/messages',
         method: 'POST',
         body: sendMessageDto,
       }),
       invalidatesTags: (result, error, { roomId }) => [
-        { type: 'Messages', id: roomId },
+        roomId ? { type: 'Messages', id: roomId } : 'Messages',
         'ChatRooms',
       ],
+    }),
+    
+    markRoomAsRead: builder.mutation<{ success: boolean }, string>({
+      query: (roomId) => ({
+        url: `/chat/rooms/${roomId}/read`,
+        method: 'PUT',
+      }),
+      invalidatesTags: (result, error, roomId) => [{ type: 'ChatRooms', id: roomId }],
+    }),
+    
+    searchUsers: builder.query<User[], SearchUsersDto>({
+      query: ({ query, limit = '20' }) => `/chat/users/search?query=${query}&limit=${limit}`,
+      transformResponse: (response: any) => {
+        return Array.isArray(response) ? response : [];
+      },
+    }),
+    
+    getUnreadCount: builder.query<number, void>({
+      query: () => '/chat/unread-count',
+      transformResponse: (response: any) => response?.unreadCount || 0,
     }),
   }),
 });
@@ -70,7 +105,12 @@ export const chatApi = createApi({
 export const {
   useGetUserRoomsQuery,
   useCreateRoomMutation,
+  useGetOrCreatePrivateRoomMutation,
   useGetRoomByIdQuery,
   useGetMessagesQuery,
   useSendMessageMutation,
+  useMarkRoomAsReadMutation,
+  useSearchUsersQuery,
+  useLazySearchUsersQuery,
+  useGetUnreadCountQuery,
 } = chatApi;

@@ -93,10 +93,8 @@ const Profile = () => {
           style: 'destructive',
           onPress: async () => {
             await handleLogout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' as never }],
-            });
+            // Don't navigate - just let the component re-render with !isAuthenticated
+            // This will show the login button without navigation issues
           },
         },
       ]
@@ -213,18 +211,32 @@ const Profile = () => {
             <Text style={styles.userUsername}>@{userInfo?.username}</Text>
 
             <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
+              <TouchableOpacity 
+                style={styles.statItem}
+                onPress={() => navigation.navigate('FollowList' as never, {
+                  userId: userInfo?.id,
+                  initialTab: 'following',
+                  username: userInfo?.username,
+                } as never)}
+              >
                 <Text style={styles.statNumber}>
                   {userInfo?.followingCount || 0}
                 </Text>
                 <Text style={styles.statLabel}>Đang follow</Text>
-              </View>
-              <View style={styles.statItem}>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.statItem}
+                onPress={() => navigation.navigate('FollowList' as never, {
+                  userId: userInfo?.id,
+                  initialTab: 'followers',
+                  username: userInfo?.username,
+                } as never)}
+              >
                 <Text style={styles.statNumber}>
                   {userInfo?.followersCount || 0}
                 </Text>
                 <Text style={styles.statLabel}>Follower</Text>
-              </View>
+              </TouchableOpacity>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>{userVideos.length}</Text>
                 <Text style={styles.statLabel}>Video</Text>

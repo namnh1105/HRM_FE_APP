@@ -47,38 +47,59 @@ export interface ApiResponse<T> {
 // Chat Types
 export interface ChatRoom {
   id: string;
-  name: string | null;
+  name?: string | null;
   type: 'private' | 'group';
-  participants: User[];
-  lastMessage: ChatMessage | null;
+  users: User[];
+  lastMessageAt?: string;
+  unreadCount?: number;
+  lastMessage?: {
+    content: string;
+    senderId: string;
+    createdAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ChatMessage {
   id: string;
-  sender: User;
-  room: ChatRoom;
   content: string;
-  type: 'text' | 'image' | 'video' | 'file';
+  messageType: 'text' | 'image' | 'file';
+  senderId: string;
+  sender: User;
+  roomId: string;
+  isEdited: boolean;
+  editedAt?: string;
   createdAt: string;
   updatedAt: string;
+  readBy?: string[];
 }
 
 export interface SendMessageDto {
-  roomId: string;
   content: string;
-  type?: 'text' | 'image' | 'video' | 'file';
+  recipientId: string;
+  roomId?: string;
+  messageType?: 'text' | 'image' | 'file';
 }
 
 export interface CreateRoomDto {
   userIds: string[];
   name?: string;
+  type?: 'private' | 'group';
 }
 
 export interface GetMessagesDto {
   limit?: string;
   offset?: string;
+}
+
+export interface SearchUsersDto {
+  query: string;
+  limit?: string;
+}
+
+export interface MarkAsReadDto {
+  roomId: string;
 }
 
 export interface UserVideosResponse {

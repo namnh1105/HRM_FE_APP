@@ -38,7 +38,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [likeCount, setLikeCount] = useState(video.stats.likes);
   const [showControls, setShowControls] = useState(false); // Only show pause button when paused
   const [isFollowing, setIsFollowing] = useState(video.user.isFollowing || false);
-  const [showFollowButton, setShowFollowButton] = useState(!video.user.isFollowing);
+  const [showFollowButton, setShowFollowButton] = useState(false); // Will be set in useEffect
   const [isSaved, setIsSaved] = useState(false);
   const [saveCount, setSaveCount] = useState(video.stats.saves || 0);
   const [shareCount, setShareCount] = useState(video.stats.shares);
@@ -61,6 +61,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       setIsSaved(saveCheckData.data.isSaved);
     }
   }, [saveCheckData]);
+
+  // Update follow button visibility based on API response
+  useEffect(() => {
+    // Show button only if user is not following and it's not their own video
+    setShowFollowButton(!video.user.isFollowing);
+    setIsFollowing(video.user.isFollowing || false);
+  }, [video.user.isFollowing]);
 
   const videoHeight = customHeight || screenHeight;
 

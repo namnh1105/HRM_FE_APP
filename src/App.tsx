@@ -1,29 +1,34 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Provider } from "react-redux";
-import { store } from "./store";
-import MainTabs from "./navigation/MainTabs";
-import { SignUp, Login, UserProfile } from "./screens";
+import { store, initializeAuth } from "./store";
+import RootNavigator from "./navigation/RootNavigator";
 import { AuthProvider } from "./context/AuthContext";
+import { ChatProvider } from "./context/ChatContext";
 import Toast from 'react-native-toast-message';
 
-const Stack = createNativeStackNavigator();
+function AppContent() {
+  useEffect(() => {
+    // Restore auth state on app start
+    initializeAuth();
+  }, []);
+
+  return (
+    <AuthProvider>
+      <ChatProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+        <Toast />
+      </ChatProvider>
+    </AuthProvider>
+  );
+}
 
 export default function App() {
   return (
     <Provider store={store}>
-      <AuthProvider>
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="MainTabs" component={MainTabs} />
-            <Stack.Screen name="SignUp" component={SignUp} />
-            <Stack.Screen name="Login" component={Login} />
-            <Stack.Screen name="UserProfile" component={UserProfile} />
-          </Stack.Navigator>
-        </NavigationContainer>
-        <Toast />
-      </AuthProvider>
+      <AppContent />
     </Provider>
   );
 }
