@@ -29,6 +29,7 @@ import CustomAlert from "../components/CustomAlert";
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useVideoUpload } from "../hooks/useVideoUpload";
 import { useNavigation } from "@react-navigation/native";
+import { saveDraftVideo } from "../utils/draftVideoStorage";
 
 const { width, height } = Dimensions.get('window');
 
@@ -287,6 +288,61 @@ export default function AddVideo() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!recordedVideoUri || !thumbnailUri) {
+      setAlertTitle("Lỗi");
+      setAlertMessage("Vui lòng quay video trước");
+      setAlertType("error");
+      setAlertVisible(true);
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingMessage("Đang lưu nháp...");
+
+    try {
+      // Parse hashtags from string to array
+      const hashtagsArray = hashtags.trim()
+        ? hashtags.split(/\s+/).map(tag => tag.replace(/^#/, '').trim()).filter(tag => tag.length > 0)
+        : undefined;
+
+      await saveDraftVideo(
+        recordedVideoUri,
+        thumbnailUri,
+        caption.trim() || undefined,
+        hashtagsArray
+      );
+
+      setAlertTitle("Thành công");
+      setAlertMessage("Đã lưu video vào nháp!");
+      setAlertType("success");
+      setAlertVisible(true);
+
+      // Reset states
+      setRecordedVideoUri(null);
+      setThumbnailUri(null);
+      setCaption("");
+      setHashtags("");
+      setShowCaptionInput(false);
+
+      // Navigate back after 1.5 seconds
+      setTimeout(() => {
+        setAlertVisible(false);
+        navigation.goBack();
+      }, 1500);
+
+    } catch (error) {
+      console.error("Save draft error:", error);
+      setAlertTitle("Lỗi");
+      setAlertMessage("Không thể lưu nháp. Vui lòng thử lại");
+      setAlertType("error");
+      setAlertVisible(true);
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage("");
+    }
+  };
+
   const toggleCameraFacing = () => {
     setFacing(current => (current === "back" ? "front" : "back"));
   };
@@ -362,19 +418,21 @@ export default function AddVideo() {
             setCaption("");
             setHashtags("");
           }}>
-            <Ionicons name="arrow-back" size={28} color="#000" />
+            <Ionicons name="close" size={28} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Thêm mô tả...</Text>
+          <Text style={styles.headerTitle}>Tạo bài đăng</Text>
           <View style={{ width: 28 }} />
         </View>
 
         <ScrollView style={styles.scrollContent}>
+          {/* Video Preview and Caption */}
           <View style={styles.contentRow}>
-            {/* Thumbnail Section */}
             <View style={styles.thumbnailSection}>
-              {thumbnailUri && (
-                <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
-              )}
+              <Image
+                source={{ uri: thumbnailUri || '' }}
+                style={styles.thumbnail}
+                resizeMode="cover"
+              />
               <View style={styles.thumbnailActions}>
                 <TouchableOpacity 
                   style={styles.thumbnailButton}
@@ -419,9 +477,10 @@ export default function AddVideo() {
         <View style={styles.bottomButtons}>
           <TouchableOpacity 
             style={styles.draftButton}
+            onPress={handleSaveDraft}
           >
             <Ionicons name="folder-outline" size={20} color="#000" />
-            <Text style={styles.draftButtonText}>Nhập</Text>
+            <Text style={styles.draftButtonText}>Nháp</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.postButton}

@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import MainTabs from './MainTabs';
-import { SignUp, Login, UserProfile, ChatRoom, FollowList, AddVideo } from '../screens';
+import { SignUp, Login, UserProfile, ChatRoom, FollowList, AddVideo, UploadDraft } from '../screens';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,6 +35,7 @@ const RootNavigator: React.FC = () => {
       
       {/* Stack screens - có nút back, không có bottom navbar */}
       <Stack.Screen name="AddVideo" component={AddVideo} />
+      <Stack.Screen name="UploadDraft" component={UploadDraft} />
       <Stack.Screen name="UserProfile" component={UserProfile} />
       <Stack.Screen name="ChatRoom" component={ChatRoom} />
       <Stack.Screen name="FollowList" component={FollowList} />

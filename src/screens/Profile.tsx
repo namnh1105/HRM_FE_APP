@@ -22,6 +22,8 @@ import VideoCard from '../components/VideoCard';
 import { COLORS, SPACING } from '../utils/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGetSavedVideosQuery } from '../store/api/saveApi';
+import { getDraftVideos, deleteDraftVideo } from '../utils/draftVideoStorage';
+import { DraftVideo } from '../types/api';
 
 const { width } = Dimensions.get('window');
 const itemWidth = width / 3;
@@ -33,7 +35,9 @@ const Profile = () => {
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [currentModalIndex, setCurrentModalIndex] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState<'videos' | 'saved'>('videos');
+  const [activeTab, setActiveTab] = useState<'videos' | 'saved' | 'drafts'>('videos');
+  const [draftVideos, setDraftVideos] = useState<DraftVideo[]>([]);
+  const [isDraftsLoading, setIsDraftsLoading] = useState(false);
   const videoModalRef = useRef<FlatList>(null);
 
   const {
@@ -61,9 +65,23 @@ const Profile = () => {
       refreshUserInfo();
       if (activeTab === 'saved') {
         refetchSavedVideos();
+      } else if (activeTab === 'drafts') {
+        loadDraftVideos();
       }
     }, [refreshUserInfo, activeTab, refetchSavedVideos])
   );
+
+  const loadDraftVideos = async () => {
+    setIsDraftsLoading(true);
+    try {
+      const drafts = await getDraftVideos();
+      setDraftVideos(drafts);
+    } catch (error) {
+      console.error('Error loading draft videos:', error);
+    } finally {
+      setIsDraftsLoading(false);
+    }
+  };
 
   const openVideoModal = (video: Video, index: number) => {
     setSelectedVideo(video);
@@ -74,6 +92,33 @@ const Profile = () => {
 
   const getCurrentVideos = () => {
     return activeTab === 'videos' ? userVideos : savedVideos;
+  };
+
+  const handleDeleteDraft = async (draftId: string) => {
+    Alert.alert(
+      'Xóa video nháp',
+      'Bạn có chắc chắn muốn xóa video này?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDraftVideo(draftId);
+              await loadDraftVideos();
+            } catch (error) {
+              console.error('Error deleting draft:', error);
+              Alert.alert('Lỗi', 'Không thể xóa video nháp');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleUploadDraft = (draft: DraftVideo) => {
+    navigation.navigate('UploadDraft' as never, { draft } as never);
   };
 
   const closeVideoModal = () => {
@@ -118,7 +163,32 @@ const Profile = () => {
         </View>
       )}
       <View style={styles.videoStats}>
+        <Ionicons name="play" size={12} color="#fff" style={{ marginRight: 4 }} />
         <Text style={styles.videoViews}>{item.stats.views}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderDraftItem = ({ item, index }: { item: DraftVideo; index: number }) => (
+    <TouchableOpacity
+      style={styles.videoItem}
+      onPress={() => handleUploadDraft(item)}
+      onLongPress={() => handleDeleteDraft(item.id)}
+    >
+      {item.thumbnailUri ? (
+        <Image
+          source={{ uri: item.thumbnailUri }}
+          style={styles.videoThumbnail}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.placeholderThumbnail}>
+          <Text style={styles.placeholderText}>Nháp {index + 1}</Text>
+        </View>
+      )}
+      <View style={styles.draftBadge}>
+        <Ionicons name="folder-outline" size={12} color="#fff" style={{ marginRight: 4 }} />
+        <Text style={styles.draftBadgeText}>Nháp</Text>
       </View>
     </TouchableOpacity>
   );
@@ -274,14 +344,46 @@ const Profile = () => {
                 color={activeTab === 'saved' ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
               />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'drafts' && styles.activeTab,
+              ]}
+              onPress={() => setActiveTab('drafts')}
+            >
+              <Ionicons
+                name="folder-outline"
+                size={24}
+                color={activeTab === 'drafts' ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
+              />
+            </TouchableOpacity>
           </View>
 
           {/* Content */}
-          {(activeTab === 'videos' ? videosLoading : savedVideosLoading) ? (
+          {(activeTab === 'videos' ? videosLoading : activeTab === 'saved' ? savedVideosLoading : isDraftsLoading) ? (
             <View style={styles.videosLoading}>
               <ActivityIndicator size="small" color={COLORS.PRIMARY} />
               <Text style={styles.loadingText}>Đang tải video...</Text>
             </View>
+          ) : activeTab === 'drafts' ? (
+            draftVideos.length > 0 ? (
+              <FlatList
+                data={draftVideos}
+                renderItem={renderDraftItem}
+                keyExtractor={(item) => item.id}
+                numColumns={3}
+                scrollEnabled={false}
+                contentContainerStyle={styles.videosGrid}
+                columnWrapperStyle={styles.videoRow}
+              />
+            ) : (
+              <View style={styles.emptyVideos}>
+                <Text style={styles.emptyText}>Chưa có video nháp nào</Text>
+                <Text style={styles.emptySubText}>
+                  Video nháp sẽ được lưu trong thiết bị của bạn
+                </Text>
+              </View>
+            )
           ) : getCurrentVideos().length > 0 ? (
             <FlatList
               data={getCurrentVideos()}
@@ -554,6 +656,22 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   videoViews: {
+    color: COLORS.BACKGROUND,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  draftBadge: {
+    position: 'absolute',
+    top: SPACING.XS,
+    right: SPACING.XS,
+    backgroundColor: 'rgba(254, 44, 85, 0.9)',
+    paddingHorizontal: SPACING.XS,
+    paddingVertical: 2,
+    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  draftBadgeText: {
     color: COLORS.BACKGROUND,
     fontSize: 10,
     fontWeight: 'bold',

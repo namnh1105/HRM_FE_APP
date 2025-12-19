@@ -11,3 +11,4 @@ export { default as SignUp } from './SignUp';
 export { default as SavedVideos } from './SavedVideos';
 export { default as UserProfile } from './UserProfile';
 export { default as FollowList } from './FollowList';
+export { default as UploadDraft } from './UploadDraft';

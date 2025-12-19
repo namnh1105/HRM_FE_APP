@@ -125,3 +125,12 @@ export interface FollowersListData {
   totalElements: number;
   followers: User[];
 }
+
+export interface DraftVideo {
+  id: string;
+  videoUri: string;
+  thumbnailUri: string;
+  caption?: string;
+  hashtags?: string[];
+  createdAt: string;
+}

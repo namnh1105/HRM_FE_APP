@@ -338,15 +338,29 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           
           {video.hashtags && video.hashtags.length > 0 && (
             <View style={styles.hashtagsContainer}>
-              {video.hashtags.map((tag, index) => (
-                <TouchableOpacity 
-                  key={index}
-                  onPress={() => navigation.navigate('Search', { keyword: tag })}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.hashtags}>#{tag} </Text>
-                </TouchableOpacity>
-              ))}
+              {video.hashtags.map((tag, index) => {
+                // Clean up hashtag - remove JSON artifacts and extra characters
+                let cleanTag = tag;
+                if (typeof tag === 'string') {
+                  cleanTag = tag
+                    .replace(/[\[\]"]/g, '') // Remove brackets and quotes
+                    .replace(/^#/, '') // Remove leading #
+                    .trim();
+                }
+                
+                // Skip empty tags
+                if (!cleanTag) return null;
+                
+                return (
+                  <TouchableOpacity 
+                    key={index}
+                    onPress={() => navigation.navigate('Search', { keyword: cleanTag })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.hashtags}>#{cleanTag} </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
           
