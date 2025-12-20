@@ -68,23 +68,35 @@ const ChatRoom: React.FC = () => {
       markRoomAsReadWs(roomId);
     }
 
-    // Set up real-time message listener
-    onNewMessage((newMessage) => {
-      if (newMessage.roomId === roomId) {
-        setMessages((prev) => [newMessage, ...prev]);
-        // Auto scroll to new message
-        setTimeout(() => {
-          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-        }, 100);
-      }
-    });
-
     return () => {
       if (roomId && isConnected) {
         leaveRoom(roomId);
       }
     };
   }, [roomId, isConnected]);
+
+  // Separate useEffect for message listener
+  useEffect(() => {
+    const handleNewMessage = (newMessage: ChatMessage) => {
+      console.log('[ChatRoom] Received new message:', newMessage);
+      if (newMessage.roomId === roomId) {
+        setMessages((prev) => {
+          // Check if message already exists to avoid duplicates
+          const exists = prev.some(msg => msg.id === newMessage.id);
+          if (exists) return prev;
+          return [...prev, newMessage];
+        });
+        // Auto scroll to new message
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    };
+
+    onNewMessage(handleNewMessage);
+
+    // Note: cleanup is handled in ChatContext
+  }, [roomId]);
 
   const handleSendMessage = async () => {
     console.log("Hi")
@@ -112,7 +124,8 @@ const ChatRoom: React.FC = () => {
       
       console.log('[ChatRoom] Message sent successfully:', result);
       stopTyping(roomId);
-      refetch();
+      // Don't refetch - let WebSocket update handle it
+      // The message will be received via onNewMessage listener
     } catch (error) {
       console.error('[ChatRoom] Error sending message:', error);
       setMessageText(tempMessage); // Restore message on error
@@ -248,9 +261,9 @@ const ChatRoom: React.FC = () => {
         data={messages}
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
-        inverted
         contentContainerStyle={styles.messagesList}
         showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
       />
 
       {/* Input Area */}

@@ -53,12 +53,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         newSocket.on('connect', () => {
-          console.log('Socket connected:', newSocket.id);
+          console.log('[ChatContext] Socket connected:', newSocket.id);
           setIsConnected(true);
         });
 
         newSocket.on('disconnect', () => {
-          console.log('Socket disconnected');
+          console.log('[ChatContext] Socket disconnected');
           setIsConnected(false);
         });
 
@@ -93,7 +93,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const joinRoom = (roomId: string) => {
     if (socketRef.current && isConnected) {
+      console.log('[ChatContext] Joining room:', roomId);
       socketRef.current.emit('join_room', { roomId });
+    } else {
+      console.log('[ChatContext] Cannot join room - socket not connected');
     }
   };
 
@@ -129,30 +132,45 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const onNewMessage = (callback: (message: any) => void) => {
     if (socketRef.current) {
+      // Remove any existing listener first to avoid duplicates
+      socketRef.current.off('new_message', callback);
       socketRef.current.on('new_message', callback);
+      console.log('[ChatContext] Registered new_message listener');
+      
+      // Return cleanup function
+      return () => {
+        if (socketRef.current) {
+          socketRef.current.off('new_message', callback);
+          console.log('[ChatContext] Cleaned up new_message listener');
+        }
+      };
     }
   };
 
   const onMessageRead = (callback: (data: any) => void) => {
     if (socketRef.current) {
+      socketRef.current.off('message_read', callback);
       socketRef.current.on('message_read', callback);
     }
   };
 
   const onUserTyping = (callback: (data: any) => void) => {
     if (socketRef.current) {
+      socketRef.current.off('user_typing', callback);
       socketRef.current.on('user_typing', callback);
     }
   };
 
   const onUserOnline = (callback: (data: any) => void) => {
     if (socketRef.current) {
+      socketRef.current.off('user_online', callback);
       socketRef.current.on('user_online', callback);
     }
   };
 
   const onUserOffline = (callback: (data: any) => void) => {
     if (socketRef.current) {
+      socketRef.current.off('user_offline', callback);
       socketRef.current.on('user_offline', callback);
     }
   };

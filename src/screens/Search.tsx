@@ -135,33 +135,9 @@ const Search: React.FC = () => {
     return text.substring(0, maxLength) + '...';
   };
 
-  const renderVideoItem = ({ item, index }: { item: Video; index: number }) => {
-    const itemAnim = useRef(new Animated.Value(0)).current;
-    
-    useEffect(() => {
-      Animated.timing(itemAnim, {
-        toValue: 1,
-        duration: 300,
-        delay: index * 50,
-        useNativeDriver: true,
-      }).start();
-    }, []);
-
+  const renderVideoItem = ({ item }: { item: Video }) => {
     return (
-      <Animated.View
-        style={[
-          styles.videoItem,
-          {
-            opacity: itemAnim,
-            transform: [{
-              translateY: itemAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0],
-              }),
-            }],
-          },
-        ]}
-      >
+      <View style={styles.videoItem}>
         <TouchableOpacity activeOpacity={0.8}>
           <Image 
             source={{ uri: item.thumbnailUrl || item.videoUrl }} 
@@ -197,7 +173,7 @@ const Search: React.FC = () => {
             </View>
           </View>
         </TouchableOpacity>
-      </Animated.View>
+      </View>
     );
   };
 
