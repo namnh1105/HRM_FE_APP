@@ -16,6 +16,7 @@ import { useSearchVideosQuery } from '../store/api/videoApi';
 import { Video } from '../types/api';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import LoadingIndicator from '../components/LoadingIndicator';
+import { useSpeechToText } from '../hooks';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -30,6 +31,16 @@ const Search: React.FC = () => {
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  // Speech to Text hook
+  const {
+    isListening,
+    recognizedText,
+    startListening,
+    stopListening,
+    clearText,
+    isAvailable,
+  } = useSpeechToText();
 
   useEffect(() => {
     Animated.parallel([
@@ -55,6 +66,18 @@ const Search: React.FC = () => {
     }
   }, [keyword]);
 
+  // Update search keyword when voice recognition completes
+  useEffect(() => {
+    if (recognizedText && !isListening) {
+      setSearchKeyword(recognizedText);
+      // Auto search after voice recognition
+      if (recognizedText.trim()) {
+        setActiveSearch(recognizedText.trim());
+        setPage(1);
+      }
+    }
+  }, [recognizedText, isListening]);
+
   const { data, isLoading, isFetching } = useSearchVideosQuery(
     { keyword: activeSearch, sortBy, page, limit: 20 },
     { skip: !activeSearch }
@@ -74,7 +97,16 @@ const Search: React.FC = () => {
     setSearchKeyword('');
     setActiveSearch('');
     setPage(1);
-  }, []);
+    clearText();
+  }, [clearText]);
+
+  const handleVoiceSearch = useCallback(async () => {
+    if (isListening) {
+      await stopListening();
+    } else {
+      await startListening();
+    }
+  }, [isListening, startListening, stopListening]);
 
   const handleSortChange = useCallback((newSort: 'relevance' | 'recent' | 'popular') => {
     setSortBy(newSort);
@@ -184,16 +216,30 @@ const Search: React.FC = () => {
           <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm kiếm video..."
-            placeholderTextColor="#999"
+            placeholder={isListening ? "Đang nghe..." : "Tìm kiếm video..."}
+            placeholderTextColor={isListening ? "#FF3B5C" : "#999"}
             value={searchKeyword}
             onChangeText={setSearchKeyword}
             onSubmitEditing={handleSearch}
             returnKeyType="search"
+            editable={!isListening}
           />
-          {searchKeyword.length > 0 && (
+          {searchKeyword.length > 0 && !isListening && (
             <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
               <Ionicons name="close-circle" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
+          {isAvailable && (
+            <TouchableOpacity 
+              onPress={handleVoiceSearch} 
+              style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={isListening ? "mic" : "mic-outline"} 
+                size={22} 
+                color={isListening ? "#FF3B5C" : "#666"} 
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -341,6 +387,14 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 4,
+    marginRight: 4,
+  },
+  voiceButton: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  voiceButtonActive: {
+    transform: [{ scale: 1.1 }],
   },
   searchButton: {
     backgroundColor: '#FF3B5C',

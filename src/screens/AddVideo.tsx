@@ -54,6 +54,9 @@ export default function AddVideo() {
   const [alertMessage, setAlertMessage] = useState("");
   const [alertTitle, setAlertTitle] = useState("");
   const [alertType, setAlertType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+  
+  // State to track if user has unsaved changes
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Video upload hook
   const { uploadVideo, isLoading: isUploading } = useVideoUpload();
@@ -73,6 +76,15 @@ export default function AddVideo() {
       requestMediaLibraryPermission();
     }
   }, [micPermission, mediaLibraryPermission]);
+
+  // Track unsaved changes
+  useEffect(() => {
+    if (recordedVideoUri || caption.trim() || hashtags.trim()) {
+      setHasUnsavedChanges(true);
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [recordedVideoUri, caption, hashtags]);
 
   // Recording timer
   useEffect(() => {
@@ -288,6 +300,41 @@ export default function AddVideo() {
     }
   };
 
+  const handleBack = () => {
+    if (hasUnsavedChanges && recordedVideoUri) {
+      Alert.alert(
+        "Lưu bản nháp?",
+        "Bạn có muốn lưu video này vào nháp không?",
+        [
+          {
+            text: "Không",
+            onPress: () => {
+              // Reset and go back
+              setRecordedVideoUri(null);
+              setThumbnailUri(null);
+              setCaption("");
+              setHashtags("");
+              setShowCaptionInput(false);
+              setHasUnsavedChanges(false);
+              navigation.goBack();
+            },
+            style: "destructive"
+          },
+          {
+            text: "Lưu nháp",
+            onPress: () => handleSaveDraft()
+          },
+          {
+            text: "Hủy",
+            style: "cancel"
+          }
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
+  };
+
   const handleSaveDraft = async () => {
     if (!recordedVideoUri || !thumbnailUri) {
       setAlertTitle("Lỗi");
@@ -378,7 +425,7 @@ export default function AddVideo() {
         <View style={styles.controlsContainer}>
           <Pressable 
             style={styles.backButton} 
-            onPress={() => navigation.goBack()}
+            onPress={handleBack}
           >
             <Ionicons name="arrow-back" size={28} color="white" />
           </Pressable>
@@ -413,13 +460,7 @@ export default function AddVideo() {
     return (
       <View style={styles.captionContainer}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => {
-            setShowCaptionInput(false);
-            setRecordedVideoUri(null);
-            setThumbnailUri(null);
-            setCaption("");
-            setHashtags("");
-          }}>
+          <TouchableOpacity onPress={handleBack}>
             <Ionicons name="close" size={28} color="#000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Tạo bài đăng</Text>
