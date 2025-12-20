@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,15 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
   Dimensions,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSearchVideosQuery } from '../store/api/videoApi';
 import { Video } from '../types/api';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import LoadingIndicator from '../components/LoadingIndicator';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -27,6 +28,23 @@ const Search: React.FC = () => {
   const [sortBy, setSortBy] = useState<'relevance' | 'recent' | 'popular'>('relevance');
   const [page, setPage] = useState(1);
   const navigation = useNavigation();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   // Handle keyword from navigation params
   useEffect(() => {
@@ -85,53 +103,89 @@ const Search: React.FC = () => {
     return text.substring(0, maxLength) + '...';
   };
 
-  const renderVideoItem = ({ item }: { item: Video }) => (
-    <TouchableOpacity style={styles.videoItem} activeOpacity={0.7}>
-      <Image 
-        source={{ uri: item.thumbnailUrl || item.videoUrl }} 
-        style={styles.thumbnail}
-        resizeMode="cover"
-      />
-      <View style={styles.videoOverlay}>
-        <Text style={styles.caption} numberOfLines={2}>
-          {truncateText(item.caption, 60)}
-        </Text>
-        <View style={styles.videoFooter}>
-          <View style={styles.userSection}>
-            {item.user.avatarUrl ? (
-              <Image 
-                source={{ uri: item.user.avatarUrl }} 
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarText}>
-                  {item.user.username.charAt(0).toUpperCase()}
+  const renderVideoItem = ({ item, index }: { item: Video; index: number }) => {
+    const itemAnim = useRef(new Animated.Value(0)).current;
+    
+    useEffect(() => {
+      Animated.timing(itemAnim, {
+        toValue: 1,
+        duration: 300,
+        delay: index * 50,
+        useNativeDriver: true,
+      }).start();
+    }, []);
+
+    return (
+      <Animated.View
+        style={[
+          styles.videoItem,
+          {
+            opacity: itemAnim,
+            transform: [{
+              translateY: itemAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            }],
+          },
+        ]}
+      >
+        <TouchableOpacity activeOpacity={0.8}>
+          <Image 
+            source={{ uri: item.thumbnailUrl || item.videoUrl }} 
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
+          <View style={styles.videoOverlay}>
+            <Text style={styles.caption} numberOfLines={2}>
+              {truncateText(item.caption, 60)}
+            </Text>
+            <View style={styles.videoFooter}>
+              <View style={styles.userSection}>
+                {item.user.avatarUrl ? (
+                  <Image 
+                    source={{ uri: item.user.avatarUrl }} 
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarText}>
+                      {item.user.username.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <Text style={styles.username} numberOfLines={1}>
+                  {item.user.username}
                 </Text>
               </View>
-            )}
-            <Text style={styles.username} numberOfLines={1}>
-              {item.user.username}
-            </Text>
+              <View style={styles.statItem}>
+                <Ionicons name="heart" size={14} color="#fff" />
+                <Text style={styles.statText}>{formatNumber(item.stats.likes)}</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Ionicons name="heart" size={14} color="#fff" />
-            <Text style={styles.statText}>{formatNumber(item.stats.likes)}</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <Animated.View 
+      style={[
+        styles.header,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
       <View style={styles.searchContainer}>
         <View style={styles.searchInputWrapper}>
           <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Tìm kiếm video..."
-            placeholderTextColor="#666"
+            placeholderTextColor="#999"
             value={searchKeyword}
             onChangeText={setSearchKeyword}
             onSubmitEditing={handleSearch}
@@ -144,9 +198,10 @@ const Search: React.FC = () => {
           )}
         </View>
         <TouchableOpacity 
-          style={styles.searchButton}
+          style={[styles.searchButton, !searchKeyword.trim() && styles.searchButtonDisabled]}
           onPress={handleSearch}
           disabled={!searchKeyword.trim()}
+          activeOpacity={0.8}
         >
           <Text style={styles.searchButtonText}>Tìm</Text>
         </TouchableOpacity>
@@ -157,6 +212,7 @@ const Search: React.FC = () => {
           <TouchableOpacity
             style={[styles.sortButton, sortBy === 'relevance' && styles.sortButtonActive]}
             onPress={() => handleSortChange('relevance')}
+            activeOpacity={0.7}
           >
             <Text style={[styles.sortText, sortBy === 'relevance' && styles.sortTextActive]}>
               Liên quan
@@ -165,6 +221,7 @@ const Search: React.FC = () => {
           <TouchableOpacity
             style={[styles.sortButton, sortBy === 'recent' && styles.sortButtonActive]}
             onPress={() => handleSortChange('recent')}
+            activeOpacity={0.7}
           >
             <Text style={[styles.sortText, sortBy === 'recent' && styles.sortTextActive]}>
               Mới nhất
@@ -173,6 +230,7 @@ const Search: React.FC = () => {
           <TouchableOpacity
             style={[styles.sortButton, sortBy === 'popular' && styles.sortButtonActive]}
             onPress={() => handleSortChange('popular')}
+            activeOpacity={0.7}
           >
             <Text style={[styles.sortText, sortBy === 'popular' && styles.sortTextActive]}>
               Phổ biến
@@ -180,7 +238,7 @@ const Search: React.FC = () => {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 
   const renderEmpty = () => {
@@ -211,7 +269,7 @@ const Search: React.FC = () => {
     if (!isFetching || !activeSearch) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#FF3B5C" />
+        <LoadingIndicator size="small" color="#FF3B5C" />
       </View>
     );
   };
@@ -224,7 +282,7 @@ const Search: React.FC = () => {
 
       {isLoading && activeSearch ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF3B5C" />
+          <LoadingIndicator size="large" color="#FF3B5C" />
           <Text style={styles.loadingText}>Đang tìm kiếm...</Text>
         </View>
       ) : (
@@ -291,11 +349,20 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#FF3B5C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchButtonDisabled: {
+    backgroundColor: '#666',
+    shadowOpacity: 0,
   },
   searchButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   sortContainer: {
     flexDirection: 'row',

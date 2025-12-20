@@ -41,7 +41,7 @@ export default function AddVideo() {
 
   const ref = useRef<CameraView>(null);
   const [mode, setMode] = useState<CameraMode>("video");
-  const [facing, setFacing] = useState<CameraType>("back");
+  const [facing, setFacing] = useState<CameraType>("front");
   const [recording, setRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
@@ -355,14 +355,16 @@ export default function AddVideo() {
 
   const renderCamera = () => {
     return (
-      <CameraView
-        style={styles.camera}
-        ref={ref}
-        mode={mode}
-        facing={facing}
-        mute={false}
-      >
-        {/* Timer */}
+      <View style={styles.cameraWrapper}>
+        <CameraView
+          style={styles.camera}
+          ref={ref}
+          mode={mode}
+          facing={facing}
+          mute={false}
+        />
+        
+        {/* Timer - Overlay on top */}
         <View style={styles.timerContainer}>
           <Text style={styles.timerText}>
             {recording ? `${formatTime(recordingTime)} / 1:00` : 'Sẵn sàng'}
@@ -372,7 +374,7 @@ export default function AddVideo() {
           )}
         </View>
         
-        {/* Controls */}
+        {/* Controls - Overlay on top */}
         <View style={styles.controlsContainer}>
           <Pressable 
             style={styles.backButton} 
@@ -389,7 +391,7 @@ export default function AddVideo() {
           </Pressable>
         </View>
 
-        {/* Record Button */}
+        {/* Record Button - Overlay on top */}
         <View style={styles.shutterContainer}>
           <Pressable onPress={recordVideo}>
             {recording ? (
@@ -403,7 +405,7 @@ export default function AddVideo() {
             )}
           </Pressable>
         </View>
-      </CameraView>
+      </View>
     );
   };
 
@@ -543,6 +545,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
+  },
+  cameraWrapper: {
+    flex: 1,
+    width: "100%",
+    position: 'relative',
   },
   camera: {
     flex: 1,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,20 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useMessages } from '../hooks';
 import { ChatRoom, User } from '../types/api';
+import LoadingIndicator from '../components/LoadingIndicator';
 
 const Messages: React.FC = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   
   const {
     rooms,
@@ -27,6 +29,14 @@ const Messages: React.FC = () => {
     error,
     createOrOpenChatWithUser,
   } = useMessages();
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const openChat = (room: ChatRoom) => {
     const otherUser = room.users && room.users.length > 0 ? room.users[0] : null;
@@ -193,7 +203,7 @@ const Messages: React.FC = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
+          <LoadingIndicator size="large" color="#007398" />
         </View>
       </SafeAreaView>
     );

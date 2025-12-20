@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
-  Alert,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   SafeAreaView,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../context/AuthContext';
+import CustomAlert from '../components/CustomAlert';
+import LoadingIndicator from '../components/LoadingIndicator';
 
 const PRIMARY_BUTTON_COLOR = '#333333';
 const GOOGLE_BUTTON_COLOR = '#F7F7F7';
@@ -24,8 +28,32 @@ const SignUp = ({ navigation }: any) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info' as 'success' | 'error' | 'info' | 'warning',
+  });
 
   const { signInWithGoogle, user } = useAuthContext();
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   // Close modal when authenticated - RootNavigator will handle navigation
   React.useEffect(() => {
@@ -36,11 +64,25 @@ const SignUp = ({ navigation }: any) => {
 
   // NORMAL SIGN UP
   const handleSignUp = async () => {
-    if (!givenName || !familyName || !username || !password || !confirmPassword)
-      return Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin");
+    if (!givenName || !familyName || !username || !password || !confirmPassword) {
+      setAlertConfig({
+        visible: true,
+        title: 'Lỗi',
+        message: 'Vui lòng nhập đầy đủ thông tin',
+        type: 'warning',
+      });
+      return;
+    }
 
-    if (password !== confirmPassword)
-      return Alert.alert("Lỗi", "Mật khẩu không trùng khớp");
+    if (password !== confirmPassword) {
+      setAlertConfig({
+        visible: true,
+        title: 'Lỗi',
+        message: 'Mật khẩu không trùng khớp',
+        type: 'error',
+      });
+      return;
+    }
 
     setLoading(true);
 
@@ -54,87 +96,324 @@ const SignUp = ({ navigation }: any) => {
       const data = await res.json();
 
       if (!res.ok) {
-        return Alert.alert(
-          "Đăng ký thất bại",
-          `Status: ${res.status}\nError: ${data.error}\nMessage: ${data.message}`
-        );
+        setAlertConfig({
+          visible: true,
+          title: 'Đăng ký thất bại',
+          message: data.message || `Lỗi: ${res.status}`,
+          type: 'error',
+        });
+        return;
       }
 
-      Alert.alert("Thành công", "Đăng ký thành công!", [
-        { text: "OK", onPress: () => navigation.navigate("Login") },
-      ]);
+      setAlertConfig({
+        visible: true,
+        title: 'Thành công',
+        message: 'Đăng ký thành công! Hãy đăng nhập để tiếp tục.',
+        type: 'success',
+      });
+      
+      setTimeout(() => {
+        navigation.navigate("Login");
+      }, 1500);
     } catch {
-      Alert.alert("Lỗi", "Không thể kết nối server");
+      setAlertConfig({
+        visible: true,
+        title: 'Lỗi',
+        message: 'Không thể kết nối server',
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
   };
   return (
     <SafeAreaView style={styles.container}>
-      {/* Close button */}
-      <TouchableOpacity 
-        style={styles.closeButton} 
-        onPress={() => navigation.goBack()}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <Ionicons name="close" size={28} color="#333" />
-      </TouchableOpacity>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Close button */}
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={28} color="#333" />
+          </TouchableOpacity>
 
-      <Text style={styles.title}>Đăng kí vào Scrolla</Text>
+          <Animated.View 
+            style={[
+              styles.contentContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            <View style={styles.logoContainer}>
+              <Ionicons name="logo-youtube" size={60} color="#FF6B6B" />
+              <Text style={styles.logoText}>Scrolla</Text>
+            </View>
 
-      <View style={styles.formContainer}>
-        <TextInput style={styles.input} value={givenName} onChangeText={setGivenName} placeholder="Tên" />
-        <TextInput style={styles.input} value={familyName} onChangeText={setFamilyName} placeholder="Họ" />
-        <TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="Tên đăng nhập" />
-        <TextInput style={styles.input} secureTextEntry value={password} onChangeText={setPassword} placeholder="Mật khẩu" />
-        <TextInput style={styles.input} secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Xác nhận mật khẩu" />
-      </View>
+            <Text style={styles.title}>Đăng kí vào Scrolla</Text>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: PRIMARY_BUTTON_COLOR, opacity: loading ? 0.6 : 1 }]}
-        onPress={handleSignUp}
-        disabled={loading}
-      >
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Đăng kí</Text>}
-      </TouchableOpacity>
+            <View style={styles.formContainer}>
+              <View style={styles.inputContainer}>
+                <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput 
+                  style={styles.input} 
+                  value={givenName} 
+                  onChangeText={setGivenName} 
+                  placeholder="Tên" 
+                  placeholderTextColor="#999"
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Ionicons name="people-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput 
+                  style={styles.input} 
+                  value={familyName} 
+                  onChangeText={setFamilyName} 
+                  placeholder="Họ" 
+                  placeholderTextColor="#999"
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Ionicons name="at-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput 
+                  style={styles.input} 
+                  value={username} 
+                  onChangeText={setUsername} 
+                  placeholder="Tên đăng nhập" 
+                  placeholderTextColor="#999"
+                  autoCapitalize="none"
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput 
+                  style={styles.input} 
+                  secureTextEntry 
+                  value={password} 
+                  onChangeText={setPassword} 
+                  placeholder="Mật khẩu" 
+                  placeholderTextColor="#999"
+                />
+              </View>
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput 
+                  style={styles.input} 
+                  secureTextEntry 
+                  value={confirmPassword} 
+                  onChangeText={setConfirmPassword} 
+                  placeholder="Xác nhận mật khẩu" 
+                  placeholderTextColor="#999"
+                />
+              </View>
+            </View>
 
-      <TouchableOpacity
-        style={[styles.socialButton, { backgroundColor: GOOGLE_BUTTON_COLOR, borderWidth: 1, borderColor: '#ccc' }]}
-        onPress={signInWithGoogle}
-      >
-        <Image source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} style={styles.googleIcon} />
-        <Text style={{ fontSize: 16, fontWeight: '600' }}>Continue with Google</Text>
-      </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton, { opacity: loading ? 0.6 : 1 }]}
+              onPress={handleSignUp}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <LoadingIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Đăng ký</Text>
+              )}
+            </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.socialButton, { backgroundColor: FACEBOOK_BUTTON_COLOR }]}
-        onPress={() => Alert.alert("Chưa hỗ trợ Facebook")}
-      >
-        <Image source={{ uri: 'https://img.icons8.com/ios-filled/50/ffffff/facebook-new.png' }} style={styles.socialIcon} />
-        <Text style={styles.socialButtonText}>Continue with Facebook</Text>
-      </TouchableOpacity>
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>HOẶC</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.socialButton, styles.googleButton]}
+              onPress={signInWithGoogle}
+              activeOpacity={0.8}
+            >
+              <Image source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} style={styles.googleIcon} />
+              <Text style={styles.googleButtonText}>Tiếp tục với Google</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.socialButton, styles.facebookButton]}
+              onPress={() => setAlertConfig({
+                visible: true,
+                title: 'Thông báo',
+                message: 'Tính năng đăng nhập Facebook sẽ sớm được hỗ trợ',
+                type: 'info',
+              })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="logo-facebook" size={24} color="#fff" style={styles.socialIcon} />
+              <Text style={styles.socialButtonText}>Tiếp tục với Facebook</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </SafeAreaView>
   );
 };
 
 // STYLES
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 35, justifyContent: "center", backgroundColor: "#fff" },
+  container: { 
+    flex: 1, 
+    backgroundColor: "#fff" 
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 35,
+    paddingTop: 80,
+    paddingBottom: 30,
+  },
+  contentContainer: {
+    width: '100%',
+  },
   closeButton: {
     position: 'absolute',
     top: 50,
     right: 20,
     zIndex: 10,
     padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
-  title: { fontSize: 22, marginBottom: 30, textAlign: "center", fontWeight: "600" },
-  formContainer: { marginBottom: 30 },
-  input: { borderWidth: 1, borderColor: "#ccc", padding: 15, borderRadius: 5, marginBottom: 10 },
-  button: { padding: 15, borderRadius: 5, alignItems: "center", marginBottom: 20 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  socialButton: { padding: 15, borderRadius: 5, flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  socialButtonText: { color: "#fff", fontSize: 16, fontWeight: "600", marginLeft: 10 },
-  googleIcon: { width: 24, height: 24, marginRight: 10 },
-  socialIcon: { width: 24, height: 24, marginRight: 10 },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 8,
+  },
+  title: { 
+    fontSize: 24, 
+    marginBottom: 25, 
+    textAlign: "center", 
+    fontWeight: "700",
+    color: '#333',
+  },
+  formContainer: { 
+    marginBottom: 20,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 15,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: { 
+    flex: 1,
+    padding: 15,
+    fontSize: 16,
+    color: '#333',
+  },
+  button: { 
+    padding: 16, 
+    borderRadius: 12, 
+    alignItems: "center", 
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  primaryButton: {
+    backgroundColor: PRIMARY_BUTTON_COLOR,
+  },
+  buttonText: { 
+    color: "#fff", 
+    fontSize: 17, 
+    fontWeight: "700"
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  dividerText: {
+    marginHorizontal: 15,
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '600',
+  },
+  socialButton: { 
+    padding: 15, 
+    borderRadius: 12, 
+    flexDirection: "row", 
+    alignItems: "center", 
+    justifyContent: "center", 
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  googleButton: {
+    backgroundColor: GOOGLE_BUTTON_COLOR,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  facebookButton: {
+    backgroundColor: FACEBOOK_BUTTON_COLOR,
+  },
+  socialButtonText: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "600",
+  },
+  googleIcon: { 
+    width: 24, 
+    height: 24, 
+    marginRight: 10 
+  },
+  socialIcon: { 
+    marginRight: 10,
+  },
 });
 
 export default SignUp;

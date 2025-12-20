@@ -1,18 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
-  ActivityIndicator,
   TouchableOpacity,
-  Alert,
   FlatList,
   Image,
   Dimensions,
   ScrollView,
   Modal,
   Pressable,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -24,6 +23,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGetSavedVideosQuery } from '../store/api/saveApi';
 import { getDraftVideos, deleteDraftVideo } from '../utils/draftVideoStorage';
 import { DraftVideo } from '../types/api';
+import CustomAlert from '../components/CustomAlert';
+import LoadingIndicator from '../components/LoadingIndicator';
 
 const { width } = Dimensions.get('window');
 const itemWidth = width / 3;
@@ -39,6 +40,22 @@ const Profile = () => {
   const [draftVideos, setDraftVideos] = useState<DraftVideo[]>([]);
   const [isDraftsLoading, setIsDraftsLoading] = useState(false);
   const videoModalRef = useRef<FlatList>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info' as 'success' | 'error' | 'info' | 'warning',
+    onConfirm: undefined as (() => void) | undefined,
+  });
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const {
     userInfo,
@@ -95,30 +112,38 @@ const Profile = () => {
   };
 
   const handleDeleteDraft = async (draftId: string) => {
-    Alert.alert(
-      'Xóa video nháp',
-      'Bạn có chắc chắn muốn xóa video này?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDraftVideo(draftId);
-              await loadDraftVideos();
-            } catch (error) {
-              console.error('Error deleting draft:', error);
-              Alert.alert('Lỗi', 'Không thể xóa video nháp');
-            }
-          },
-        },
-      ]
-    );
+    setAlertConfig({
+      visible: true,
+      title: 'Xóa video nháp',
+      message: 'Bạn có chắc chắn muốn xóa video này?',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          await deleteDraftVideo(draftId);
+          await loadDraftVideos();
+          setAlertConfig({
+            visible: true,
+            title: 'Thành công',
+            message: 'Đã xóa video nháp',
+            type: 'success',
+            onConfirm: undefined,
+          });
+        } catch (error) {
+          console.error('Error deleting draft:', error);
+          setAlertConfig({
+            visible: true,
+            title: 'Lỗi',
+            message: 'Không thể xóa video nháp',
+            type: 'error',
+            onConfirm: undefined,
+          });
+        }
+      },
+    });
   };
 
   const handleUploadDraft = (draft: DraftVideo) => {
-    navigation.navigate('UploadDraft' as never, { draft } as never);
+    (navigation as any).navigate('UploadDraft', { draft });
   };
 
   const closeVideoModal = () => {
@@ -128,22 +153,15 @@ const Profile = () => {
 
   const onLogoutPress = () => {
     setShowMenu(false);
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: async () => {
-            await handleLogout();
-            // Don't navigate - just let the component re-render with !isAuthenticated
-            // This will show the login button without navigation issues
-          },
-        },
-      ]
-    );
+    setAlertConfig({
+      visible: true,
+      title: 'Đăng xuất',
+      message: 'Bạn có chắc chắn muốn đăng xuất?',
+      type: 'warning',
+      onConfirm: async () => {
+        await handleLogout();
+      },
+    });
   };
 
   const renderVideoItem = ({ item, index }: { item: Video; index: number }) => (
@@ -163,7 +181,7 @@ const Profile = () => {
         </View>
       )}
       <View style={styles.videoStats}>
-        <Ionicons name="play" size={12} color="#fff" style={{ marginRight: 4 }} />
+        <Ionicons name="eye" size={12} color="#fff" />
         <Text style={styles.videoViews}>{item.stats.views}</Text>
       </View>
     </TouchableOpacity>
@@ -197,7 +215,7 @@ const Profile = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+          <LoadingIndicator size="large" color={COLORS.PRIMARY} />
           <Text style={styles.loadingText}>Đang tải...</Text>
         </View>
       </SafeAreaView>
@@ -217,7 +235,7 @@ const Profile = () => {
           </Text>
           <TouchableOpacity
             style={styles.loginButton}
-            onPress={() => navigation.navigate('Login' as never)}
+            onPress={() => (navigation as any).navigate('Login')}
           >
             <Text style={styles.loginButtonText}>Đăng nhập</Text>
           </TouchableOpacity>
@@ -283,11 +301,11 @@ const Profile = () => {
             <View style={styles.statsContainer}>
               <TouchableOpacity 
                 style={styles.statItem}
-                onPress={() => navigation.navigate('FollowList' as never, {
+                onPress={() => (navigation as any).navigate('FollowList', {
                   userId: userInfo?.id,
                   initialTab: 'following',
                   username: userInfo?.username,
-                } as never)}
+                })}
               >
                 <Text style={styles.statNumber}>
                   {userInfo?.followingCount || 0}
@@ -296,11 +314,11 @@ const Profile = () => {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.statItem}
-                onPress={() => navigation.navigate('FollowList' as never, {
+                onPress={() => (navigation as any).navigate('FollowList', {
                   userId: userInfo?.id,
                   initialTab: 'followers',
                   username: userInfo?.username,
-                } as never)}
+                })}
               >
                 <Text style={styles.statNumber}>
                   {userInfo?.followersCount || 0}
@@ -362,7 +380,7 @@ const Profile = () => {
           {/* Content */}
           {(activeTab === 'videos' ? videosLoading : activeTab === 'saved' ? savedVideosLoading : isDraftsLoading) ? (
             <View style={styles.videosLoading}>
-              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              <LoadingIndicator size="small" color={COLORS.PRIMARY} />
               <Text style={styles.loadingText}>Đang tải video...</Text>
             </View>
           ) : activeTab === 'drafts' ? (
@@ -458,6 +476,22 @@ const Profile = () => {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        confirmText={alertConfig.onConfirm ? "Xác nhận" : "OK"}
+        cancelText={alertConfig.onConfirm ? "Hủy" : ""}
+        onConfirm={() => {
+          if (alertConfig.onConfirm) {
+            alertConfig.onConfirm();
+          }
+          setAlertConfig({ ...alertConfig, visible: false, onConfirm: undefined });
+        }}
+        onClose={() => setAlertConfig({ ...alertConfig, visible: false, onConfirm: undefined })}
+      />
     </SafeAreaView>
   );
 };
@@ -650,10 +684,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: SPACING.XS,
     right: SPACING.XS,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: SPACING.XS,
     paddingVertical: 2,
     borderRadius: 4,
+    gap: 4,
   },
   videoViews: {
     color: COLORS.BACKGROUND,
