@@ -12,3 +12,5 @@ export { default as SavedVideos } from './SavedVideos';
 export { default as UserProfile } from './UserProfile';
 export { default as FollowList } from './FollowList';
 export { default as UploadDraft } from './UploadDraft';
+export { default as Notifications } from './Notifications';
+export { default as NotificationSettings } from './NotificationSettings';

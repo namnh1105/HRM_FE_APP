@@ -8,6 +8,7 @@ import { saveApi } from './api/saveApi';
 import { shareApi } from './api/shareApi';
 import { userApi } from './api/userApi';
 import { viewApi } from './api/viewApi';
+import { notificationApi } from './api/notificationApi';
 import authReducer, { restoreAuth } from './slices/authSlice';
 
 export const store = configureStore({
@@ -21,6 +22,7 @@ export const store = configureStore({
     [shareApi.reducerPath]: shareApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
     [viewApi.reducerPath]: viewApi.reducer,
+    [notificationApi.reducerPath]: notificationApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -31,7 +33,8 @@ export const store = configureStore({
       .concat(saveApi.middleware)
       .concat(shareApi.middleware)
       .concat(userApi.middleware)
-      .concat(viewApi.middleware),
+      .concat(viewApi.middleware)
+      .concat(notificationApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

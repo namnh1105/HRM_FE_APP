@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import MainTabs from './MainTabs';
-import { SignUp, Login, UserProfile, ChatRoom, FollowList, AddVideo, UploadDraft } from '../screens';
+import { SignUp, Login, UserProfile, ChatRoom, FollowList, AddVideo, UploadDraft, Notifications, NotificationSettings } from '../screens';
 
 const Stack = createNativeStackNavigator();
 
@@ -39,6 +39,8 @@ const RootNavigator: React.FC = () => {
       <Stack.Screen name="UserProfile" component={UserProfile} />
       <Stack.Screen name="ChatRoom" component={ChatRoom} />
       <Stack.Screen name="FollowList" component={FollowList} />
+      <Stack.Screen name="Notifications" component={Notifications} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
       
       {/* Modal screens - có thể swipe down để đóng */}
       <Stack.Group screenOptions={{ presentation: 'modal' }}>
