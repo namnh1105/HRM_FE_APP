@@ -11,17 +11,18 @@ import {
   Share,
   Alert,
 } from 'react-native';
-import { Video as ExpoVideo, ResizeMode } from 'expo-av';
+import { Video as ExpoVideo, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import { Video } from '../types/api';
+import { Video as VideoType } from '../types/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFollowUserMutation } from '../store/api/followApi';
 import { useToggleSaveMutation, useCheckSaveQuery } from '../store/api/saveApi';
 import { useShareVideoMutation } from '../store/api/shareApi';
+import { useRecordViewMutation } from '../store/api/viewApi';
 import { useNavigation } from '@react-navigation/native';
 
 interface VideoCardProps {
-  video: Video;
+  video: VideoType;
   isActive: boolean;
   onLoadMore?: () => void;
   customHeight?: number;
@@ -38,7 +39,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [likeCount, setLikeCount] = useState(video.stats.likes);
   const [showControls, setShowControls] = useState(false); // Only show pause button when paused
   const [isFollowing, setIsFollowing] = useState(video.user.isFollowing || false);
-  const [showFollowButton, setShowFollowButton] = useState(!video.user.isFollowing);
+  const [showFollowButton, setShowFollowButton] = useState(false); // Will be set in useEffect
   const [isSaved, setIsSaved] = useState(false);
   const [saveCount, setSaveCount] = useState(video.stats.saves || 0);
   const [shareCount, setShareCount] = useState(video.stats.shares);
@@ -53,6 +54,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [followUser] = useFollowUserMutation();
   const [toggleSave] = useToggleSaveMutation();
   const [shareVideo] = useShareVideoMutation();
+  const [recordView] = useRecordViewMutation();
   const { data: saveCheckData } = useCheckSaveQuery(video.id);
 
   // Update save status from API
@@ -61,6 +63,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       setIsSaved(saveCheckData.data.isSaved);
     }
   }, [saveCheckData]);
+
+  // Update follow button visibility based on API response
+  useEffect(() => {
+    // Show button only if user is not following and it's not their own video
+    setShowFollowButton(!video.user.isFollowing);
+    setIsFollowing(video.user.isFollowing || false);
+  }, [video.user.isFollowing]);
 
   const videoHeight = customHeight || screenHeight;
 
@@ -80,6 +89,10 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   useEffect(() => {
     if (isActive && videoRef.current && isMounted.current) {
       playVideo();
+      // Track view when video becomes active
+      recordView(video.id).catch(err => {
+        console.log('Failed to record view:', err);
+      });
     } else if (!isActive && videoRef.current && isMounted.current) {
       pauseVideo();
       setIsPlaying(false); // Force playing state to false when not active
@@ -283,9 +296,11 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           isLooping
           isMuted={false}
           onLoad={() => setShowThumbnail(false)}
-          onError={(error) => {
-            console.error('Video error:', error);
-            setShowThumbnail(true);
+          onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
+            if (!status.isLoaded && 'error' in status) {
+              console.error('Video playback error:', status.error);
+              setShowThumbnail(true);
+            }
           }}
         />
         
@@ -331,15 +346,29 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           
           {video.hashtags && video.hashtags.length > 0 && (
             <View style={styles.hashtagsContainer}>
-              {video.hashtags.map((tag, index) => (
-                <TouchableOpacity 
-                  key={index}
-                  onPress={() => navigation.navigate('Search', { keyword: tag })}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.hashtags}>#{tag} </Text>
-                </TouchableOpacity>
-              ))}
+              {video.hashtags.map((tag, index) => {
+                // Clean up hashtag - remove JSON artifacts and extra characters
+                let cleanTag = tag;
+                if (typeof tag === 'string') {
+                  cleanTag = tag
+                    .replace(/[\[\]"]/g, '') // Remove brackets and quotes
+                    .replace(/^#/, '') // Remove leading #
+                    .trim();
+                }
+                
+                // Skip empty tags
+                if (!cleanTag) return null;
+                
+                return (
+                  <TouchableOpacity 
+                    key={index}
+                    onPress={() => navigation.navigate('Search', { keyword: cleanTag })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.hashtags}>#{cleanTag} </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
           

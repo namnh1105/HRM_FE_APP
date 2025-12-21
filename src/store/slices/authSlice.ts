@@ -42,10 +42,9 @@ const authSlice = createSlice({
       state.user = null;
       state.isAuthenticated = false;
       
-      // Xóa khỏi AsyncStorage
-      AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']).then(() => {
-        // Reload app sau khi xóa xong
-        Updates.reloadAsync();
+      // Xóa khỏi AsyncStorage - don't reload to prevent navigation loop
+      AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']).catch(error => {
+        console.error('Error clearing storage:', error);
       });
     },
     restoreAuth: (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,20 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useMessages } from '../hooks';
 import { ChatRoom, User } from '../types/api';
+import LoadingIndicator from '../components/LoadingIndicator';
 
 const Messages: React.FC = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   
   const {
     rooms,
@@ -28,14 +30,34 @@ const Messages: React.FC = () => {
     createOrOpenChatWithUser,
   } = useMessages();
 
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   const openChat = (room: ChatRoom) => {
-    console.log('Open chat with room:', room.id);
+    const otherUser = room.users && room.users.length > 0 ? room.users[0] : null;
+    if (otherUser) {
+      navigation.navigate('ChatRoom' as never, { roomId: room.id, otherUser } as never);
+    }
   };
 
   const openChatWithUser = async (user: User) => {
+    console.log('[Messages] Opening chat with user:', {
+      id: user.id,
+      username: user.username,
+      givenName: user.givenName,
+      fullUser: user,
+    });
     const room = await createOrOpenChatWithUser(user);
     if (room) {
+      console.log('[Messages] Room created/found, navigating...');
       openChat(room);
+    } else {
+      console.log('[Messages] Failed to create/find room');
     }
   };
 
@@ -55,9 +77,9 @@ const Messages: React.FC = () => {
   };
 
   const getOtherParticipant = (room: ChatRoom): User | null => {
-    // For private chats, get the other user
-    if (room.type === 'private' && room.participants.length > 0) {
-      return room.participants[0]; // Assuming current user is filtered out by API
+    // For private chats, get the other user (assuming current user is filtered out)
+    if (room.type === 'private' && room.users && room.users.length > 0) {
+      return room.users[0];
     }
     return null;
   };
@@ -81,7 +103,7 @@ const Messages: React.FC = () => {
 
   const renderChatItem = ({ item }: { item: ChatRoom }) => {
     const otherUser = getOtherParticipant(item);
-    const hasUnread = false; // TODO: Implement unread status
+    const hasUnread = (item.unreadCount || 0) > 0;
     
     return (
       <TouchableOpacity style={styles.chatItem} onPress={() => openChat(item)}>
@@ -93,8 +115,6 @@ const Messages: React.FC = () => {
               <Ionicons name="person" size={28} color="#999" />
             </View>
           )}
-          {/* Online status indicator - TODO: implement real status */}
-          <View style={styles.onlineIndicator} />
         </View>
 
         <View style={styles.chatContent}>
@@ -111,10 +131,20 @@ const Messages: React.FC = () => {
           
           {item.lastMessage && (
             <View style={styles.lastMessageContainer}>
-              <Text style={styles.lastMessage} numberOfLines={1}>
+              <Text 
+                style={[
+                  styles.lastMessage, 
+                  hasUnread && styles.lastMessageUnread
+                ]} 
+                numberOfLines={1}
+              >
                 {item.lastMessage.content}
               </Text>
-              {hasUnread && <View style={styles.unreadBadge} />}
+              {hasUnread && (
+                <View style={styles.unreadBadgeContainer}>
+                  <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -126,7 +156,7 @@ const Messages: React.FC = () => {
     // Kiểm tra xem đã có room với user này chưa
     const existingRoom = rooms.find(room => 
       room.type === 'private' && 
-      room.participants.some(p => p.id === item.id)
+      room.users?.some(p => p.id === item.id)
     );
 
     return (
@@ -163,7 +193,7 @@ const Messages: React.FC = () => {
   // Kết hợp rooms và following users
   const getCombinedList = () => {
     const userIdsInRooms = new Set(
-      rooms.flatMap(room => room.participants.map(p => p.id))
+      rooms.flatMap(room => room.users?.map(p => p.id) || [])
     );
     
     // Lấy users chưa có trong rooms
@@ -179,7 +209,7 @@ const Messages: React.FC = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
+          <LoadingIndicator size="large" color="#007398" />
         </View>
       </SafeAreaView>
     );
@@ -248,7 +278,8 @@ const Messages: React.FC = () => {
         keyExtractor={(item) => 'id' in item ? item.id : `user-${item.id}`}
         renderItem={({ item }) => {
           // Kiểm tra xem item là ChatRoom hay User
-          if ('participants' in item) {
+          // ChatRoom có 'type' và 'users' properties
+          if ('type' in item && (item.type === 'private' || item.type === 'group')) {
             return renderChatItem({ item: item as ChatRoom });
           } else {
             return renderUserItem({ item: item as User });
@@ -435,6 +466,10 @@ const styles = StyleSheet.create({
     color: '#666',
     flex: 1,
   },
+  lastMessageUnread: {
+    fontWeight: '700',
+    color: '#000',
+  },
   startChatText: {
     color: '#999',
     fontStyle: 'italic',
@@ -445,6 +480,21 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#0095F6',
     marginLeft: 8,
+  },
+  unreadBadgeContainer: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#0095F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginLeft: 8,
+  },
+  unreadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,

@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
+import { useDispatch } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLoginMutation, LoginResponse } from '../store/api/authApi';
+import { setCredentials } from '../store/slices/authSlice';
 
 export const useAuthLogin = (navigation: any) => {
+  const dispatch = useDispatch();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,16 +42,21 @@ export const useAuthLogin = (navigation: any) => {
         const result = response.data as LoginResponse;
 
         if (result.success && result.data.accessToken) {
+          // Save to AsyncStorage
           await saveAuthData(result.data.accessToken, result.data.user);
-
+          
+          // Update Redux state - this triggers RootNavigator
+          dispatch(setCredentials({
+            accessToken: result.data.accessToken,
+            user: result.data.user,
+          }));
+          
+          // Close modal
           Alert.alert('Đăng nhập thành công', 'Chào mừng bạn đã quay trở lại!', [
             {
               text: 'OK',
               onPress: () => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'MainTabs', params: { screen: 'Profile' } }],
-                });
+                navigation.goBack();
               }
             },
           ]);

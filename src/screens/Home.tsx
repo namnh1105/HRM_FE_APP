@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
   Dimensions,
   StatusBar,
 } from 'react-native';
@@ -12,6 +11,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { Video } from '../types/api';
 import VideoCard from '../components/VideoCard';
 import { useVideoData, useVideoVisibility } from '../hooks';
+import LoadingIndicator from '../components/LoadingIndicator';
 
 const { height: screenHeight } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 80; // Approximate height of bottom tab bar
@@ -54,7 +54,7 @@ const Home: React.FC = () => {
     return (
       <View style={styles.loadingContainer}>
         <StatusBar barStyle="light-content" backgroundColor="#000" />
-        <ActivityIndicator size="large" color="#fff" />
+        <LoadingIndicator size="large" color="#fff" />
         <Text style={styles.loadingText}>Đang tải video...</Text>
       </View>
     );
@@ -89,7 +89,7 @@ const Home: React.FC = () => {
       
       {loadingMore && (
         <View style={styles.loadMoreContainer}>
-          <ActivityIndicator size="small" color="#fff" />
+          <LoadingIndicator size="small" color="#fff" />
         </View>
       )}
     </View>

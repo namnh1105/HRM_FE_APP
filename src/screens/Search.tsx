@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,16 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
   Dimensions,
   StatusBar,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSearchVideosQuery } from '../store/api/videoApi';
 import { Video } from '../types/api';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import LoadingIndicator from '../components/LoadingIndicator';
+import { useSpeechToText } from '../hooks';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -27,6 +29,33 @@ const Search: React.FC = () => {
   const [sortBy, setSortBy] = useState<'relevance' | 'recent' | 'popular'>('relevance');
   const [page, setPage] = useState(1);
   const navigation = useNavigation();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  // Speech to Text hook
+  const {
+    isListening,
+    recognizedText,
+    startListening,
+    stopListening,
+    clearText,
+    isAvailable,
+  } = useSpeechToText();
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   // Handle keyword from navigation params
   useEffect(() => {
@@ -36,6 +65,18 @@ const Search: React.FC = () => {
       setPage(1);
     }
   }, [keyword]);
+
+  // Update search keyword when voice recognition completes
+  useEffect(() => {
+    if (recognizedText && !isListening) {
+      setSearchKeyword(recognizedText);
+      // Auto search after voice recognition
+      if (recognizedText.trim()) {
+        setActiveSearch(recognizedText.trim());
+        setPage(1);
+      }
+    }
+  }, [recognizedText, isListening]);
 
   const { data, isLoading, isFetching } = useSearchVideosQuery(
     { keyword: activeSearch, sortBy, page, limit: 20 },
@@ -56,7 +97,16 @@ const Search: React.FC = () => {
     setSearchKeyword('');
     setActiveSearch('');
     setPage(1);
-  }, []);
+    clearText();
+  }, [clearText]);
+
+  const handleVoiceSearch = useCallback(async () => {
+    if (isListening) {
+      await stopListening();
+    } else {
+      await startListening();
+    }
+  }, [isListening, startListening, stopListening]);
 
   const handleSortChange = useCallback((newSort: 'relevance' | 'recent' | 'popular') => {
     setSortBy(newSort);
@@ -85,68 +135,95 @@ const Search: React.FC = () => {
     return text.substring(0, maxLength) + '...';
   };
 
-  const renderVideoItem = ({ item }: { item: Video }) => (
-    <TouchableOpacity style={styles.videoItem} activeOpacity={0.7}>
-      <Image 
-        source={{ uri: item.thumbnailUrl || item.videoUrl }} 
-        style={styles.thumbnail}
-        resizeMode="cover"
-      />
-      <View style={styles.videoOverlay}>
-        <Text style={styles.caption} numberOfLines={2}>
-          {truncateText(item.caption, 60)}
-        </Text>
-        <View style={styles.videoFooter}>
-          <View style={styles.userSection}>
-            {item.user.avatarUrl ? (
-              <Image 
-                source={{ uri: item.user.avatarUrl }} 
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarText}>
-                  {item.user.username.charAt(0).toUpperCase()}
+  const renderVideoItem = ({ item }: { item: Video }) => {
+    return (
+      <View style={styles.videoItem}>
+        <TouchableOpacity activeOpacity={0.8}>
+          <Image 
+            source={{ uri: item.thumbnailUrl || item.videoUrl }} 
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
+          <View style={styles.videoOverlay}>
+            <Text style={styles.caption} numberOfLines={2}>
+              {truncateText(item.caption, 60)}
+            </Text>
+            <View style={styles.videoFooter}>
+              <View style={styles.userSection}>
+                {item.user.avatarUrl ? (
+                  <Image 
+                    source={{ uri: item.user.avatarUrl }} 
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={styles.avatarText}>
+                      {item.user.username.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <Text style={styles.username} numberOfLines={1}>
+                  {item.user.username}
                 </Text>
               </View>
-            )}
-            <Text style={styles.username} numberOfLines={1}>
-              {item.user.username}
-            </Text>
+              <View style={styles.statItem}>
+                <Ionicons name="heart" size={14} color="#fff" />
+                <Text style={styles.statText}>{formatNumber(item.stats.likes)}</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Ionicons name="heart" size={14} color="#fff" />
-            <Text style={styles.statText}>{formatNumber(item.stats.likes)}</Text>
-          </View>
-        </View>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <Animated.View 
+      style={[
+        styles.header,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
       <View style={styles.searchContainer}>
         <View style={styles.searchInputWrapper}>
           <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm kiếm video..."
-            placeholderTextColor="#666"
+            placeholder={isListening ? "Đang nghe..." : "Tìm kiếm video..."}
+            placeholderTextColor={isListening ? "#FF3B5C" : "#999"}
             value={searchKeyword}
             onChangeText={setSearchKeyword}
             onSubmitEditing={handleSearch}
             returnKeyType="search"
+            editable={!isListening}
           />
-          {searchKeyword.length > 0 && (
+          {searchKeyword.length > 0 && !isListening && (
             <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
               <Ionicons name="close-circle" size={20} color="#666" />
             </TouchableOpacity>
           )}
+          {isAvailable && (
+            <TouchableOpacity 
+              onPress={handleVoiceSearch} 
+              style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={isListening ? "mic" : "mic-outline"} 
+                size={22} 
+                color={isListening ? "#FF3B5C" : "#666"} 
+              />
+            </TouchableOpacity>
+          )}
         </View>
         <TouchableOpacity 
-          style={styles.searchButton}
+          style={[styles.searchButton, !searchKeyword.trim() && styles.searchButtonDisabled]}
           onPress={handleSearch}
           disabled={!searchKeyword.trim()}
+          activeOpacity={0.8}
         >
           <Text style={styles.searchButtonText}>Tìm</Text>
         </TouchableOpacity>
@@ -157,6 +234,7 @@ const Search: React.FC = () => {
           <TouchableOpacity
             style={[styles.sortButton, sortBy === 'relevance' && styles.sortButtonActive]}
             onPress={() => handleSortChange('relevance')}
+            activeOpacity={0.7}
           >
             <Text style={[styles.sortText, sortBy === 'relevance' && styles.sortTextActive]}>
               Liên quan
@@ -165,6 +243,7 @@ const Search: React.FC = () => {
           <TouchableOpacity
             style={[styles.sortButton, sortBy === 'recent' && styles.sortButtonActive]}
             onPress={() => handleSortChange('recent')}
+            activeOpacity={0.7}
           >
             <Text style={[styles.sortText, sortBy === 'recent' && styles.sortTextActive]}>
               Mới nhất
@@ -173,6 +252,7 @@ const Search: React.FC = () => {
           <TouchableOpacity
             style={[styles.sortButton, sortBy === 'popular' && styles.sortButtonActive]}
             onPress={() => handleSortChange('popular')}
+            activeOpacity={0.7}
           >
             <Text style={[styles.sortText, sortBy === 'popular' && styles.sortTextActive]}>
               Phổ biến
@@ -180,7 +260,7 @@ const Search: React.FC = () => {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 
   const renderEmpty = () => {
@@ -211,7 +291,7 @@ const Search: React.FC = () => {
     if (!isFetching || !activeSearch) return null;
     return (
       <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color="#FF3B5C" />
+        <LoadingIndicator size="small" color="#FF3B5C" />
       </View>
     );
   };
@@ -224,7 +304,7 @@ const Search: React.FC = () => {
 
       {isLoading && activeSearch ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF3B5C" />
+          <LoadingIndicator size="large" color="#FF3B5C" />
           <Text style={styles.loadingText}>Đang tìm kiếm...</Text>
         </View>
       ) : (
@@ -283,6 +363,14 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: 4,
+    marginRight: 4,
+  },
+  voiceButton: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  voiceButtonActive: {
+    transform: [{ scale: 1.1 }],
   },
   searchButton: {
     backgroundColor: '#FF3B5C',
@@ -291,11 +379,20 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#FF3B5C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchButtonDisabled: {
+    backgroundColor: '#666',
+    shadowOpacity: 0,
   },
   searchButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   sortContainer: {
     flexDirection: 'row',

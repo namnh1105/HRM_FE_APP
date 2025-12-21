@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { User } from '../types/api';
@@ -70,12 +70,12 @@ export const useUserProfile = () => {
     loadUserInfo();
   }, []);
 
-  const refreshUserInfo = async () => {
+  const refreshUserInfo = useCallback(async () => {
     await loadUserInfo();
     if (isAuthenticated) {
       refetchProfile();
     }
-  };
+  }, [isAuthenticated, refetchProfile]);
 
   return {
     userInfo,

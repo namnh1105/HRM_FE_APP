@@ -30,6 +30,15 @@ const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
     { id: 'Profile', label: 'Hồ sơ', icon: 'person', library: 'Ionicons' },
   ];
 
+  // Map our custom tabs to actual routes (Home, Search, Shop, Messages, Profile)
+  const tabToRouteMap: { [key: string]: string } = {
+    'Home': 'Home',
+    'Search': 'Search',
+    'AddVideo': 'AddVideo', // Special - navigate to stack
+    'Messages': 'Messages',
+    'Profile': 'Profile',
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
@@ -38,18 +47,45 @@ const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
       >
         <View style={styles.navbar}>
           {tabs.map((tab, index) => {
-            const { options } = descriptors[state.routes[index].key];
-            const isFocused = state.index === index;
+            // Special handling for AddVideo - navigate to stack screen
+            if (tab.id === 'AddVideo') {
+              return (
+                <TouchableOpacity
+                  key={tab.id}
+                  style={[styles.tabItem, styles.specialTab]}
+                  onPress={() => navigation.navigate('AddVideo' as never)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.iconContainer, styles.specialIconContainer]}>
+                    <View style={styles.specialRectangle}>
+                      <Ionicons name={tab.icon as any} size={20} color="#fff" />
+                    </View>
+                  </View>
+                  <Text style={[styles.tabLabel, styles.specialTabLabel]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }
+
+            // Find the actual route for this tab
+            const routeName = tabToRouteMap[tab.id];
+            const route = state.routes.find(r => r.name === routeName);
+            
+            if (!route) return null;
+            
+            const { options } = descriptors[route.key];
+            const isFocused = state.routes[state.index].name === routeName;
             
             const onPress = () => {
               const event = navigation.emit({
                 type: 'tabPress',
-                target: state.routes[index].key,
+                target: route.key,
                 canPreventDefault: true,
               });
 
               if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(state.routes[index].name);
+                navigation.navigate(route.name);
               }
             };
 

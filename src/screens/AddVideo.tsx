@@ -29,6 +29,7 @@ import CustomAlert from "../components/CustomAlert";
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useVideoUpload } from "../hooks/useVideoUpload";
 import { useNavigation } from "@react-navigation/native";
+import { saveDraftVideo } from "../utils/draftVideoStorage";
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,7 +41,7 @@ export default function AddVideo() {
 
   const ref = useRef<CameraView>(null);
   const [mode, setMode] = useState<CameraMode>("video");
-  const [facing, setFacing] = useState<CameraType>("back");
+  const [facing, setFacing] = useState<CameraType>("front");
   const [recording, setRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
@@ -53,6 +54,9 @@ export default function AddVideo() {
   const [alertMessage, setAlertMessage] = useState("");
   const [alertTitle, setAlertTitle] = useState("");
   const [alertType, setAlertType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+  
+  // State to track if user has unsaved changes
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Video upload hook
   const { uploadVideo, isLoading: isUploading } = useVideoUpload();
@@ -72,6 +76,15 @@ export default function AddVideo() {
       requestMediaLibraryPermission();
     }
   }, [micPermission, mediaLibraryPermission]);
+
+  // Track unsaved changes
+  useEffect(() => {
+    if (recordedVideoUri || caption.trim() || hashtags.trim()) {
+      setHasUnsavedChanges(true);
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [recordedVideoUri, caption, hashtags]);
 
   // Recording timer
   useEffect(() => {
@@ -287,6 +300,96 @@ export default function AddVideo() {
     }
   };
 
+  const handleBack = () => {
+    if (hasUnsavedChanges && recordedVideoUri) {
+      Alert.alert(
+        "Lưu bản nháp?",
+        "Bạn có muốn lưu video này vào nháp không?",
+        [
+          {
+            text: "Không",
+            onPress: () => {
+              // Reset and go back
+              setRecordedVideoUri(null);
+              setThumbnailUri(null);
+              setCaption("");
+              setHashtags("");
+              setShowCaptionInput(false);
+              setHasUnsavedChanges(false);
+              navigation.goBack();
+            },
+            style: "destructive"
+          },
+          {
+            text: "Lưu nháp",
+            onPress: () => handleSaveDraft()
+          },
+          {
+            text: "Hủy",
+            style: "cancel"
+          }
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (!recordedVideoUri || !thumbnailUri) {
+      setAlertTitle("Lỗi");
+      setAlertMessage("Vui lòng quay video trước");
+      setAlertType("error");
+      setAlertVisible(true);
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadingMessage("Đang lưu nháp...");
+
+    try {
+      // Parse hashtags from string to array
+      const hashtagsArray = hashtags.trim()
+        ? hashtags.split(/\s+/).map(tag => tag.replace(/^#/, '').trim()).filter(tag => tag.length > 0)
+        : undefined;
+
+      await saveDraftVideo(
+        recordedVideoUri,
+        thumbnailUri,
+        caption.trim() || undefined,
+        hashtagsArray
+      );
+
+      setAlertTitle("Thành công");
+      setAlertMessage("Đã lưu video vào nháp!");
+      setAlertType("success");
+      setAlertVisible(true);
+
+      // Reset states
+      setRecordedVideoUri(null);
+      setThumbnailUri(null);
+      setCaption("");
+      setHashtags("");
+      setShowCaptionInput(false);
+
+      // Navigate back after 1.5 seconds
+      setTimeout(() => {
+        setAlertVisible(false);
+        navigation.goBack();
+      }, 1500);
+
+    } catch (error) {
+      console.error("Save draft error:", error);
+      setAlertTitle("Lỗi");
+      setAlertMessage("Không thể lưu nháp. Vui lòng thử lại");
+      setAlertType("error");
+      setAlertVisible(true);
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage("");
+    }
+  };
+
   const toggleCameraFacing = () => {
     setFacing(current => (current === "back" ? "front" : "back"));
   };
@@ -299,14 +402,16 @@ export default function AddVideo() {
 
   const renderCamera = () => {
     return (
-      <CameraView
-        style={styles.camera}
-        ref={ref}
-        mode={mode}
-        facing={facing}
-        mute={false}
-      >
-        {/* Timer */}
+      <View style={styles.cameraWrapper}>
+        <CameraView
+          style={styles.camera}
+          ref={ref}
+          mode={mode}
+          facing={facing}
+          mute={false}
+        />
+        
+        {/* Timer - Overlay on top */}
         <View style={styles.timerContainer}>
           <Text style={styles.timerText}>
             {recording ? `${formatTime(recordingTime)} / 1:00` : 'Sẵn sàng'}
@@ -316,11 +421,11 @@ export default function AddVideo() {
           )}
         </View>
         
-        {/* Controls */}
+        {/* Controls - Overlay on top */}
         <View style={styles.controlsContainer}>
           <Pressable 
             style={styles.backButton} 
-            onPress={() => navigation.goBack()}
+            onPress={handleBack}
           >
             <Ionicons name="arrow-back" size={28} color="white" />
           </Pressable>
@@ -333,7 +438,7 @@ export default function AddVideo() {
           </Pressable>
         </View>
 
-        {/* Record Button */}
+        {/* Record Button - Overlay on top */}
         <View style={styles.shutterContainer}>
           <Pressable onPress={recordVideo}>
             {recording ? (
@@ -347,7 +452,7 @@ export default function AddVideo() {
             )}
           </Pressable>
         </View>
-      </CameraView>
+      </View>
     );
   };
 
@@ -355,26 +460,22 @@ export default function AddVideo() {
     return (
       <View style={styles.captionContainer}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => {
-            setShowCaptionInput(false);
-            setRecordedVideoUri(null);
-            setThumbnailUri(null);
-            setCaption("");
-            setHashtags("");
-          }}>
-            <Ionicons name="arrow-back" size={28} color="#000" />
+          <TouchableOpacity onPress={handleBack}>
+            <Ionicons name="close" size={28} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Thêm mô tả...</Text>
+          <Text style={styles.headerTitle}>Tạo bài đăng</Text>
           <View style={{ width: 28 }} />
         </View>
 
         <ScrollView style={styles.scrollContent}>
+          {/* Video Preview and Caption */}
           <View style={styles.contentRow}>
-            {/* Thumbnail Section */}
             <View style={styles.thumbnailSection}>
-              {thumbnailUri && (
-                <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
-              )}
+              <Image
+                source={{ uri: thumbnailUri || '' }}
+                style={styles.thumbnail}
+                resizeMode="cover"
+              />
               <View style={styles.thumbnailActions}>
                 <TouchableOpacity 
                   style={styles.thumbnailButton}
@@ -419,9 +520,10 @@ export default function AddVideo() {
         <View style={styles.bottomButtons}>
           <TouchableOpacity 
             style={styles.draftButton}
+            onPress={handleSaveDraft}
           >
             <Ionicons name="folder-outline" size={20} color="#000" />
-            <Text style={styles.draftButtonText}>Nhập</Text>
+            <Text style={styles.draftButtonText}>Nháp</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.postButton}
@@ -484,6 +586,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     alignItems: "center",
     justifyContent: "center",
+  },
+  cameraWrapper: {
+    flex: 1,
+    width: "100%",
+    position: 'relative',
   },
   camera: {
     flex: 1,

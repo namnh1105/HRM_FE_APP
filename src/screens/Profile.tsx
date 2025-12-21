@@ -1,18 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
-  ActivityIndicator,
   TouchableOpacity,
-  Alert,
   FlatList,
   Image,
   Dimensions,
   ScrollView,
   Modal,
   Pressable,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -22,6 +21,10 @@ import VideoCard from '../components/VideoCard';
 import { COLORS, SPACING } from '../utils/constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGetSavedVideosQuery } from '../store/api/saveApi';
+import { getDraftVideos, deleteDraftVideo } from '../utils/draftVideoStorage';
+import { DraftVideo } from '../types/api';
+import CustomAlert from '../components/CustomAlert';
+import LoadingIndicator from '../components/LoadingIndicator';
 
 const { width } = Dimensions.get('window');
 const itemWidth = width / 3;
@@ -33,8 +36,26 @@ const Profile = () => {
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
   const [currentModalIndex, setCurrentModalIndex] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState<'videos' | 'saved'>('videos');
+  const [activeTab, setActiveTab] = useState<'videos' | 'saved' | 'drafts'>('videos');
+  const [draftVideos, setDraftVideos] = useState<DraftVideo[]>([]);
+  const [isDraftsLoading, setIsDraftsLoading] = useState(false);
   const videoModalRef = useRef<FlatList>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info' as 'success' | 'error' | 'info' | 'warning',
+    onConfirm: undefined as (() => void) | undefined,
+  });
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const {
     userInfo,
@@ -61,9 +82,23 @@ const Profile = () => {
       refreshUserInfo();
       if (activeTab === 'saved') {
         refetchSavedVideos();
+      } else if (activeTab === 'drafts') {
+        loadDraftVideos();
       }
     }, [refreshUserInfo, activeTab, refetchSavedVideos])
   );
+
+  const loadDraftVideos = async () => {
+    setIsDraftsLoading(true);
+    try {
+      const drafts = await getDraftVideos();
+      setDraftVideos(drafts);
+    } catch (error) {
+      console.error('Error loading draft videos:', error);
+    } finally {
+      setIsDraftsLoading(false);
+    }
+  };
 
   const openVideoModal = (video: Video, index: number) => {
     setSelectedVideo(video);
@@ -76,6 +111,41 @@ const Profile = () => {
     return activeTab === 'videos' ? userVideos : savedVideos;
   };
 
+  const handleDeleteDraft = async (draftId: string) => {
+    setAlertConfig({
+      visible: true,
+      title: 'Xóa video nháp',
+      message: 'Bạn có chắc chắn muốn xóa video này?',
+      type: 'warning',
+      onConfirm: async () => {
+        try {
+          await deleteDraftVideo(draftId);
+          await loadDraftVideos();
+          setAlertConfig({
+            visible: true,
+            title: 'Thành công',
+            message: 'Đã xóa video nháp',
+            type: 'success',
+            onConfirm: undefined,
+          });
+        } catch (error) {
+          console.error('Error deleting draft:', error);
+          setAlertConfig({
+            visible: true,
+            title: 'Lỗi',
+            message: 'Không thể xóa video nháp',
+            type: 'error',
+            onConfirm: undefined,
+          });
+        }
+      },
+    });
+  };
+
+  const handleUploadDraft = (draft: DraftVideo) => {
+    (navigation as any).navigate('UploadDraft', { draft });
+  };
+
   const closeVideoModal = () => {
     setSelectedVideo(null);
     setIsVideoModalVisible(false);
@@ -83,24 +153,15 @@ const Profile = () => {
 
   const onLogoutPress = () => {
     setShowMenu(false);
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: async () => {
-            await handleLogout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' as never }],
-            });
-          },
-        },
-      ]
-    );
+    setAlertConfig({
+      visible: true,
+      title: 'Đăng xuất',
+      message: 'Bạn có chắc chắn muốn đăng xuất?',
+      type: 'warning',
+      onConfirm: async () => {
+        await handleLogout();
+      },
+    });
   };
 
   const renderVideoItem = ({ item, index }: { item: Video; index: number }) => (
@@ -120,7 +181,32 @@ const Profile = () => {
         </View>
       )}
       <View style={styles.videoStats}>
+        <Ionicons name="eye" size={12} color="#fff" />
         <Text style={styles.videoViews}>{item.stats.views}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderDraftItem = ({ item, index }: { item: DraftVideo; index: number }) => (
+    <TouchableOpacity
+      style={styles.videoItem}
+      onPress={() => handleUploadDraft(item)}
+      onLongPress={() => handleDeleteDraft(item.id)}
+    >
+      {item.thumbnailUri ? (
+        <Image
+          source={{ uri: item.thumbnailUri }}
+          style={styles.videoThumbnail}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.placeholderThumbnail}>
+          <Text style={styles.placeholderText}>Nháp {index + 1}</Text>
+        </View>
+      )}
+      <View style={styles.draftBadge}>
+        <Ionicons name="folder-outline" size={12} color="#fff" style={{ marginRight: 4 }} />
+        <Text style={styles.draftBadgeText}>Nháp</Text>
       </View>
     </TouchableOpacity>
   );
@@ -129,7 +215,7 @@ const Profile = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+          <LoadingIndicator size="large" color={COLORS.PRIMARY} />
           <Text style={styles.loadingText}>Đang tải...</Text>
         </View>
       </SafeAreaView>
@@ -149,7 +235,7 @@ const Profile = () => {
           </Text>
           <TouchableOpacity
             style={styles.loginButton}
-            onPress={() => navigation.navigate('Login' as never)}
+            onPress={() => (navigation as any).navigate('Login')}
           >
             <Text style={styles.loginButtonText}>Đăng nhập</Text>
           </TouchableOpacity>
@@ -213,18 +299,32 @@ const Profile = () => {
             <Text style={styles.userUsername}>@{userInfo?.username}</Text>
 
             <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
+              <TouchableOpacity 
+                style={styles.statItem}
+                onPress={() => (navigation as any).navigate('FollowList', {
+                  userId: userInfo?.id,
+                  initialTab: 'following',
+                  username: userInfo?.username,
+                })}
+              >
                 <Text style={styles.statNumber}>
                   {userInfo?.followingCount || 0}
                 </Text>
                 <Text style={styles.statLabel}>Đang follow</Text>
-              </View>
-              <View style={styles.statItem}>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.statItem}
+                onPress={() => (navigation as any).navigate('FollowList', {
+                  userId: userInfo?.id,
+                  initialTab: 'followers',
+                  username: userInfo?.username,
+                })}
+              >
                 <Text style={styles.statNumber}>
                   {userInfo?.followersCount || 0}
                 </Text>
                 <Text style={styles.statLabel}>Follower</Text>
-              </View>
+              </TouchableOpacity>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>{userVideos.length}</Text>
                 <Text style={styles.statLabel}>Video</Text>
@@ -262,14 +362,46 @@ const Profile = () => {
                 color={activeTab === 'saved' ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
               />
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'drafts' && styles.activeTab,
+              ]}
+              onPress={() => setActiveTab('drafts')}
+            >
+              <Ionicons
+                name="folder-outline"
+                size={24}
+                color={activeTab === 'drafts' ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
+              />
+            </TouchableOpacity>
           </View>
 
           {/* Content */}
-          {(activeTab === 'videos' ? videosLoading : savedVideosLoading) ? (
+          {(activeTab === 'videos' ? videosLoading : activeTab === 'saved' ? savedVideosLoading : isDraftsLoading) ? (
             <View style={styles.videosLoading}>
-              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              <LoadingIndicator size="small" color={COLORS.PRIMARY} />
               <Text style={styles.loadingText}>Đang tải video...</Text>
             </View>
+          ) : activeTab === 'drafts' ? (
+            draftVideos.length > 0 ? (
+              <FlatList
+                data={draftVideos}
+                renderItem={renderDraftItem}
+                keyExtractor={(item) => item.id}
+                numColumns={3}
+                scrollEnabled={false}
+                contentContainerStyle={styles.videosGrid}
+                columnWrapperStyle={styles.videoRow}
+              />
+            ) : (
+              <View style={styles.emptyVideos}>
+                <Text style={styles.emptyText}>Chưa có video nháp nào</Text>
+                <Text style={styles.emptySubText}>
+                  Video nháp sẽ được lưu trong thiết bị của bạn
+                </Text>
+              </View>
+            )
           ) : getCurrentVideos().length > 0 ? (
             <FlatList
               data={getCurrentVideos()}
@@ -344,6 +476,22 @@ const Profile = () => {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        confirmText={alertConfig.onConfirm ? "Xác nhận" : "OK"}
+        cancelText={alertConfig.onConfirm ? "Hủy" : ""}
+        onConfirm={() => {
+          if (alertConfig.onConfirm) {
+            alertConfig.onConfirm();
+          }
+          setAlertConfig({ ...alertConfig, visible: false, onConfirm: undefined });
+        }}
+        onClose={() => setAlertConfig({ ...alertConfig, visible: false, onConfirm: undefined })}
+      />
     </SafeAreaView>
   );
 };
@@ -536,12 +684,31 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: SPACING.XS,
     right: SPACING.XS,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: SPACING.XS,
     paddingVertical: 2,
     borderRadius: 4,
+    gap: 4,
   },
   videoViews: {
+    color: COLORS.BACKGROUND,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  draftBadge: {
+    position: 'absolute',
+    top: SPACING.XS,
+    right: SPACING.XS,
+    backgroundColor: 'rgba(254, 44, 85, 0.9)',
+    paddingHorizontal: SPACING.XS,
+    paddingVertical: 2,
+    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  draftBadgeText: {
     color: COLORS.BACKGROUND,
     fontSize: 10,
     fontWeight: 'bold',
