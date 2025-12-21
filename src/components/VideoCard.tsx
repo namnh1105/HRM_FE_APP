@@ -188,7 +188,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       console.error('Like error:', error);
       // Revert on error
       setIsLiked(!isLiked);
-      setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
+      setLikeCount((prev: number) => isLiked ? prev + 1 : prev - 1);
     }
   };
 
@@ -260,7 +260,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       await toggleSave(video.id).unwrap();
       const newSavedState = !isSaved;
       setIsSaved(newSavedState);
-      setSaveCount(prev => newSavedState ? prev + 1 : prev - 1);
+      setSaveCount((prev: number) => newSavedState ? prev + 1 : prev - 1);
     } catch (error) {
       console.error('Save error:', error);
       Alert.alert('Lỗi', 'Không thể lưu video. Vui lòng thử lại.');
@@ -368,7 +368,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           
           {video.hashtags && video.hashtags.length > 0 && (
             <View style={styles.hashtagsContainer}>
-              {video.hashtags.map((tag, index) => {
+              {video.hashtags.map((tag: string, index: number) => {
                 // Clean up hashtag - remove JSON artifacts and extra characters
                 let cleanTag = tag;
                 if (typeof tag === 'string') {
