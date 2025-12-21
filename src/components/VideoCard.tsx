@@ -19,7 +19,9 @@ import { useFollowUserMutation } from '../store/api/followApi';
 import { useToggleSaveMutation, useCheckSaveQuery } from '../store/api/saveApi';
 import { useShareVideoMutation } from '../store/api/shareApi';
 import { useRecordViewMutation } from '../store/api/viewApi';
+import { useToggleLikeMutation, useCheckIfUserLikedVideoQuery } from '../store/api/likeApi';
 import { useNavigation } from '@react-navigation/native';
+import CommentsModal from './CommentsModal';
 
 interface VideoCardProps {
   video: VideoType;
@@ -43,6 +45,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [isSaved, setIsSaved] = useState(false);
   const [saveCount, setSaveCount] = useState(video.stats.saves || 0);
   const [shareCount, setShareCount] = useState(video.stats.shares);
+  const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const videoRef = useRef<ExpoVideo>(null);
   const isMounted = useRef(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -55,7 +58,9 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [toggleSave] = useToggleSaveMutation();
   const [shareVideo] = useShareVideoMutation();
   const [recordView] = useRecordViewMutation();
+  const [toggleLike] = useToggleLikeMutation();
   const { data: saveCheckData } = useCheckSaveQuery(video.id);
+  const { data: likeCheckData } = useCheckIfUserLikedVideoQuery(video.id);
 
   // Update save status from API
   useEffect(() => {
@@ -63,6 +68,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       setIsSaved(saveCheckData.data.isSaved);
     }
   }, [saveCheckData]);
+
+  // Update like status from API
+  useEffect(() => {
+    if (likeCheckData?.success && likeCheckData.data) {
+      setIsLiked(likeCheckData.data.isLiked);
+    }
+  }, [likeCheckData]);
 
   // Update follow button visibility based on API response
   useEffect(() => {
@@ -165,9 +177,19 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
     }
   };
 
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+  const handleLike = async () => {
+    try {
+      const response = await toggleLike(video.id).unwrap();
+      if (response.success && response.data) {
+        setIsLiked(response.data.isLiked);
+        setLikeCount(response.data.likeCount);
+      }
+    } catch (error) {
+      console.error('Like error:', error);
+      // Revert on error
+      setIsLiked(!isLiked);
+      setLikeCount(prev => isLiked ? prev + 1 : prev - 1);
+    }
   };
 
   const handleFollow = async () => {
@@ -437,7 +459,10 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           <Text style={styles.actionText}>{formatNumber(likeCount)}</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => setCommentsModalVisible(true)}
+        >
           <Ionicons name="chatbubble-outline" size={26} color="#fff" />
           <Text style={styles.actionText}>{formatNumber(video.stats.comments)}</Text>
         </TouchableOpacity>
@@ -456,6 +481,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           <Text style={styles.actionText}>{formatNumber(saveCount)}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Comments Modal */}
+      <CommentsModal
+        visible={commentsModalVisible}
+        onClose={() => setCommentsModalVisible(false)}
+        videoId={video.id}
+      />
     </View>
   );
 };
