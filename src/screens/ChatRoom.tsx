@@ -90,13 +90,17 @@ const ChatRoom: React.FC = () => {
         setTimeout(() => {
           flatListRef.current?.scrollToEnd({ animated: true });
         }, 100);
+        
+        // Mark room as read when receiving new message while in the room
+        markRoomAsRead(roomId);
+        markRoomAsReadWs(roomId);
       }
     };
 
     onNewMessage(handleNewMessage);
 
     // Note: cleanup is handled in ChatContext
-  }, [roomId]);
+  }, [roomId, onNewMessage, markRoomAsRead, markRoomAsReadWs]);
 
   const handleSendMessage = async () => {
     console.log("Hi")

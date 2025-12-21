@@ -131,7 +131,13 @@ const Messages: React.FC = () => {
           
           {item.lastMessage && (
             <View style={styles.lastMessageContainer}>
-              <Text style={styles.lastMessage} numberOfLines={1}>
+              <Text 
+                style={[
+                  styles.lastMessage, 
+                  hasUnread && styles.lastMessageUnread
+                ]} 
+                numberOfLines={1}
+              >
                 {item.lastMessage.content}
               </Text>
               {hasUnread && (
@@ -459,6 +465,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     flex: 1,
+  },
+  lastMessageUnread: {
+    fontWeight: '700',
+    color: '#000',
   },
   startChatText: {
     color: '#999',
