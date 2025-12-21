@@ -6,12 +6,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  SafeAreaView,
   Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../context/AuthContext';
 import CustomAlert from '../components/CustomAlert';
@@ -137,13 +137,13 @@ const SignUp = ({ navigation }: any) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Close button */}
+          {/* Back button */}
           <TouchableOpacity 
-            style={styles.closeButton} 
+            style={styles.backButton} 
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="close" size={28} color="#333" />
+            <Ionicons name="arrow-back" size={28} color="#333" />
           </TouchableOpacity>
 
           <Animated.View 
@@ -292,10 +292,10 @@ const styles = StyleSheet.create({
   contentContainer: {
     width: '100%',
   },
-  closeButton: {
+  backButton: {
     position: 'absolute',
     top: 50,
-    right: 20,
+    left: 20,
     zIndex: 10,
     padding: 8,
     borderRadius: 20,

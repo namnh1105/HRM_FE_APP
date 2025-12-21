@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
@@ -11,6 +10,7 @@ import {
   Dimensions,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGetSavedVideosQuery } from '../store/api/saveApi';
 import { Video } from '../types/api';
 import VideoCard from '../components/VideoCard';

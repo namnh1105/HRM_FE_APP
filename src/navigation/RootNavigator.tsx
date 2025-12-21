@@ -41,12 +41,8 @@ const RootNavigator: React.FC = () => {
       <Stack.Screen name="FollowList" component={FollowList} />
       <Stack.Screen name="Notifications" component={Notifications} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
-      
-      {/* Modal screens - có thể swipe down để đóng */}
-      <Stack.Group screenOptions={{ presentation: 'modal', headerShown: false }}>
-        <Stack.Screen name="Login" component={Login} />
-        <Stack.Screen name="SignUp" component={SignUp} />
-      </Stack.Group>
+      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen name="SignUp" component={SignUp} />
     </Stack.Navigator>
   );
 };

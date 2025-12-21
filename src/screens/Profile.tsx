@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   FlatList,
   Image,
@@ -13,6 +12,7 @@ import {
   Pressable,
   Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUserProfile } from '../hooks';
@@ -25,12 +25,14 @@ import { getDraftVideos, deleteDraftVideo } from '../utils/draftVideoStorage';
 import { DraftVideo } from '../types/api';
 import CustomAlert from '../components/CustomAlert';
 import LoadingIndicator from '../components/LoadingIndicator';
+import { useRequireAuth } from '../hooks';
 
 const { width } = Dimensions.get('window');
 const itemWidth = width / 3;
 
 const Profile = () => {
   const navigation = useNavigation();
+  const { requireAuth } = useRequireAuth();
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
@@ -101,10 +103,12 @@ const Profile = () => {
   };
 
   const openVideoModal = (video: Video, index: number) => {
-    setSelectedVideo(video);
-    setSelectedVideoIndex(index);
-    setCurrentModalIndex(index);
-    setIsVideoModalVisible(true);
+    requireAuth(() => {
+      setSelectedVideo(video);
+      setSelectedVideoIndex(index);
+      setCurrentModalIndex(index);
+      setIsVideoModalVisible(true);
+    }, 'xem video');
   };
 
   const getCurrentVideos = () => {
@@ -112,38 +116,42 @@ const Profile = () => {
   };
 
   const handleDeleteDraft = async (draftId: string) => {
-    setAlertConfig({
-      visible: true,
-      title: 'Xóa video nháp',
-      message: 'Bạn có chắc chắn muốn xóa video này?',
-      type: 'warning',
-      onConfirm: async () => {
-        try {
-          await deleteDraftVideo(draftId);
-          await loadDraftVideos();
-          setAlertConfig({
-            visible: true,
-            title: 'Thành công',
-            message: 'Đã xóa video nháp',
-            type: 'success',
-            onConfirm: undefined,
-          });
-        } catch (error) {
-          console.error('Error deleting draft:', error);
-          setAlertConfig({
-            visible: true,
-            title: 'Lỗi',
-            message: 'Không thể xóa video nháp',
-            type: 'error',
-            onConfirm: undefined,
-          });
-        }
-      },
-    });
+    requireAuth(() => {
+      setAlertConfig({
+        visible: true,
+        title: 'Xóa video nháp',
+        message: 'Bạn có chắc chắn muốn xóa video này?',
+        type: 'warning',
+        onConfirm: async () => {
+          try {
+            await deleteDraftVideo(draftId);
+            await loadDraftVideos();
+            setAlertConfig({
+              visible: true,
+              title: 'Thành công',
+              message: 'Đã xóa video nháp',
+              type: 'success',
+              onConfirm: undefined,
+            });
+          } catch (error) {
+            console.error('Error deleting draft:', error);
+            setAlertConfig({
+              visible: true,
+              title: 'Lỗi',
+              message: 'Không thể xóa video nháp',
+              type: 'error',
+              onConfirm: undefined,
+            });
+          }
+        },
+      });
+    }, 'xóa video nháp');
   };
 
   const handleUploadDraft = (draft: DraftVideo) => {
-    (navigation as any).navigate('UploadDraft', { draft });
+    requireAuth(() => {
+      (navigation as any).navigate('UploadDraft', { draft });
+    }, 'tải lên video nháp');
   };
 
   const closeVideoModal = () => {
@@ -222,37 +230,17 @@ const Profile = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.notAuthContainer}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>?</Text>
-          </View>
-          <Text style={styles.title}>Chưa đăng nhập</Text>
-          <Text style={styles.description}>
-            Bạn cần đăng nhập để sử dụng tính năng này
-          </Text>
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={() => (navigation as any).navigate('Login')}
-          >
-            <Text style={styles.loginButtonText}>Đăng nhập</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Dropdown Menu Button */}
-      <TouchableOpacity 
-        style={styles.menuButton}
-        onPress={() => setShowMenu(true)}
-      >
-        <Ionicons name="ellipsis-vertical" size={24} color="#333" />
-      </TouchableOpacity>
+      {/* Dropdown Menu Button - Only show when authenticated */}
+      {isAuthenticated && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setShowMenu(true)}
+        >
+          <Ionicons name="ellipsis-vertical" size={24} color="#333" />
+        </TouchableOpacity>
+      )}
 
       {/* Dropdown Menu Modal */}
       <Modal
@@ -281,52 +269,58 @@ const Profile = () => {
         <View style={styles.header}>
           <View style={styles.userInfoContainer}>
             <View style={styles.avatarContainer}>
-              {userInfo?.avatarUrl ? (
+              {isAuthenticated && userInfo?.avatarUrl ? (
                 <Image
                   source={{ uri: userInfo.avatarUrl }}
                   style={styles.avatarImage}
                 />
               ) : (
                 <Text style={styles.avatarText}>
-                  {userInfo?.givenName?.[0]?.toUpperCase() || 'U'}
+                  {isAuthenticated && userInfo?.givenName?.[0]?.toUpperCase() || '?'}
                 </Text>
               )}
             </View>
 
             <Text style={styles.userName}>
-              {userInfo?.givenName} {userInfo?.familyName}
+              {isAuthenticated && userInfo ? `${userInfo.givenName} ${userInfo.familyName}` : 'Khách'}
             </Text>
-            <Text style={styles.userUsername}>@{userInfo?.username}</Text>
+            <Text style={styles.userUsername}>
+              {isAuthenticated && userInfo ? `@${userInfo.username}` : '@guest'}
+            </Text>
 
             <View style={styles.statsContainer}>
               <TouchableOpacity 
                 style={styles.statItem}
-                onPress={() => (navigation as any).navigate('FollowList', {
-                  userId: userInfo?.id,
-                  initialTab: 'following',
-                  username: userInfo?.username,
-                })}
+                onPress={() => requireAuth(() => {
+                  (navigation as any).navigate('FollowList', {
+                    userId: userInfo?.id,
+                    initialTab: 'following',
+                    username: userInfo?.username,
+                  });
+                }, 'xem danh sách đang theo dõi')}
               >
                 <Text style={styles.statNumber}>
-                  {userInfo?.followingCount || 0}
+                  {isAuthenticated && userInfo?.followingCount || 0}
                 </Text>
                 <Text style={styles.statLabel}>Đang follow</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.statItem}
-                onPress={() => (navigation as any).navigate('FollowList', {
-                  userId: userInfo?.id,
-                  initialTab: 'followers',
-                  username: userInfo?.username,
-                })}
+                onPress={() => requireAuth(() => {
+                  (navigation as any).navigate('FollowList', {
+                    userId: userInfo?.id,
+                    initialTab: 'followers',
+                    username: userInfo?.username,
+                  });
+                }, 'xem danh sách người theo dõi')}
               >
                 <Text style={styles.statNumber}>
-                  {userInfo?.followersCount || 0}
+                  {isAuthenticated && userInfo?.followersCount || 0}
                 </Text>
                 <Text style={styles.statLabel}>Follower</Text>
               </TouchableOpacity>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{userVideos.length}</Text>
+                <Text style={styles.statNumber}>{isAuthenticated ? userVideos.length : 0}</Text>
                 <Text style={styles.statLabel}>Video</Text>
               </View>
             </View>
@@ -341,7 +335,7 @@ const Profile = () => {
                 styles.tab,
                 activeTab === 'videos' && styles.activeTab,
               ]}
-              onPress={() => setActiveTab('videos')}
+              onPress={() => requireAuth(() => setActiveTab('videos'), 'xem video của bạn')}
             >
               <Ionicons
                 name="grid-outline"
@@ -354,7 +348,7 @@ const Profile = () => {
                 styles.tab,
                 activeTab === 'saved' && styles.activeTab,
               ]}
-              onPress={() => setActiveTab('saved')}
+              onPress={() => requireAuth(() => setActiveTab('saved'), 'xem video đã lưu')}
             >
               <Ionicons
                 name="bookmark-outline"
@@ -367,7 +361,7 @@ const Profile = () => {
                 styles.tab,
                 activeTab === 'drafts' && styles.activeTab,
               ]}
-              onPress={() => setActiveTab('drafts')}
+              onPress={() => requireAuth(() => setActiveTab('drafts'), 'xem video nháp')}
             >
               <Ionicons
                 name="folder-outline"
@@ -378,7 +372,15 @@ const Profile = () => {
           </View>
 
           {/* Content */}
-          {(activeTab === 'videos' ? videosLoading : activeTab === 'saved' ? savedVideosLoading : isDraftsLoading) ? (
+          {!isAuthenticated ? (
+            <View style={styles.emptyVideos}>
+              <Ionicons name="person-outline" size={60} color={COLORS.TEXT_SECONDARY} />
+              <Text style={styles.emptyText}>Chưa đăng nhập</Text>
+              <Text style={styles.emptySubText}>
+                Đăng nhập để xem và quản lý video của bạn
+              </Text>
+            </View>
+          ) : (activeTab === 'videos' ? videosLoading : activeTab === 'saved' ? savedVideosLoading : isDraftsLoading) ? (
             <View style={styles.videosLoading}>
               <LoadingIndicator size="small" color={COLORS.PRIMARY} />
               <Text style={styles.loadingText}>Đang tải video...</Text>

@@ -5,4 +5,5 @@ export { useUserProfile } from './useUserProfile';
 export { useMessages } from './useMessages';
 export { useVideoUpload } from './useVideoUpload';
 export { useSpeechToText } from './useSpeechToText';
+export { useRequireAuth } from './useRequireAuth';
 

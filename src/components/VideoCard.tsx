@@ -22,6 +22,7 @@ import { useRecordViewMutation } from '../store/api/viewApi';
 import { useToggleLikeMutation, useCheckIfUserLikedVideoQuery } from '../store/api/likeApi';
 import { useNavigation } from '@react-navigation/native';
 import CommentsModal from './CommentsModal';
+import { useRequireAuth } from '../hooks';
 
 interface VideoCardProps {
   video: VideoType;
@@ -34,6 +35,7 @@ const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, customHeight }) => {
   const navigation = useNavigation();
+  const { requireAuth } = useRequireAuth();
   const [isPlaying, setIsPlaying] = useState(true); // Start with autoplay
   const [isLoading, setIsLoading] = useState(false);
   const [showThumbnail, setShowThumbnail] = useState(true);
@@ -178,93 +180,99 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   };
 
   const handleLike = async () => {
-    try {
-      const response = await toggleLike(video.id).unwrap();
-      if (response.success && response.data) {
-        setIsLiked(response.data.isLiked);
-        setLikeCount(response.data.likeCount);
+    requireAuth(async () => {
+      try {
+        const response = await toggleLike(video.id).unwrap();
+        if (response.success && response.data) {
+          setIsLiked(response.data.isLiked);
+          setLikeCount(response.data.likeCount);
+        }
+      } catch (error) {
+        console.error('Like error:', error);
+        // Revert on error
+        setIsLiked(!isLiked);
+        setLikeCount((prev: number) => isLiked ? prev + 1 : prev - 1);
       }
-    } catch (error) {
-      console.error('Like error:', error);
-      // Revert on error
-      setIsLiked(!isLiked);
-      setLikeCount((prev: number) => isLiked ? prev + 1 : prev - 1);
-    }
+    }, 'thích video');
   };
 
   const handleFollow = async () => {
     if (isFollowing) return;
 
-    try {
-      // Animation: + button scales down and fades
-      Animated.parallel([
-        Animated.timing(followButtonScale, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(followButtonOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Show checkmark
+    requireAuth(async () => {
+      try {
+        // Animation: + button scales down and fades
         Animated.parallel([
-          Animated.spring(checkmarkScale, {
-            toValue: 1,
-            friction: 4,
+          Animated.timing(followButtonScale, {
+            toValue: 0,
+            duration: 200,
             useNativeDriver: true,
           }),
-          Animated.timing(checkmarkOpacity, {
-            toValue: 1,
+          Animated.timing(followButtonOpacity, {
+            toValue: 0,
             duration: 200,
             useNativeDriver: true,
           }),
         ]).start(() => {
-          // Wait a bit then fade out checkmark
-          setTimeout(() => {
-            Animated.parallel([
-              Animated.timing(checkmarkScale, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: true,
-              }),
-              Animated.timing(checkmarkOpacity, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: true,
-              }),
-            ]).start(() => {
-              setShowFollowButton(false);
-            });
-          }, 500);
+          // Show checkmark
+          Animated.parallel([
+            Animated.spring(checkmarkScale, {
+              toValue: 1,
+              friction: 4,
+              useNativeDriver: true,
+            }),
+            Animated.timing(checkmarkOpacity, {
+              toValue: 1,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            // Wait a bit then fade out checkmark
+            setTimeout(() => {
+              Animated.parallel([
+                Animated.timing(checkmarkScale, {
+                  toValue: 0,
+                  duration: 300,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(checkmarkOpacity, {
+                  toValue: 0,
+                  duration: 300,
+                  useNativeDriver: true,
+                }),
+              ]).start(() => {
+                setShowFollowButton(false);
+              });
+            }, 500);
+          });
         });
-      });
 
-      // Call API
-      await followUser(video.user.id).unwrap();
-      setIsFollowing(true);
-    } catch (error) {
-      console.error('Follow error:', error);
-      // Reset animation on error
-      followButtonScale.setValue(1);
-      followButtonOpacity.setValue(1);
-      checkmarkScale.setValue(0);
-      checkmarkOpacity.setValue(0);
-    }
+        // Call API
+        await followUser(video.user.id).unwrap();
+        setIsFollowing(true);
+      } catch (error) {
+        console.error('Follow error:', error);
+        // Reset animation on error
+        followButtonScale.setValue(1);
+        followButtonOpacity.setValue(1);
+        checkmarkScale.setValue(0);
+        checkmarkOpacity.setValue(0);
+      }
+    }, 'theo dõi người dùng');
   };
 
   const handleSave = async () => {
-    try {
-      await toggleSave(video.id).unwrap();
-      const newSavedState = !isSaved;
-      setIsSaved(newSavedState);
-      setSaveCount((prev: number) => newSavedState ? prev + 1 : prev - 1);
-    } catch (error) {
-      console.error('Save error:', error);
-      Alert.alert('Lỗi', 'Không thể lưu video. Vui lòng thử lại.');
-    }
+    requireAuth(async () => {
+      try {
+        await toggleSave(video.id).unwrap();
+        const newSavedState = !isSaved;
+        setIsSaved(newSavedState);
+        setSaveCount((prev: number) => newSavedState ? prev + 1 : prev - 1);
+      } catch (error) {
+        console.error('Save error:', error);
+        Alert.alert('Lỗi', 'Không thể lưu video. Vui lòng thử lại.');
+      }
+    }, 'lưu video');
   };
 
   const handleShare = async () => {
@@ -461,7 +469,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
         
         <TouchableOpacity 
           style={styles.actionButton}
-          onPress={() => setCommentsModalVisible(true)}
+          onPress={() => requireAuth(() => setCommentsModalVisible(true), 'bình luận')}
         >
           <Ionicons name="chatbubble-outline" size={26} color="#fff" />
           <Text style={styles.actionText}>{formatNumber(video.stats.comments)}</Text>
