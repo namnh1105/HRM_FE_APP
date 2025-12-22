@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   TouchableOpacity,
   FlatList,
@@ -12,6 +11,7 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useGetUserByIdQuery, useGetUserVideosQuery } from '../store/api/userApi';
@@ -19,6 +19,7 @@ import { useFollowUserMutation, useUnfollowUserMutation } from '../store/api/fol
 import { Video } from '../types/api';
 import VideoCard from '../components/VideoCard';
 import { COLORS, SPACING } from '../utils/constants';
+import { useRequireAuth } from '../hooks';
 
 const { width } = Dimensions.get('window');
 const itemWidth = width / 3;
@@ -29,6 +30,7 @@ const UserProfile = () => {
   const navigation = useNavigation();
   const route = useRoute<UserProfileRouteProp>();
   const userId = route.params?.userId;
+  const { requireAuth } = useRequireAuth();
 
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
@@ -48,16 +50,18 @@ const UserProfile = () => {
   const handleFollowToggle = async () => {
     if (!userInfo) return;
 
-    try {
-      if (userInfo.isFollowing) {
-        await unfollowUser(userId).unwrap();
-      } else {
-        await followUser(userId).unwrap();
+    requireAuth(async () => {
+      try {
+        if (userInfo.isFollowing) {
+          await unfollowUser(userId).unwrap();
+        } else {
+          await followUser(userId).unwrap();
+        }
+        refetchUser();
+      } catch (error) {
+        console.error('Follow/Unfollow error:', error);
       }
-      refetchUser();
-    } catch (error) {
-      console.error('Follow/Unfollow error:', error);
-    }
+    }, 'theo dõi người dùng');
   };
 
   const openVideoModal = (video: Video, index: number) => {

@@ -3,15 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   FlatList,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   Image,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -23,6 +22,7 @@ import {
 import { useChat } from '../context/ChatContext';
 import { ChatMessage, User } from '../types/api';
 import { RootState } from '../store';
+import { ChatInput } from '../components';
 
 type ChatRoomRouteParams = {
   roomId: string;
@@ -272,42 +272,18 @@ const ChatRoom: React.FC = () => {
 
       {/* Input Area */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       >
-        <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="camera-outline" size={24} color="#0095F6" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="image-outline" size={24} color="#0095F6" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton}>
-            <Ionicons name="mic-outline" size={24} color="#0095F6" />
-          </TouchableOpacity>
-          <TextInput
-            style={styles.input}
-            placeholder="Message..."
-            placeholderTextColor="#999"
-            value={messageText}
-            onChangeText={handleTextChange}
-            multiline
-            maxLength={1000}
-          />
-          {messageText.trim() ? (
-            <TouchableOpacity
-              onPress={handleSendMessage}
-              disabled={sending}
-              style={styles.sendButton}
-            >
-              <Text style={styles.sendButtonText}>Send</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="happy-outline" size={24} color="#0095F6" />
-            </TouchableOpacity>
-          )}
-        </View>
+        <ChatInput
+          value={messageText}
+          onChangeText={handleTextChange}
+          onSend={handleSendMessage}
+          placeholder="Tin nhắn..."
+          maxLength={1000}
+          sending={sending}
+          showAttachments={true}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -429,37 +405,6 @@ const styles = StyleSheet.create({
   },
   otherMessageTime: {
     color: '#999',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#EFEFEF',
-    backgroundColor: '#FFFFFF',
-  },
-  iconButton: {
-    padding: 8,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 8,
-    maxHeight: 100,
-    fontSize: 15,
-  },
-  sendButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  sendButtonText: {
-    color: '#0095F6',
-    fontSize: 15,
-    fontWeight: '600',
   },
 });
 

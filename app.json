@@ -7,27 +7,47 @@
     "orientation": "portrait",
     "scheme": "scrolla-fe",
     "userInterfaceStyle": "light",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "experiments": {
       "reactCompiler": true
     },
-    "splash": { "backgroundColor": "#ffffff" },
-    "assetBundlePatterns": ["**/*"],
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.scrolla.fe"
     },
     "android": {
-      "adaptiveIcon": { "backgroundColor": "#ffffff" },
-      "package": "com.scrolla.fe"
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.scrolla.fe",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
-    "web": { "bundler": "metro" },
+    "web": {
+      "bundler": "metro"
+    },
     "newArchEnabled": true,
     "extra": {
-      "apiBaseUrl": "https://scrolla.bitoj.io.vn/api/v1"
+      "apiBaseUrl": "https://scrolla.bitoj.io.vn/api/v1",
+      "eas": {
+        "projectId": "caead81b-fa83-4399-add5-751b9c8aeff0"
+      }
     },
     "plugins": [
       "expo-web-browser",
+      "./plugins/withAndroidManifestFix",
       [
         "expo-camera",
         {
@@ -41,7 +61,8 @@
         {
           "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để chọn thumbnail"
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

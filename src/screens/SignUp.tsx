@@ -6,18 +6,19 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  SafeAreaView,
   Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+const logoImage = require('../../assets/logo.jpg');
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthContext } from '../context/AuthContext';
 import CustomAlert from '../components/CustomAlert';
 import LoadingIndicator from '../components/LoadingIndicator';
 
-const PRIMARY_BUTTON_COLOR = '#333333';
+const PRIMARY_BUTTON_COLOR = '#6B4CE6';
 const GOOGLE_BUTTON_COLOR = '#F7F7F7';
 const FACEBOOK_BUTTON_COLOR = '#1877F2';
 
@@ -137,13 +138,13 @@ const SignUp = ({ navigation }: any) => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Close button */}
+          {/* Back button */}
           <TouchableOpacity 
-            style={styles.closeButton} 
+            style={styles.backButton} 
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="close" size={28} color="#333" />
+            <Ionicons name="arrow-back" size={28} color="#333" />
           </TouchableOpacity>
 
           <Animated.View 
@@ -156,7 +157,7 @@ const SignUp = ({ navigation }: any) => {
             ]}
           >
             <View style={styles.logoContainer}>
-              <Ionicons name="logo-youtube" size={60} color="#FF6B6B" />
+              <Image source={logoImage} style={styles.logoImage} />
               <Text style={styles.logoText}>Scrolla</Text>
             </View>
 
@@ -292,10 +293,10 @@ const styles = StyleSheet.create({
   contentContainer: {
     width: '100%',
   },
-  closeButton: {
+  backButton: {
     position: 'absolute',
     top: 50,
-    right: 20,
+    left: 20,
     zIndex: 10,
     padding: 8,
     borderRadius: 20,
@@ -304,6 +305,11 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     marginBottom: 20,
+  },
+  logoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
   },
   logoText: {
     fontSize: 28,
