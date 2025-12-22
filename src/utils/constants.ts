@@ -9,8 +9,10 @@ export const API_BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl || 'https://
 
 // Colors
 export const COLORS = {
-  PRIMARY: '#007AFF',
-  SECONDARY: '#5856D6',
+  PRIMARY: '#6B4CE6',
+  PRIMARY_GRADIENT_START: '#2E7FD9',
+  PRIMARY_GRADIENT_END: '#E74C3C',
+  SECONDARY: '#FF6B35',
   SUCCESS: '#34C759',
   WARNING: '#FF9500',
   ERROR: '#FF3B30',

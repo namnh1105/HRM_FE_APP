@@ -141,7 +141,7 @@ const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
                         name={tab.icon as any}
                         size={22}
                         color={
-                          isFocused ? '#000' : '#666'
+                          isFocused ? '#6B4CE6' : '#666'
                         }
                       />
                     </>
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     // No special styling needed
   },
   specialRectangle: {
-    backgroundColor: '#000',
+    backgroundColor: '#6B4CE6',
     borderRadius: 6,
     width: 40,
     height: 28,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     top: -6,
     width: 30,
     height: 2,
-    backgroundColor: '#000',
+    backgroundColor: '#6B4CE6',
     borderRadius: 1,
   },
   tabLabel: {
@@ -242,11 +242,11 @@ const styles = StyleSheet.create({
   },
   specialTabLabel: {
     fontSize: 9,
-    color: '#000',
+    color: '#6B4CE6',
     fontWeight: '500',
   },
   activeTabLabel: {
-    color: '#000',
+    color: '#6B4CE6',
     fontWeight: '600',
     fontSize: 10,
   },
