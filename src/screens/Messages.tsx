@@ -16,11 +16,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useMessages } from '../hooks';
 import { ChatRoom, User } from '../types/api';
 import LoadingIndicator from '../components/LoadingIndicator';
+import { useNotifications } from '../hooks/useNotifications';
 
 const Messages: React.FC = () => {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { unreadCount } = useNotifications();
   
   const {
     rooms,
@@ -227,6 +229,21 @@ const Messages: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chats</Text>
         <View style={styles.headerRight}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('Notifications' as never)}
+          >
+            <View>
+              <Ionicons name="notifications-outline" size={28} color="#000" />
+              {unreadCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
             <Ionicons name="camera-outline" size={28} color="#000" />
           </TouchableOpacity>
@@ -495,6 +512,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   emptyContainer: {
     flex: 1,

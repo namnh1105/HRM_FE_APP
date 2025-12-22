@@ -5,6 +5,7 @@ import { store, initializeAuth } from "./store";
 import RootNavigator from "./navigation/RootNavigator";
 import { AuthProvider } from "./context/AuthContext";
 import { ChatProvider } from "./context/ChatContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import Toast from 'react-native-toast-message';
 
 function AppContent() {
@@ -16,10 +17,12 @@ function AppContent() {
   return (
     <AuthProvider>
       <ChatProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-        <Toast />
+        <NotificationProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+          <Toast />
+        </NotificationProvider>
       </ChatProvider>
     </AuthProvider>
   );

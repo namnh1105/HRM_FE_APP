@@ -37,6 +37,10 @@ export const useGoogleAuth = ({ onSuccess, onError }: UseGoogleAuthProps = {}) =
     redirectUri: redirectUri,
   });
 
+  console.log('Platform.OS =', Platform.OS);
+  console.log('Redirect URI =', redirectUri);
+
+
   useEffect(() => {
     const handleGoogleAuth = async () => {
       if (!response) {
