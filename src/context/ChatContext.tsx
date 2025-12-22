@@ -6,9 +6,12 @@ import { ChatMessage } from '../types/api';
 interface ChatContextType {
   socket: Socket | null;
   isConnected: boolean;
+  currentOpenRoomId: string | null;
+  setCurrentOpenRoomId: (roomId: string | null) => void;
   sendMessage: (data: { content: string; recipientId: string; roomId?: string }) => void;
   joinRoom: (roomId: string) => void;
   leaveRoom: (roomId: string) => void;
+  joinAllUserRooms: (roomIds: string[]) => void;
   markMessageAsRead: (messageId: string, roomId: string) => void;
   markRoomAsRead: (roomId: string) => void;
   startTyping: (roomId: string) => void;
@@ -27,6 +30,7 @@ const SOCKET_URL = 'https://scrolla.bitoj.io.vn'; // Update with your backend UR
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [currentOpenRoomId, setCurrentOpenRoomId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -106,6 +110,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const joinAllUserRooms = (roomIds: string[]) => {
+    if (socketRef.current && isConnected) {
+      console.log('[ChatContext] Joining all user rooms:', roomIds);
+      roomIds.forEach(roomId => {
+        socketRef.current?.emit('join_room', { roomId });
+      });
+    } else {
+      console.log('[ChatContext] Cannot join rooms - socket not connected');
+    }
+  };
+
   const markMessageAsRead = (messageId: string, roomId: string) => {
     if (socketRef.current && isConnected) {
       socketRef.current.emit('message_read', { messageId, roomId });
@@ -180,9 +195,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         socket,
         isConnected,
+        currentOpenRoomId,
+        setCurrentOpenRoomId,
         sendMessage,
         joinRoom,
         leaveRoom,
+        joinAllUserRooms,
         markMessageAsRead,
         markRoomAsRead,
         startTyping,

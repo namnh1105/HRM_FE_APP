@@ -7,9 +7,18 @@ import { ChatRoom, User } from '../types/api';
 import { RootState } from '../store';
 
 export const useMessages = () => {
-  // Lấy userId từ Redux store
-  const userFromStore = useSelector((state: RootState) => state.auth.user);
+  // Lấy auth state và userId từ Redux store
+  const { user: userFromStore, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const [userId, setUserId] = useState<string | null>(userFromStore?.id || null);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[useMessages] Auth state:', {
+      isAuthenticated,
+      userId: userFromStore?.id,
+      username: userFromStore?.username,
+    });
+  }, [isAuthenticated, userFromStore]);
   
   // Load user ID from storage nếu chưa có trong Redux
   useEffect(() => {
@@ -31,20 +40,22 @@ export const useMessages = () => {
     }
   }, [userFromStore]);
 
-  // RTK Query hooks
+  // RTK Query hooks - skip if not authenticated
   const { 
     data: roomsData, 
     isLoading: roomsLoading, 
     error: roomsError,
     refetch: refetchRooms,
-  } = useGetUserRoomsQuery();
+  } = useGetUserRoomsQuery(undefined, {
+    skip: !isAuthenticated || !userId,
+  });
   
   const { 
     data: followingData, 
     isLoading: followingLoading,
     error: followingError,
   } = useGetFollowingQuery(userId || '', {
-    skip: !userId,
+    skip: !isAuthenticated || !userId,
   });
   
   const [getOrCreatePrivateRoom] = useGetOrCreatePrivateRoomMutation();

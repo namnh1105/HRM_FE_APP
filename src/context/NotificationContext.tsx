@@ -6,8 +6,10 @@ import {
   notificationApi, 
   Notification as NotificationData 
 } from '../store/api/notificationApi';
+import { useGetUserRoomsQuery } from '../store/api/chatApi';
 import { useDispatch } from 'react-redux';
 import { useChat } from './ChatContext';
+import { ChatMessage } from '../types/api';
 
 interface NotificationContextType {
   expoPushToken: string | null;
@@ -27,6 +29,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -37,8 +41,30 @@ interface Props {
 export const NotificationProvider: React.FC<Props> = ({ children }) => {
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
-  const { socket, isConnected } = useChat();
+  const { socket, isConnected, currentOpenRoomId, joinAllUserRooms } = useChat();
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  
+  // Get all user rooms to join
+  const { data: roomsData } = useGetUserRoomsQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[NotificationContext] Auth state changed:', {
+      isAuthenticated,
+      username: user?.username,
+    });
+  }, [isAuthenticated, user]);
+  
+  // Join all user rooms when connected
+  useEffect(() => {
+    if (isAuthenticated && isConnected && roomsData && roomsData.length > 0) {
+      const roomIds = roomsData.map(room => room.id);
+      console.log('[NotificationContext] Joining all user rooms:', roomIds);
+      joinAllUserRooms(roomIds);
+    }
+  }, [isAuthenticated, isConnected, roomsData, joinAllUserRooms]);
   
   // RTK Query hooks
   const { data: notificationsData, refetch: refetchNotifications } = 
@@ -57,8 +83,8 @@ export const NotificationProvider: React.FC<Props> = ({ children }) => {
   const [markAllAsReadMutation] = notificationApi.useMarkAllNotificationsAsReadMutation();
   const [deleteNotificationMutation] = notificationApi.useDeleteNotificationMutation();
 
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.Subscription | undefined>(undefined);
+  const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
 
   // Request permissions và lấy push token
   useEffect(() => {
@@ -118,41 +144,58 @@ export const NotificationProvider: React.FC<Props> = ({ children }) => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Khi nhận notification trong foreground
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        console.log('Notification received:', notification);
-        // Refresh notifications từ backend
-        refetchNotifications();
-        refetchUnreadCount();
-      }
-    );
+    let mounted = true;
 
-    // Khi user tap vào notification
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        console.log('Notification tapped:', response);
-        const data = response.notification.request.content.data;
-        
-        // Handle navigation based on notification data
-        if (data?.actionUrl) {
-          // TODO: Navigate to the URL
-          console.log('Navigate to:', data.actionUrl);
-        }
-        
-        // Mark as read
-        if (data?.notificationId) {
-          markAsReadMutation(data.notificationId);
-        }
+    const setupListeners = () => {
+      try {
+        // Khi nhận notification trong foreground
+        notificationListener.current = Notifications.addNotificationReceivedListener(
+          (notification) => {
+            if (!mounted) return;
+            console.log('Notification received:', notification);
+            // Refresh notifications từ backend
+            refetchNotifications();
+            refetchUnreadCount();
+          }
+        );
+
+        // Khi user tap vào notification
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(
+          (response) => {
+            if (!mounted) return;
+            console.log('Notification tapped:', response);
+            const data = response.notification.request.content.data;
+            
+            // Handle navigation based on notification data
+            if (data?.actionUrl) {
+              // TODO: Navigate to the URL
+              console.log('Navigate to:', data.actionUrl);
+            }
+            
+            // Mark as read
+            if (data?.notificationId && typeof data.notificationId === 'string') {
+              markAsReadMutation(data.notificationId);
+            }
+          }
+        );
+      } catch (error) {
+        console.error('[NotificationContext] Error setting up listeners:', error);
       }
-    );
+    };
+
+    setupListeners();
 
     return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-      }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+      mounted = false;
+      try {
+        if (notificationListener.current) {
+          notificationListener.current.remove();
+        }
+        if (responseListener.current) {
+          responseListener.current.remove();
+        }
+      } catch (error) {
+        console.error('[NotificationContext] Error removing listeners:', error);
       }
     };
   }, [isAuthenticated, refetchNotifications, refetchUnreadCount, markAsReadMutation]);
@@ -190,7 +233,41 @@ export const NotificationProvider: React.FC<Props> = ({ children }) => {
       refetchUnreadCount();
     };
 
+    // Listen to new chat messages (realtime for ALL rooms)
+    const handleNewMessage = async (message: ChatMessage) => {
+      console.log('[NotificationContext] Received new message:', {
+        messageId: message.id,
+        roomId: message.roomId,
+        currentOpenRoomId,
+        shouldShowNotification: message.roomId !== currentOpenRoomId,
+      });
+      
+      // Chỉ hiển thị notification nếu tin nhắn KHÔNG từ room đang mở
+      if (message.roomId !== currentOpenRoomId) {
+        const senderName = message.sender?.givenName || message.sender?.username || 'Someone';
+        
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `Tin nhắn mới từ ${senderName}`,
+              body: message.content,
+              data: {
+                type: 'chat',
+                roomId: message.roomId,
+                messageId: message.id,
+                senderId: message.senderId,
+              },
+            },
+            trigger: null, // Show immediately
+          });
+        } catch (error) {
+          console.error('[NotificationContext] Error showing message notification:', error);
+        }
+      }
+    };
+
     socket.on('notification', handleNotification);
+    socket.on('new_message', handleNewMessage);
 
     // Listen for mark all as read event
     socket.on('notifications_marked_read', () => {
@@ -201,10 +278,11 @@ export const NotificationProvider: React.FC<Props> = ({ children }) => {
 
     return () => {
       socket.off('notification', handleNotification);
+      socket.off('new_message', handleNewMessage);
       socket.off('notifications_marked_read');
       console.log('[NotificationContext] Cleaned up WebSocket listeners');
     };
-  }, [isAuthenticated, socket, isConnected, refetchNotifications, refetchUnreadCount]);
+  }, [isAuthenticated, socket, isConnected, currentOpenRoomId, refetchNotifications, refetchUnreadCount]);
 
   const markAsRead = async (notificationId: string) => {
     try {

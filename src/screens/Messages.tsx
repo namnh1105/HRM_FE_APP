@@ -43,7 +43,8 @@ const Messages: React.FC = () => {
   const openChat = (room: ChatRoom) => {
     const otherUser = room.users && room.users.length > 0 ? room.users[0] : null;
     if (otherUser) {
-      navigation.navigate('ChatRoom' as never, { roomId: room.id, otherUser } as never);
+      // @ts-ignore - Navigation type issue
+      navigation.navigate('ChatRoom', { roomId: room.id, otherUser });
     }
   };
 
@@ -221,78 +222,56 @@ const Messages: React.FC = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerButton}>
-          <Image 
-            source={{ uri: 'https://via.placeholder.com/40' }} 
-            style={styles.headerAvatar}
-          />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Chats</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={() => navigation.navigate('Notifications' as never)}
-          >
-            <View>
-              <Ionicons name="notifications-outline" size={28} color="#000" />
-              {unreadCount > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Text>
-                </View>
-              )}
+        <Text style={styles.headerTitle}>Tin nhắn</Text>
+        <TouchableOpacity 
+          style={styles.notificationButton}
+          onPress={() => navigation.navigate('Notifications' as never)}
+        >
+          <Ionicons name="notifications-outline" size={26} color="#262626" />
+          {unreadCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Text>
             </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="camera-outline" size={28} color="#000" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="create-outline" size={28} color="#000" />
-          </TouchableOpacity>
-        </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+        <Ionicons name="search" size={18} color="#8E8E8E" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search"
-          placeholderTextColor="#999"
+          placeholder="Tìm kiếm tin nhắn"
+          placeholderTextColor="#8E8E8E"
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
       </View>
 
-      {/* Stories/Following List */}
-      <View style={styles.storiesContainer}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.storiesList}
-        >
-          {/* Add Story Button */}
-          <TouchableOpacity style={styles.storyItem}>
-            <View style={styles.addStoryContainer}>
-              <Ionicons name="add" size={24} color="#000" />
-            </View>
-            <Text style={styles.storyName}>Your story</Text>
-          </TouchableOpacity>
-
-          {/* Following Users */}
-          {following.map((user) => (
-            <View key={user.id}>
-              {renderStoryItem({ item: user })}
-            </View>
-          ))}
-        </ScrollView>
-      </View>
+      {/* Following List */}
+      {following.length > 0 && (
+        <View style={styles.followingContainer}>
+          <Text style={styles.sectionTitle}>Đang theo dõi</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.followingList}
+          >
+            {following.map((user) => (
+              <View key={user.id}>
+                {renderStoryItem({ item: user })}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Chat List */}
       <FlatList
         data={combinedList}
-        keyExtractor={(item) => 'id' in item ? item.id : `user-${item.id}`}
+        keyExtractor={(item: any) => 'id' in item ? item.id : `user-${item.id}`}
         renderItem={({ item }) => {
           // Kiểm tra xem item là ChatRoom hay User
           // ChatRoom có 'type' và 'users' properties
@@ -307,8 +286,8 @@ const Messages: React.FC = () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No conversations yet</Text>
-            <Text style={styles.emptySubText}>Start chatting with people you follow</Text>
+            <Text style={styles.emptyText}>Chưa có cuộc trò chuyện nào</Text>
+            <Text style={styles.emptySubText}>Bắt đầu nhắn tin với những người bạn theo dõi</Text>
           </View>
         }
       />
@@ -319,106 +298,100 @@ const Messages: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FAFAFA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  headerButton: {
-    padding: 4,
-  },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#DBDBDB',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#262626',
     flex: 1,
-    marginLeft: 12,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  notificationButton: {
+    padding: 8,
+    position: 'relative',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#EFEFEF',
     marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    marginTop: 12,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#000',
+    fontSize: 15,
+    color: '#262626',
     padding: 0,
   },
-  storiesContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+  followingContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#DBDBDB',
   },
-  storiesList: {
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8E8E8E',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  followingList: {
     paddingHorizontal: 12,
-    paddingVertical: 16,
-    gap: 12,
+    gap: 16,
   },
   storyItem: {
     alignItems: 'center',
     marginHorizontal: 4,
-    width: 70,
+    width: 64,
   },
   storyAvatarContainer: {
     marginBottom: 6,
   },
   storyAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: '#0095F6',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: '#6B4CE6',
   },
   defaultAvatar: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#E4E6EB',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  addStoryContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
   },
   storyName: {
-    fontSize: 12,
-    color: '#000',
+    fontSize: 11,
+    color: '#262626',
     textAlign: 'center',
+    fontWeight: '500',
   },
   chatList: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   chatListContent: {
     flexGrow: 1,
@@ -426,83 +399,87 @@ const styles = StyleSheet.create({
   chatItem: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 14,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
   defaultChatAvatar: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#E4E6EB',
     justifyContent: 'center',
     alignItems: 'center',
   },
   onlineIndicator: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#31A24C',
-    borderWidth: 2,
+    bottom: 0,
+    right: 0,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#44B700',
+    borderWidth: 3,
     borderColor: '#FFFFFF',
   },
   chatContent: {
     flex: 1,
+    justifyContent: 'center',
   },
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 5,
   },
   chatName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#262626',
     flex: 1,
   },
   chatTime: {
-    fontSize: 13,
-    color: '#999',
+    fontSize: 12,
+    color: '#8E8E8E',
     marginLeft: 8,
+    fontWeight: '400',
   },
   lastMessageContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   lastMessage: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#8E8E8E',
     flex: 1,
+    lineHeight: 18,
   },
   lastMessageUnread: {
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: '600',
+    color: '#262626',
   },
   startChatText: {
-    color: '#999',
+    color: '#8E8E8E',
     fontStyle: 'italic',
   },
   unreadBadge: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#0095F6',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#6B4CE6',
     marginLeft: 8,
   },
   unreadBadgeContainer: {
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#0095F6',
+    backgroundColor: '#6B4CE6',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
@@ -510,8 +487,8 @@ const styles = StyleSheet.create({
   },
   unreadBadgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
   notificationBadge: {
     position: 'absolute',
@@ -536,17 +513,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
+    paddingHorizontal: 40,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#262626',
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubText: {
     fontSize: 14,
-    color: '#666',
+    color: '#8E8E8E',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

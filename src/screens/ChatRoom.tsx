@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import {
   useGetMessagesQuery,
@@ -46,8 +46,7 @@ const ChatRoom: React.FC = () => {
   
   const {
     isConnected,
-    joinRoom,
-    leaveRoom,
+    setCurrentOpenRoomId,
     onNewMessage,
     startTyping,
     stopTyping,
@@ -60,20 +59,20 @@ const ChatRoom: React.FC = () => {
     }
   }, [messagesData]);
 
+  // Set current open room khi vào và clear khi rời
   useEffect(() => {
-    // Join room when component mounts
-    if (roomId && isConnected) {
-      joinRoom(roomId);
+    if (roomId) {
+      console.log('[ChatRoom] Setting current open room:', roomId);
+      setCurrentOpenRoomId(roomId);
       markRoomAsRead(roomId);
       markRoomAsReadWs(roomId);
     }
 
     return () => {
-      if (roomId && isConnected) {
-        leaveRoom(roomId);
-      }
+      console.log('[ChatRoom] Clearing current open room');
+      setCurrentOpenRoomId(null);
     };
-  }, [roomId, isConnected]);
+  }, [roomId, setCurrentOpenRoomId, markRoomAsRead, markRoomAsReadWs]);
 
   // Separate useEffect for message listener
   useEffect(() => {
