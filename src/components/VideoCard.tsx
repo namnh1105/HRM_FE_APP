@@ -11,7 +11,7 @@ import {
   Share,
   Alert,
 } from 'react-native';
-import { Video as ExpoVideo, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { Video as VideoType } from '../types/api';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,19 +36,25 @@ const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, customHeight }) => {
   const navigation = useNavigation();
   const { requireAuth } = useRequireAuth();
-  const [isPlaying, setIsPlaying] = useState(true); // Start with autoplay
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showThumbnail, setShowThumbnail] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(video.stats.likes);
-  const [showControls, setShowControls] = useState(false); // Only show pause button when paused
+  const [showControls, setShowControls] = useState(false);
   const [isFollowing, setIsFollowing] = useState(video.user.isFollowing || false);
-  const [showFollowButton, setShowFollowButton] = useState(false); // Will be set in useEffect
+  const [showFollowButton, setShowFollowButton] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [saveCount, setSaveCount] = useState(video.stats.saves || 0);
   const [shareCount, setShareCount] = useState(video.stats.shares);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
-  const videoRef = useRef<ExpoVideo>(null);
+  
+  // Create video player với expo-video
+  const player = useVideoPlayer(video.videoUrl, (player) => {
+    player.loop = true;
+    player.muted = false;
+  });
+  
   const isMounted = useRef(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const followButtonScale = useRef(new Animated.Value(1)).current;
@@ -101,35 +107,31 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   }, []);
 
   useEffect(() => {
-    if (isActive && videoRef.current && isMounted.current) {
-      playVideo();
+    if (isActive && player && isMounted.current) {
+      player.play();
+      setIsPlaying(true);
+      setShowThumbnail(false);
       // Track view when video becomes active
       recordView(video.id).catch(err => {
         console.log('Failed to record view:', err);
       });
-    } else if (!isActive && videoRef.current && isMounted.current) {
-      pauseVideo();
-      setIsPlaying(false); // Force playing state to false when not active
+    } else if (!isActive && player && isMounted.current) {
+      player.pause();
+      setIsPlaying(false);
     }
-  }, [isActive]);
+  }, [isActive, player]);
 
   const playVideo = async () => {
-    if (!isMounted.current) return;
+    if (!isMounted.current || !player) return;
     
     try {
-      if (videoRef.current) {
-        setIsLoading(true);
-        const status = await videoRef.current.getStatusAsync();
-        if (status.isLoaded && isMounted.current) {
-          await videoRef.current.playAsync();
-          if (isMounted.current) {
-            setIsPlaying(true);
-            setShowThumbnail(false);
-          }
-        }
+      setIsLoading(true);
+      player.play();
+      if (isMounted.current) {
+        setIsPlaying(true);
+        setShowThumbnail(false);
       }
     } catch (error) {
-      // Silently handle errors when component is unmounting
       if (isMounted.current) {
         console.error('Error playing video:', error);
       }
@@ -141,18 +143,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   };
 
   const pauseVideo = async () => {
-    if (!isMounted.current) return;
+    if (!isMounted.current || !player) return;
     
     try {
-      if (videoRef.current) {
-        const status = await videoRef.current.getStatusAsync();
-        if (status.isLoaded && isMounted.current) {
-          await videoRef.current.pauseAsync();
-          if (isMounted.current) {
-            setIsPlaying(false);
-            setShowControls(true); // Show pause button when paused
-          }
-        }
+      player.pause();
+      if (isMounted.current) {
+        setIsPlaying(false);
+        setShowControls(true);
       }
     } catch (error) {
       // Silently handle pause errors when component is unmounting
@@ -160,7 +157,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   };
 
   const togglePlayback = async () => {
-    if (!videoRef.current) return;
+    if (!player) return;
 
     try {
       setIsLoading(true);
@@ -169,7 +166,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
         await pauseVideo();
       } else {
         await playVideo();
-        // Hide controls after playing
         setShowControls(false);
       }
     } catch (error) {
@@ -317,21 +313,11 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
         activeOpacity={1}
         onPress={togglePlayback}
       >
-        <ExpoVideo
-          ref={videoRef}
-          source={{ uri: video.videoUrl }}
+        <VideoView
+          player={player}
           style={[styles.video, { height: videoHeight }]}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay={isActive && isPlaying}
-          isLooping
-          isMuted={false}
-          onLoad={() => setShowThumbnail(false)}
-          onPlaybackStatusUpdate={(status: AVPlaybackStatus) => {
-            if (!status.isLoaded && 'error' in status) {
-              console.error('Video playback error:', status.error);
-              setShowThumbnail(true);
-            }
-          }}
+          contentFit="cover"
+          nativeControls={false}
         />
         
         {/* Thumbnail overlay */}
