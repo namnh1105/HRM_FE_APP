@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../../utils/constants';
 
 interface LikeToggleResponse {
   isLiked: boolean;
-  likeCount: number;
+  likesCount: number;
 }
 
 interface LikeCheckResponse {

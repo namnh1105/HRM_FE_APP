@@ -40,13 +40,13 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [isLoading, setIsLoading] = useState(false);
   const [showThumbnail, setShowThumbnail] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(video.stats.likes);
+  const [likeCount, setLikeCount] = useState(video.stats?.likes || 0);
   const [showControls, setShowControls] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(video.user.isFollowing || false);
+  const [isFollowing, setIsFollowing] = useState(video.user?.isFollowing || false);
   const [showFollowButton, setShowFollowButton] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [saveCount, setSaveCount] = useState(video.stats.saves || 0);
-  const [shareCount, setShareCount] = useState(video.stats.shares);
+  const [saveCount, setSaveCount] = useState(video.stats?.saves || 0);
+  const [shareCount, setShareCount] = useState(video.stats?.shares || 0);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   
   // Create video player với expo-video
@@ -181,13 +181,10 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
         const response = await toggleLike(video.id).unwrap();
         if (response.success && response.data) {
           setIsLiked(response.data.isLiked);
-          setLikeCount(response.data.likeCount);
+          setLikeCount(response.data.likesCount);
         }
       } catch (error) {
         console.error('Like error:', error);
-        // Revert on error
-        setIsLiked(!isLiked);
-        setLikeCount((prev: number) => isLiked ? prev + 1 : prev - 1);
       }
     }, 'thích video');
   };
@@ -290,7 +287,10 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
     }
   };
 
-  const formatNumber = (num: number): string => {
+  const formatNumber = (num: number | undefined): string => {
+    if (num === undefined || num === null) {
+      return '0';
+    }
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M';
     } else if (num >= 1000) {
@@ -299,7 +299,10 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
     return num.toString();
   };
 
-  const formatDuration = (seconds: number): string => {
+  const formatDuration = (seconds: number | undefined): string => {
+    if (seconds === undefined || seconds === null) {
+      return '0:00';
+    }
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -387,12 +390,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
               })}
             </View>
           )}
-          
-          {video.duration && !isNaN(video.duration) && (
-            <Text style={styles.duration}>
-              {formatDuration(video.duration)}
-            </Text>
-          )}
         </View>
       </View>
 
@@ -458,7 +455,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           onPress={() => requireAuth(() => setCommentsModalVisible(true), 'bình luận')}
         >
           <Ionicons name="chatbubble-outline" size={26} color="#fff" />
-          <Text style={styles.actionText}>{formatNumber(video.stats.comments)}</Text>
+          <Text style={styles.actionText}>{formatNumber(video.stats?.comments || 0)}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.actionButton} onPress={handleShare}>

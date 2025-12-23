@@ -193,7 +193,7 @@ const Search: React.FC = () => {
           <TextInput
             style={styles.searchInput}
             placeholder={isListening ? "Đang nghe..." : "Tìm kiếm video..."}
-            placeholderTextColor={isListening ? "#FF3B5C" : "#999"}
+            placeholderTextColor={isListening ? "#8B5CF6" : "#999"}
             value={searchKeyword}
             onChangeText={setSearchKeyword}
             onSubmitEditing={handleSearch}
@@ -214,7 +214,7 @@ const Search: React.FC = () => {
               <Ionicons 
                 name={isListening ? "mic" : "mic-outline"} 
                 size={22} 
-                color={isListening ? "#FF3B5C" : "#666"} 
+                color={isListening ? "#8B5CF6" : "#666"} 
               />
             </TouchableOpacity>
           )}
@@ -291,7 +291,7 @@ const Search: React.FC = () => {
     if (!isFetching || !activeSearch) return null;
     return (
       <View style={styles.footerLoader}>
-        <LoadingIndicator size="small" color="#FF3B5C" />
+        <LoadingIndicator size="small" color="#8B5CF6" />
       </View>
     );
   };
@@ -304,7 +304,7 @@ const Search: React.FC = () => {
 
       {isLoading && activeSearch ? (
         <View style={styles.loadingContainer}>
-          <LoadingIndicator size="large" color="#FF3B5C" />
+          <LoadingIndicator size="large" color="#8B5CF6" />
           <Text style={styles.loadingText}>Đang tìm kiếm...</Text>
         </View>
       ) : (
@@ -373,13 +373,13 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.1 }],
   },
   searchButton: {
-    backgroundColor: '#FF3B5C',
+    backgroundColor: '#8B5CF6',
     paddingHorizontal: 20,
     height: 44,
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FF3B5C',
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -408,8 +408,8 @@ const styles = StyleSheet.create({
     borderColor: '#333',
   },
   sortButtonActive: {
-    backgroundColor: '#FF3B5C',
-    borderColor: '#FF3B5C',
+    backgroundColor: '#8B5CF6',
+    borderColor: '#8B5CF6',
   },
   sortText: {
     color: '#666',
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   avatarPlaceholder: {
-    backgroundColor: '#FF3B5C',
+    backgroundColor: '#A855F7',
     justifyContent: 'center',
     alignItems: 'center',
   },

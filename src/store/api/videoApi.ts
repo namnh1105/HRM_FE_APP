@@ -30,6 +30,13 @@ export const videoApi = createApi({
       }),
       providesTags: ['Videos'],
     }),
+    getFollowingVideos: builder.query<ApiResponse<VideoListData>, { page?: number; size?: number }>({
+      query: ({ page = 1, size = 10 }) => ({
+        url: `/videos/following?page=${page}&limit=${size}`,
+        method: 'GET',
+      }),
+      providesTags: ['Videos'],
+    }),
     createVideo: builder.mutation<ApiResponse<any>, FormData>({
       query: (formData) => ({
         url: '/videos',
@@ -50,4 +57,4 @@ export const videoApi = createApi({
   }),
 });
 
-export const { useGetVideosQuery, useCreateVideoMutation, useSearchVideosQuery } = videoApi;
+export const { useGetVideosQuery, useGetFollowingVideosQuery, useCreateVideoMutation, useSearchVideosQuery } = videoApi;
