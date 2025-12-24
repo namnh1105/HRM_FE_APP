@@ -153,9 +153,11 @@ export const NotificationProvider: React.FC<Props> = ({ children }) => {
           (notification) => {
             if (!mounted) return;
             console.log('Notification received:', notification);
-            // Refresh notifications từ backend
-            refetchNotifications();
-            refetchUnreadCount();
+            // Refresh notifications from backend - only if authenticated
+            if (isAuthenticated) {
+              refetchNotifications();
+              refetchUnreadCount();
+            }
           }
         );
 
@@ -228,9 +230,11 @@ export const NotificationProvider: React.FC<Props> = ({ children }) => {
         console.error('[NotificationContext] Error showing notification:', error);
       }
       
-      // Refresh data from backend
-      refetchNotifications();
-      refetchUnreadCount();
+      // Refresh data from backend - only if authenticated
+      if (isAuthenticated) {
+        refetchNotifications();
+        refetchUnreadCount();
+      }
     };
 
     // Listen to new chat messages (realtime for ALL rooms)
@@ -272,8 +276,10 @@ export const NotificationProvider: React.FC<Props> = ({ children }) => {
     // Listen for mark all as read event
     socket.on('notifications_marked_read', () => {
       console.log('[NotificationContext] Notifications marked as read');
-      refetchNotifications();
-      refetchUnreadCount();
+      if (isAuthenticated) {
+        refetchNotifications();
+        refetchUnreadCount();
+      }
     });
 
     return () => {
@@ -309,8 +315,11 @@ export const NotificationProvider: React.FC<Props> = ({ children }) => {
   };
 
   const refreshNotifications = () => {
-    refetchNotifications();
-    refetchUnreadCount();
+    // Only refetch if authenticated
+    if (isAuthenticated) {
+      refetchNotifications();
+      refetchUnreadCount();
+    }
   };
 
   const value: NotificationContextType = {

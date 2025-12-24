@@ -17,7 +17,7 @@ export const useUserProfile = () => {
     isLoading: profileLoading,
     refetch: refetchProfile,
   } = useGetUserProfileQuery(undefined, {
-    skip: !isAuthenticated,
+    skip: isAuthenticated !== true,
   }) as { data: UserProfileResponse | undefined; isLoading: boolean; refetch: () => void };
 
   const {
@@ -26,7 +26,7 @@ export const useUserProfile = () => {
     refetch: refetchVideos,
   } = useGetUserVideosQuery(
     { page: 1, size: 20 },
-    { skip: !isAuthenticated }
+    { skip: isAuthenticated !== true }
   ) as any;
 
   const loadUserInfo = async () => {
@@ -72,7 +72,8 @@ export const useUserProfile = () => {
 
   const refreshUserInfo = useCallback(async () => {
     await loadUserInfo();
-    if (isAuthenticated) {
+    // Only refetch if query is active (user is authenticated)
+    if (isAuthenticated === true) {
       refetchProfile();
     }
   }, [isAuthenticated, refetchProfile]);

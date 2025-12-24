@@ -6,9 +6,15 @@ import { API_BASE_URL } from '../../utils/constants';
 const baseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
   prepareHeaders: async (headers: any) => {
-    const token = await AsyncStorage.getItem('authToken');
-    if (token) {
-      headers.set('authorization', `Bearer ${token}`);
+    try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      } else {
+        console.warn('[ChatAPI] No auth token found');
+      }
+    } catch (error) {
+      console.error('[ChatAPI] Error getting auth token:', error);
     }
     headers.set('Content-Type', 'application/json');
     return headers;

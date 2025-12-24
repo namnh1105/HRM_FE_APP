@@ -108,6 +108,13 @@ const Messages: React.FC = () => {
     const otherUser = getOtherParticipant(item);
     const hasUnread = (item.unreadCount || 0) > 0;
     
+    console.log('[Messages] Rendering chat item:', {
+      roomId: item.id,
+      unreadCount: item.unreadCount,
+      hasUnread,
+      lastMessage: item.lastMessage?.content,
+    });
+    
     return (
       <TouchableOpacity style={styles.chatItem} onPress={() => openChat(item)}>
         <View style={styles.avatarContainer}>
@@ -122,11 +129,11 @@ const Messages: React.FC = () => {
 
         <View style={styles.chatContent}>
           <View style={styles.chatHeader}>
-            <Text style={styles.chatName} numberOfLines={1}>
+            <Text style={[styles.chatName, hasUnread && styles.chatNameUnread]} numberOfLines={1}>
               {item.name || otherUser?.givenName || otherUser?.username || 'Unknown'}
             </Text>
             {item.lastMessage && (
-              <Text style={styles.chatTime}>
+              <Text style={[styles.chatTime, hasUnread && styles.chatTimeUnread]}>
                 {formatLastMessageTime(item.lastMessage.createdAt)}
               </Text>
             )}
@@ -213,6 +220,34 @@ const Messages: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <LoadingIndicator size="large" color="#007398" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Tin nhắn</Text>
+          <TouchableOpacity 
+            style={styles.notificationButton}
+            onPress={() => navigation.navigate('Notifications' as never)}
+          >
+            <Ionicons name="notifications-outline" size={26} color="#262626" />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="chatbubbles-outline" size={64} color="#999" />
+          <Text style={styles.emptyText}>Không thể tải tin nhắn</Text>
+          <Text style={styles.emptySubText}>{error}</Text>
         </View>
       </SafeAreaView>
     );
@@ -444,11 +479,19 @@ const styles = StyleSheet.create({
     color: '#262626',
     flex: 1,
   },
+  chatNameUnread: {
+    fontWeight: '700',
+    color: '#000000',
+  },
   chatTime: {
     fontSize: 12,
     color: '#8E8E8E',
     marginLeft: 8,
     fontWeight: '400',
+  },
+  chatTimeUnread: {
+    fontWeight: '600',
+    color: '#6B4CE6',
   },
   lastMessageContainer: {
     flexDirection: 'row',
@@ -459,10 +502,11 @@ const styles = StyleSheet.create({
     color: '#8E8E8E',
     flex: 1,
     lineHeight: 18,
+    fontWeight: '400',
   },
   lastMessageUnread: {
-    fontWeight: '600',
-    color: '#262626',
+    fontWeight: '700',
+    color: '#000000',
   },
   startChatText: {
     color: '#8E8E8E',

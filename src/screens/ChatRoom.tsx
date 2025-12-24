@@ -44,6 +44,22 @@ const ChatRoom: React.FC = () => {
   const [sendMessage, { isLoading: sending }] = useSendMessageMutation();
   const [markRoomAsRead] = useMarkRoomAsReadMutation();
   
+  // Safely get chat context - don't crash if not available
+  let chatContext;
+  try {
+    chatContext = useChat();
+  } catch (error) {
+    console.warn('[ChatRoom] ChatContext not available:', error);
+    chatContext = {
+      isConnected: false,
+      setCurrentOpenRoomId: () => {},
+      onNewMessage: () => {},
+      startTyping: () => {},
+      stopTyping: () => {},
+      markRoomAsRead: () => {},
+    };
+  }
+  
   const {
     isConnected,
     setCurrentOpenRoomId,
@@ -51,7 +67,7 @@ const ChatRoom: React.FC = () => {
     startTyping,
     stopTyping,
     markRoomAsRead: markRoomAsReadWs,
-  } = useChat();
+  } = chatContext;
 
   useEffect(() => {
     if (messagesData) {

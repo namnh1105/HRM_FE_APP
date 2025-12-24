@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import { logout } from '../store/slices/authSlice';
+import { performCompleteLogout } from '../store';
+import { getGlobalDisconnectSocket } from './ChatContext';
 
 interface GoogleUser {
   id: string;
@@ -70,14 +72,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleSignOut = async (): Promise<void> => {
     try {
-      // Clear AsyncStorage first
-      await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
+      console.log('[AuthContext] Starting sign out...');
+      // Clear local state first
+      setUser(null);
       // Dispatch logout action
       dispatch(logout());
-      // Clear local state
-      setUser(null);
+      // Get disconnect function and perform complete logout with cache reset and app reload
+      const disconnectSocket = getGlobalDisconnectSocket();
+      await performCompleteLogout(disconnectSocket || undefined);
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('[AuthContext] Sign out error:', error);
+      // Even if there's an error, try to clear local state
+      setUser(null);
+      dispatch(logout());
       throw error;
     }
   };

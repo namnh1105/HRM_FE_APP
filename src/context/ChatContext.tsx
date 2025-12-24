@@ -21,11 +21,17 @@ interface ChatContextType {
   onUserTyping: (callback: (data: any) => void) => void;
   onUserOnline: (callback: (data: any) => void) => void;
   onUserOffline: (callback: (data: any) => void) => void;
+  disconnectSocket: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 const SOCKET_URL = 'https://scrolla.bitoj.io.vn'; // Update with your backend URL
+
+// Global reference to disconnect function for use in logout
+let globalDisconnectSocket: (() => void) | null = null;
+
+export const getGlobalDisconnectSocket = () => globalDisconnectSocket;
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -40,12 +46,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userInfoStr = await AsyncStorage.getItem('userInfo');
         
         if (!token || !userInfoStr) {
-          console.log('No auth token or user info found');
+          console.log('[ChatContext] No auth token or user info found - skipping socket connection');
           return;
         }
 
         const userInfo = JSON.parse(userInfoStr);
         const userId = userInfo.id;
+        
+        if (!userId) {
+          console.log('[ChatContext] No userId found - skipping socket connection');
+          return;
+        }
+
+        console.log('[ChatContext] Initializing socket with userId:', userId);
 
         const newSocket = io(`${SOCKET_URL}/chat`, {
           transports: ['websocket'],
@@ -67,22 +80,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         newSocket.on('connect_error', (error) => {
-          console.error('Socket connection error:', error);
+          console.error('[ChatContext] Socket connection error:', error.message);
           setIsConnected(false);
         });
 
         newSocket.on('error', (error) => {
-          console.error('Socket error:', error);
+          console.error('[ChatContext] Socket error:', error);
         });
 
         socketRef.current = newSocket;
         setSocket(newSocket);
 
         return () => {
+          console.log('[ChatContext] Cleaning up socket connection');
           newSocket.close();
         };
       } catch (error) {
-        console.error('Error initializing socket:', error);
+        console.error('[ChatContext] Error initializing socket:', error);
+        setIsConnected(false);
       }
     };
 
@@ -190,6 +205,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const disconnectSocket = () => {
+    if (socketRef.current) {
+      console.log('[ChatContext] Manually disconnecting socket');
+      socketRef.current.close();
+      socketRef.current = null;
+      setSocket(null);
+      setIsConnected(false);
+    }
+  };
+
+  // Set global reference
+  useEffect(() => {
+    globalDisconnectSocket = disconnectSocket;
+    return () => {
+      globalDisconnectSocket = null;
+    };
+  }, []);
+
   return (
     <ChatContext.Provider
       value={{
@@ -210,6 +243,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         onUserTyping,
         onUserOnline,
         onUserOffline,
+        disconnectSocket,
       }}
     >
       {children}
@@ -224,3 +258,6 @@ export const useChat = () => {
   }
   return context;
 };
+
+// Alias for backward compatibility
+export const useChatSocket = useChat;
