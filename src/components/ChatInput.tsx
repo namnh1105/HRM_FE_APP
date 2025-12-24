@@ -37,13 +37,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
       {showAttachments && (
         <>
           <Pressable style={styles.iconButton}>
-            <Ionicons name="camera-outline" size={24} color="#0095F6" />
+            <Ionicons name="camera-outline" size={24} color="#6B4CE6" />
           </Pressable>
           <Pressable style={styles.iconButton}>
-            <Ionicons name="image-outline" size={24} color="#0095F6" />
+            <Ionicons name="image-outline" size={24} color="#6B4CE6" />
           </Pressable>
           <Pressable style={styles.iconButton}>
-            <Ionicons name="mic-outline" size={24} color="#0095F6" />
+            <Ionicons name="mic-outline" size={24} color="#6B4CE6" />
           </Pressable>
         </>
       )}
@@ -69,14 +69,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
           ]}
         >
           {sending ? (
-            <ActivityIndicator size="small" color="#0095F6" />
+            <ActivityIndicator size="small" color="#6B4CE6" />
           ) : (
-            <Ionicons name="send" size={22} color="#0095F6" />
+            <Ionicons name="send" size={22} color="#6B4CE6" />
           )}
         </Pressable>
       ) : showAttachments ? (
         <Pressable style={styles.iconButton}>
-          <Ionicons name="happy-outline" size={24} color="#0095F6" />
+          <Ionicons name="happy-outline" size={24} color="#6B4CE6" />
         </Pressable>
       ) : null}
     </View>

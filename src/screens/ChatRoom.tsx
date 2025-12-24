@@ -287,8 +287,8 @@ const ChatRoom: React.FC = () => {
 
       {/* Input Area */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
         <ChatInput
           value={messageText}
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   ownMessageBubble: {
-    backgroundColor: '#0095F6',
+    backgroundColor: '#6B4CE6',
     borderBottomRightRadius: 4,
   },
   otherMessageBubble: {
