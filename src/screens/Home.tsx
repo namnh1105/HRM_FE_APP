@@ -6,11 +6,12 @@ import {
   FlatList,
   Dimensions,
   StatusBar,
+  TouchableOpacity,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { Video } from '../types/api';
 import VideoCard from '../components/VideoCard';
-import { useVideoData, useVideoVisibility } from '../hooks';
+import { useVideoData, useVideoVisibility, FeedType } from '../hooks';
 import LoadingIndicator from '../components/LoadingIndicator';
 
 const { height: screenHeight } = Dimensions.get('window');
@@ -20,19 +21,31 @@ const adjustedHeight = screenHeight - TAB_BAR_HEIGHT;
 const Home: React.FC = () => {
   const flatListRef = useRef<FlatList>(null);
   const isFocused = useIsFocused();
+  const [feedType, setFeedType] = useState<FeedType>('forYou');
 
   const {
     videos,
     loading,
     loadingMore,
     handleLoadMore,
-  } = useVideoData();
+  } = useVideoData(feedType);
 
   const {
     currentIndex,
     viewabilityConfig,
     onViewableItemsChanged,
   } = useVideoVisibility();
+
+  // Scroll to top when switching tabs
+  const handleTabChange = (newFeedType: FeedType) => {
+    setFeedType(newFeedType);
+    // Small delay to ensure state is updated
+    setTimeout(() => {
+      if (flatListRef.current && videos.length > 0) {
+        flatListRef.current.scrollToIndex({ index: 0, animated: false });
+      }
+    }, 100);
+  };
 
   const renderVideo = ({ item, index }: { item: Video; index: number }) => (
     <VideoCard 
@@ -45,8 +58,14 @@ const Home: React.FC = () => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>Chưa có video nào</Text>
-      <Text style={styles.emptySubText}>Hãy thử làm mới trang</Text>
+      <Text style={styles.emptyText}>
+        {feedType === 'following' ? 'Chưa có video từ người bạn follow' : 'Chưa có video nào'}
+      </Text>
+      <Text style={styles.emptySubText}>
+        {feedType === 'following' 
+          ? 'Hãy follow người khác để xem video của họ' 
+          : 'Hãy thử làm mới trang'}
+      </Text>
     </View>
   );
 
@@ -63,11 +82,32 @@ const Home: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" hidden />
+      
+      {/* Tab Selector */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, feedType === 'forYou' && styles.activeTab]}
+          onPress={() => handleTabChange('forYou')}
+        >
+          <Text style={[styles.tabText, feedType === 'forYou' && styles.activeTabText]}>
+            Đề xuất
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, feedType === 'following' && styles.activeTab]}
+          onPress={() => handleTabChange('following')}
+        >
+          <Text style={[styles.tabText, feedType === 'following' && styles.activeTabText]}>
+            Đã follow
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         ref={flatListRef}
         data={videos}
         renderItem={renderVideo}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => `${feedType}-${item.id}`}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToInterval={adjustedHeight}
@@ -85,6 +125,10 @@ const Home: React.FC = () => {
         })}
         contentContainerStyle={styles.flatListContent}
         style={styles.flatList}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        initialNumToRender={1}
       />
       
       {loadingMore && (
@@ -100,6 +144,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  tabContainer: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    paddingHorizontal: 20,
+    gap: 20,
+  },
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#fff',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#999',
+  },
+  activeTabText: {
+    color: '#fff',
+    fontWeight: '600',
   },
   flatList: {
     flex: 1,

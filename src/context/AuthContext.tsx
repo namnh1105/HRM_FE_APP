@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import { logout } from '../store/slices/authSlice';
+import { performCompleteLogout } from '../store';
+import { getGlobalDisconnectSocket } from './ChatContext';
+import { RootState } from '../store';
 
 interface GoogleUser {
   id: string;
@@ -29,8 +32,39 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const dispatch = useDispatch();
+  const reduxAuth = useSelector((state: RootState) => state.auth);
   const [user, setUser] = useState<GoogleUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Sync with Redux store (but not during logout)
+  useEffect(() => {
+    if (isLoggingOut) {
+      console.log('[AuthContext] Skipping Redux sync during logout');
+      return;
+    }
+    
+    console.log('[AuthContext] Redux auth state changed:', {
+      isAuthenticated: reduxAuth.isAuthenticated,
+      hasUser: !!reduxAuth.user,
+      username: reduxAuth.user?.username,
+    });
+    
+    if (reduxAuth.isAuthenticated && reduxAuth.user) {
+      // Convert Redux user to GoogleUser format if needed
+      const googleUser: GoogleUser = {
+        id: reduxAuth.user.id,
+        email: '', // Redux user doesn't have email
+        name: reduxAuth.user.givenName + ' ' + reduxAuth.user.familyName,
+        picture: '', // Redux user doesn't have picture
+        given_name: reduxAuth.user.givenName,
+        family_name: reduxAuth.user.familyName,
+      };
+      setUser(googleUser);
+    } else {
+      setUser(null);
+    }
+  }, [reduxAuth.isAuthenticated, reduxAuth.user, isLoggingOut]);
 
   const { promptAsync } = useGoogleAuth({
     onSuccess: async (googleUser) => {
@@ -44,18 +78,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   });
 
-  // Check for existing user session on app start
+  // Check for existing user session on app start (still needed for initial load)
   useEffect(() => {
     const checkAuthState = async () => {
       try {
+        console.log('[AuthContext] Checking initial auth state...');
         const storedUser = await AsyncStorage.getItem('userInfo');
         const authToken = await AsyncStorage.getItem('authToken');
+        
+        console.log('[AuthContext] Initial check:', {
+          hasStoredUser: !!storedUser,
+          hasToken: !!authToken,
+        });
+        
         if (storedUser && authToken) {
           const userData: GoogleUser = JSON.parse(storedUser);
           setUser(userData);
+        } else {
+          setUser(null);
         }
       } catch (error) {
-        console.error('Error checking auth state:', error);
+        console.error('[AuthContext] Error checking auth state:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -70,15 +114,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const handleSignOut = async (): Promise<void> => {
     try {
-      // Clear AsyncStorage first
-      await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
-      // Dispatch logout action
+      console.log('[AuthContext] Starting sign out...');
+      
+      // Set logout flag to prevent Redux sync from restoring user
+      setIsLoggingOut(true);
+      
+      // 1. Dispatch logout action to Redux first
       dispatch(logout());
-      // Clear local state
+      
+      // 2. Clear local state
       setUser(null);
+      
+      // 3. Get disconnect function and perform complete logout
+      const disconnectSocket = getGlobalDisconnectSocket();
+      await performCompleteLogout(disconnectSocket || undefined);
+      
+      console.log('[AuthContext] Sign out completed successfully');
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('[AuthContext] Sign out error:', error);
+      // Even if there's an error, ensure state is cleared
+      setUser(null);
+      dispatch(logout());
       throw error;
+    } finally {
+      // Reset logout flag after a delay to allow state to settle
+      setTimeout(() => setIsLoggingOut(false), 500);
     }
   };
 

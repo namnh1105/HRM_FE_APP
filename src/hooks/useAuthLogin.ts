@@ -42,7 +42,7 @@ export const useAuthLogin = (navigation: any) => {
         const result = response.data as LoginResponse;
 
         if (result.success && result.data.accessToken) {
-          // Save to AsyncStorage
+          // Save to AsyncStorage first
           await saveAuthData(result.data.accessToken, result.data.user);
           
           // Update Redux state - this triggers RootNavigator
@@ -51,12 +51,20 @@ export const useAuthLogin = (navigation: any) => {
             user: result.data.user,
           }));
           
-          // Close modal
+          console.log('[useAuthLogin] Login successful, credentials saved');
+          
+          // Wait a bit for state to propagate
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Navigate back to main app
           Alert.alert('Đăng nhập thành công', 'Chào mừng bạn đã quay trở lại!', [
             {
               text: 'OK',
               onPress: () => {
-                navigation.goBack();
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'MainTabs' }],
+                });
               }
             },
           ]);

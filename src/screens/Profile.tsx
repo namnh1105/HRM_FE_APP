@@ -81,13 +81,15 @@ const Profile = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      refreshUserInfo();
-      if (activeTab === 'saved') {
-        refetchSavedVideos();
-      } else if (activeTab === 'drafts') {
-        loadDraftVideos();
+      if (isAuthenticated) {
+        refreshUserInfo();
+        if (activeTab === 'saved') {
+          refetchSavedVideos();
+        } else if (activeTab === 'drafts') {
+          loadDraftVideos();
+        }
       }
-    }, [refreshUserInfo, activeTab, refetchSavedVideos])
+    }, [refreshUserInfo, activeTab, refetchSavedVideos, isAuthenticated])
   );
 
   const loadDraftVideos = async () => {

@@ -8,14 +8,17 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNotifications } from '../hooks/useNotifications';
 import { Notification } from '../store/api/notificationApi';
 import { useNavigation } from '@react-navigation/native';
 
 const NotificationsScreen: React.FC = () => {
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification, refreshNotifications } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, refreshNotifications } =
     useNotifications();
   const navigation = useNavigation();
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
 
   const handleNotificationPress = async (notification: Notification) => {
     // Mark as read
@@ -27,18 +30,30 @@ const NotificationsScreen: React.FC = () => {
     if (notification.actionUrl) {
       const url = notification.actionUrl;
       
-      if (url.includes('/chat/')) {
-        const roomId = url.split('/chat/')[1];
-        navigation.navigate('ChatRoom' as never, { roomId } as never);
-      } else if (url.includes('/video/')) {
-        const videoId = url.split('/video/')[1]?.split('?')[0];
-        // Navigate to video detail screen
-        // navigation.navigate('VideoDetail', { videoId });
-      } else if (url.includes('/profile/')) {
-        const userId = url.split('/profile/')[1];
-        navigation.navigate('UserProfile' as never, { userId } as never);
-      }
+      // Close notifications screen first
+      navigation.goBack();
+      
+      // Then navigate to the target
+      setTimeout(() => {
+        if (url.includes('/chat/')) {
+          const roomId = url.split('/chat/')[1];
+          navigation.navigate('ChatRoom' as never, { roomId } as never);
+        } else if (url.includes('/video/')) {
+          const videoId = url.split('/video/')[1]?.split('?')[0];
+          // Navigate to video detail screen
+          // navigation.navigate('VideoDetail', { videoId });
+        } else if (url.includes('/profile/')) {
+          const userId = url.split('/profile/')[1];
+          navigation.navigate('UserProfile' as never, { userId } as never);
+        }
+      }, 100);
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshNotifications();
+    setIsRefreshing(false);
   };
 
   const handleDeleteNotification = async (notificationId: string) => {
@@ -119,19 +134,29 @@ const NotificationsScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Thông báo</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={() => markAllAsRead()} style={styles.markAllButton}>
-            <Text style={styles.markAllText}>Đánh dấu tất cả đã đọc</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.headerRight}>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={() => markAllAsRead()} style={styles.markAllButton}>
+              <Text style={styles.markAllText}>Đọc hết</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      {loading && notifications.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+      {notifications.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyIcon}>🔔</Text>
+          <Text style={styles.emptyText}>Chưa có thông báo nào</Text>
         </View>
       ) : (
         <FlatList
@@ -141,20 +166,14 @@ const NotificationsScreen: React.FC = () => {
           contentContainerStyle={styles.listContainer}
           refreshControl={
             <RefreshControl
-              refreshing={loading}
-              onRefresh={refreshNotifications}
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
               tintColor="#007AFF"
             />
           }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🔔</Text>
-              <Text style={styles.emptyText}>Chưa có thông báo nào</Text>
-            </View>
-          }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -167,23 +186,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
   headerTitle: {
-    fontSize: 24,
+    flex: 1,
+    fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  headerRight: {
+    width: 70,
+    alignItems: 'flex-end',
   },
   markAllButton: {
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#007AFF',
-    borderRadius: 6,
+    paddingHorizontal: 10,
   },
   markAllText: {
-    color: '#fff',
-    fontSize: 12,
+    color: '#007AFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   listContainer: {

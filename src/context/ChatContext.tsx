@@ -6,9 +6,12 @@ import { ChatMessage } from '../types/api';
 interface ChatContextType {
   socket: Socket | null;
   isConnected: boolean;
+  currentOpenRoomId: string | null;
+  setCurrentOpenRoomId: (roomId: string | null) => void;
   sendMessage: (data: { content: string; recipientId: string; roomId?: string }) => void;
   joinRoom: (roomId: string) => void;
   leaveRoom: (roomId: string) => void;
+  joinAllUserRooms: (roomIds: string[]) => void;
   markMessageAsRead: (messageId: string, roomId: string) => void;
   markRoomAsRead: (roomId: string) => void;
   startTyping: (roomId: string) => void;
@@ -18,15 +21,22 @@ interface ChatContextType {
   onUserTyping: (callback: (data: any) => void) => void;
   onUserOnline: (callback: (data: any) => void) => void;
   onUserOffline: (callback: (data: any) => void) => void;
+  disconnectSocket: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 const SOCKET_URL = 'https://scrolla.bitoj.io.vn'; // Update with your backend URL
 
+// Global reference to disconnect function for use in logout
+let globalDisconnectSocket: (() => void) | null = null;
+
+export const getGlobalDisconnectSocket = () => globalDisconnectSocket;
+
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [currentOpenRoomId, setCurrentOpenRoomId] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -36,12 +46,19 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userInfoStr = await AsyncStorage.getItem('userInfo');
         
         if (!token || !userInfoStr) {
-          console.log('No auth token or user info found');
+          console.log('[ChatContext] No auth token or user info found - skipping socket connection');
           return;
         }
 
         const userInfo = JSON.parse(userInfoStr);
         const userId = userInfo.id;
+        
+        if (!userId) {
+          console.log('[ChatContext] No userId found - skipping socket connection');
+          return;
+        }
+
+        console.log('[ChatContext] Initializing socket with userId:', userId);
 
         const newSocket = io(`${SOCKET_URL}/chat`, {
           transports: ['websocket'],
@@ -63,22 +80,24 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         newSocket.on('connect_error', (error) => {
-          console.error('Socket connection error:', error);
+          console.error('[ChatContext] Socket connection error:', error.message);
           setIsConnected(false);
         });
 
         newSocket.on('error', (error) => {
-          console.error('Socket error:', error);
+          console.error('[ChatContext] Socket error:', error);
         });
 
         socketRef.current = newSocket;
         setSocket(newSocket);
 
         return () => {
+          console.log('[ChatContext] Cleaning up socket connection');
           newSocket.close();
         };
       } catch (error) {
-        console.error('Error initializing socket:', error);
+        console.error('[ChatContext] Error initializing socket:', error);
+        setIsConnected(false);
       }
     };
 
@@ -103,6 +122,17 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const leaveRoom = (roomId: string) => {
     if (socketRef.current && isConnected) {
       socketRef.current.emit('leave_room', { roomId });
+    }
+  };
+
+  const joinAllUserRooms = (roomIds: string[]) => {
+    if (socketRef.current && isConnected) {
+      console.log('[ChatContext] Joining all user rooms:', roomIds);
+      roomIds.forEach(roomId => {
+        socketRef.current?.emit('join_room', { roomId });
+      });
+    } else {
+      console.log('[ChatContext] Cannot join rooms - socket not connected');
     }
   };
 
@@ -175,14 +205,35 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const disconnectSocket = () => {
+    if (socketRef.current) {
+      console.log('[ChatContext] Manually disconnecting socket');
+      socketRef.current.close();
+      socketRef.current = null;
+      setSocket(null);
+      setIsConnected(false);
+    }
+  };
+
+  // Set global reference
+  useEffect(() => {
+    globalDisconnectSocket = disconnectSocket;
+    return () => {
+      globalDisconnectSocket = null;
+    };
+  }, []);
+
   return (
     <ChatContext.Provider
       value={{
         socket,
         isConnected,
+        currentOpenRoomId,
+        setCurrentOpenRoomId,
         sendMessage,
         joinRoom,
         leaveRoom,
+        joinAllUserRooms,
         markMessageAsRead,
         markRoomAsRead,
         startTyping,
@@ -192,6 +243,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         onUserTyping,
         onUserOnline,
         onUserOffline,
+        disconnectSocket,
       }}
     >
       {children}
@@ -206,3 +258,6 @@ export const useChat = () => {
   }
   return context;
 };
+
+// Alias for backward compatibility
+export const useChatSocket = useChat;

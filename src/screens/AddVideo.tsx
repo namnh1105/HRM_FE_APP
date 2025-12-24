@@ -241,6 +241,46 @@ export default function AddVideo() {
     }
   };
 
+  const handlePickVideo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: true,
+        quality: 1,
+        videoMaxDuration: 60,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const video = result.assets[0];
+        
+        setIsLoading(true);
+        setLoadingMessage('Đang xử lý video...');
+        
+        // Generate thumbnail
+        setLoadingMessage('Đang tạo thumbnail...');
+        const thumb = await generateThumbnail(video.uri);
+        
+        setRecordedVideoUri(video.uri);
+        setThumbnailUri(thumb);
+        setIsLoading(false);
+        setShowCaptionInput(true);
+        
+        Toast.show({
+          type: 'success',
+          text1: 'Video đã được chọn',
+          text2: 'Thêm tiêu đề và hashtag',
+        });
+      }
+    } catch (error) {
+      console.error('Error picking video:', error);
+      setAlertTitle('Lỗi');
+      setAlertMessage('Không thể chọn video. Vui lòng thử lại');
+      setAlertType('error');
+      setAlertVisible(true);
+      setIsLoading(false);
+    }
+  };
+
   const handleHashtagChange = (text: string) => {
     setHashtags(text);
   };
@@ -438,8 +478,16 @@ export default function AddVideo() {
           </Pressable>
         </View>
 
-        {/* Record Button - Overlay on top */}
-        <View style={styles.shutterContainer}>
+        {/* Bottom Controls */}
+        <View style={styles.bottomControlsContainer}>
+          <TouchableOpacity 
+            style={styles.libraryButton}
+            onPress={handlePickVideo}
+          >
+            <Ionicons name="images" size={32} color="white" />
+            <Text style={styles.libraryButtonText}>Thư viện</Text>
+          </TouchableOpacity>
+
           <Pressable onPress={recordVideo}>
             {recording ? (
               <View style={styles.stopRecordButton}>
@@ -451,6 +499,8 @@ export default function AddVideo() {
               </View>
             )}
           </Pressable>
+
+          <View style={styles.placeholderRight} />
         </View>
       </View>
     );
@@ -642,6 +692,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     padding: 10,
     borderRadius: 25,
+  },
+  bottomControlsContainer: {
+    position: 'absolute',
+    bottom: 44,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 30,
+  },
+  libraryButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 70,
+  },
+  libraryButtonText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  placeholderRight: {
+    width: 70,
   },
   shutterContainer: {
     position: "absolute",

@@ -5,11 +5,31 @@ import { useGetUserRoomsQuery, useGetOrCreatePrivateRoomMutation } from '../stor
 import { useGetFollowingQuery } from '../store/api/followApi';
 import { ChatRoom, User } from '../types/api';
 import { RootState } from '../store';
+import { useChat } from '../context/ChatContext';
 
 export const useMessages = () => {
-  // Lấy userId từ Redux store
-  const userFromStore = useSelector((state: RootState) => state.auth.user);
+  // Lấy auth state và userId từ Redux store
+  const { user: userFromStore, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const [userId, setUserId] = useState<string | null>(userFromStore?.id || null);
+  
+  // Safely get chat context - don't throw error if not available
+  let chatContext;
+  try {
+    chatContext = useChat();
+  } catch (error) {
+    console.warn('[useMessages] ChatContext not available:', error);
+    chatContext = { socket: null, isConnected: false };
+  }
+  const { socket } = chatContext;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[useMessages] Auth state:', {
+      isAuthenticated,
+      userId: userFromStore?.id,
+      username: userFromStore?.username,
+    });
+  }, [isAuthenticated, userFromStore]);
   
   // Load user ID from storage nếu chưa có trong Redux
   useEffect(() => {
@@ -31,23 +51,54 @@ export const useMessages = () => {
     }
   }, [userFromStore]);
 
-  // RTK Query hooks
+  // RTK Query hooks - skip if not authenticated
   const { 
     data: roomsData, 
     isLoading: roomsLoading, 
     error: roomsError,
     refetch: refetchRooms,
-  } = useGetUserRoomsQuery();
+  } = useGetUserRoomsQuery(undefined, {
+    skip: !isAuthenticated || !userId,
+  });
   
   const { 
     data: followingData, 
     isLoading: followingLoading,
     error: followingError,
   } = useGetFollowingQuery(userId || '', {
-    skip: !userId,
+    skip: !isAuthenticated || !userId,
   });
   
   const [getOrCreatePrivateRoom] = useGetOrCreatePrivateRoomMutation();
+
+  // Listen to socket events for real-time updates
+  useEffect(() => {
+    if (!socket || !isAuthenticated) {
+      console.log('[useMessages] Socket listener not ready:', { socket: !!socket, isAuthenticated });
+      return;
+    }
+
+    const handleNewMessage = (message: any) => {
+      console.log('[useMessages] New message received:', {
+        roomId: message.roomId,
+        content: message.content.substring(0, 20),
+      });
+      
+      // Only refetch if query is active (not skipped)
+      if (isAuthenticated && userId) {
+        console.log('[useMessages] Calling refetchRooms...');
+        refetchRooms();
+      }
+    };
+
+    console.log('[useMessages] Setting up new_message listener');
+    socket.on('new_message', handleNewMessage);
+
+    return () => {
+      console.log('[useMessages] Cleaning up new_message listener');
+      socket.off('new_message', handleNewMessage);
+    };
+  }, [socket, isAuthenticated, userId, refetchRooms]);
 
   const extractUsersFromRooms = (rooms: ChatRoom[]): User[] => {
     const uniqueUsers = new Map<string, User>();
@@ -67,7 +118,18 @@ export const useMessages = () => {
   const allFollowing = followingData?.data?.following || extractUsersFromRooms(rooms);
   const following = allFollowing.filter(user => user.id !== userId);
   const loading = roomsLoading || followingLoading;
-  const error = roomsError || followingError;
+  
+  // Better error handling - only show error if authenticated
+  let errorMessage = null;
+  if (isAuthenticated && userId) {
+    if (roomsError) {
+      console.error('[useMessages] Rooms error:', roomsError);
+      errorMessage = 'Không thể tải danh sách tin nhắn';
+    } else if (followingError) {
+      console.error('[useMessages] Following error:', followingError);
+      // Don't show error for following list failure, it's not critical
+    }
+  }
 
   const createOrOpenChatWithUser = async (user: User): Promise<ChatRoom | null> => {
     try {
@@ -100,14 +162,17 @@ export const useMessages = () => {
   };
 
   const refreshRooms = () => {
-    refetchRooms();
+    // Only refetch if query is active (not skipped)
+    if (isAuthenticated && userId) {
+      refetchRooms();
+    }
   };
 
   return {
     rooms,
     following,
     loading,
-    error: error ? 'Failed to load data' : null,
+    error: errorMessage,
     createOrOpenChatWithUser,
     refreshRooms,
   };

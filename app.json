@@ -32,8 +32,10 @@
       "package": "com.scrolla.fe",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ]
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro"
@@ -49,6 +51,12 @@
       "expo-web-browser",
       "./plugins/withAndroidManifestFix",
       [
+        "expo-notifications",
+        {
+          "color": "#6B4CE6"
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "Ứng dụng cần quyền truy cập camera để quay video",
@@ -62,7 +70,8 @@
           "photosPermission": "Ứng dụng cần quyền truy cập thư viện ảnh để chọn thumbnail"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-video"
     ]
   }
 }

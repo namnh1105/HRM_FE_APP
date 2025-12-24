@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Updates } from 'expo-updates';
+import type { AppDispatch } from '../index';
 
 export interface UserInfo {
   id: string;
@@ -33,6 +33,9 @@ const authSlice = createSlice({
       state.user = action.payload.user;
       state.isAuthenticated = true;
       
+      console.log('[authSlice] setCredentials - isAuthenticated:', true);
+      console.log('[authSlice] User:', action.payload.user.username);
+      
       // Lưu vào AsyncStorage
       AsyncStorage.setItem('authToken', action.payload.accessToken);
       AsyncStorage.setItem('userInfo', JSON.stringify(action.payload.user));
@@ -54,6 +57,9 @@ const authSlice = createSlice({
       state.accessToken = action.payload.accessToken;
       state.user = action.payload.user;
       state.isAuthenticated = true;
+      
+      console.log('[authSlice] restoreAuth - isAuthenticated:', true);
+      console.log('[authSlice] Restored user:', action.payload.user.username);
     },
   },
 });
