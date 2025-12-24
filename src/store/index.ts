@@ -12,7 +12,6 @@ import { notificationApi } from './api/notificationApi';
 import { likeApi } from './api/likeApi';
 import { commentApi } from './api/commentApi';
 import authReducer, { restoreAuth } from './slices/authSlice';
-import * as Updates from 'expo-updates';
 
 export const store = configureStore({
   reducer: {
@@ -50,13 +49,27 @@ export type AppDispatch = typeof store.dispatch;
 // Initialize auth state from AsyncStorage
 export const initializeAuth = async () => {
   try {
+    console.log('[Store] Initializing auth from AsyncStorage...');
     const authToken = await AsyncStorage.getItem('authToken');
     const userInfo = await AsyncStorage.getItem('userInfo');
     
+    console.log('[Store] Auth data check:', {
+      hasToken: !!authToken,
+      hasUserInfo: !!userInfo,
+    });
+    
     if (authToken && userInfo) {
-      const user = JSON.parse(userInfo);
-      store.dispatch(restoreAuth({ accessToken: authToken, user }));
-      console.log('[Store] Auth restored from AsyncStorage');
+      try {
+        const user = JSON.parse(userInfo);
+        store.dispatch(restoreAuth({ accessToken: authToken, user }));
+        console.log('[Store] Auth restored from AsyncStorage for user:', user.username);
+      } catch (parseError) {
+        console.error('[Store] Error parsing user info:', parseError);
+        // Clear invalid data
+        await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
+      }
+    } else {
+      console.log('[Store] No auth data found - user is not authenticated');
     }
   } catch (error) {
     console.error('[Store] Error restoring auth:', error);
@@ -79,7 +92,7 @@ export const resetAllApiStates = () => {
   console.log('[Store] All RTK Query states have been reset');
 };
 
-// Perform complete logout with app reload
+// Perform complete logout without reload (let navigation handle it)
 export const performCompleteLogout = async (disconnectSocket?: () => void) => {
   try {
     console.log('[Store] Starting complete logout...');
@@ -90,21 +103,27 @@ export const performCompleteLogout = async (disconnectSocket?: () => void) => {
       disconnectSocket();
     }
     
-    // 2. Clear AsyncStorage
+    // 2. Clear AsyncStorage first and wait for completion
+    console.log('[Store] Clearing AsyncStorage...');
     await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
-    console.log('[Store] AsyncStorage cleared');
+    
+    // Verify AsyncStorage is cleared
+    const verifyToken = await AsyncStorage.getItem('authToken');
+    const verifyUser = await AsyncStorage.getItem('userInfo');
+    console.log('[Store] AsyncStorage cleared. Verification:', { 
+      tokenCleared: verifyToken === null, 
+      userCleared: verifyUser === null 
+    });
     
     // 3. Reset all RTK Query cache
     resetAllApiStates();
     
-    // 4. Reload app
-    console.log('[Store] Reloading app...');
-    if (Updates.reloadAsync) {
-      await Updates.reloadAsync();
-    }
+    console.log('[Store] Logout completed successfully. App state is now cleared.');
+    
+    // Note: We don't reload the app anymore, navigation will handle showing Login screen
   } catch (error) {
     console.error('[Store] Error during complete logout:', error);
-    // Fallback: still reset states even if reload fails
+    // Fallback: still reset states even if there's an error
     resetAllApiStates();
   }
 };
