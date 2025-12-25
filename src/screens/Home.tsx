@@ -41,8 +41,15 @@ const Home: React.FC = () => {
     setFeedType(newFeedType);
     // Small delay to ensure state is updated
     setTimeout(() => {
-      if (flatListRef.current && videos.length > 0) {
-        flatListRef.current.scrollToIndex({ index: 0, animated: false });
+      try {
+        if (flatListRef.current && videos.length > 0) {
+          flatListRef.current.scrollToIndex({ index: 0, animated: false });
+        }
+      } catch (error) {
+        // Fallback to scrollToOffset if scrollToIndex fails
+        if (flatListRef.current) {
+          flatListRef.current.scrollToOffset({ offset: 0, animated: false });
+        }
       }
     }, 100);
   };

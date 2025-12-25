@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -20,10 +20,23 @@ interface TabConfig {
   isSpecial?: boolean;
 }
 
+interface BottomNavbarProps extends BottomTabBarProps {
+  onTabChange?: (tabName: string) => void;
+}
+
 const { width } = Dimensions.get('window');
 
-const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
+const BottomNavbar: React.FC<BottomNavbarProps> = ({ state, descriptors, navigation, onTabChange }) => {
   const { requireAuth } = useRequireAuth();
+  
+  // Update parent component when tab changes
+  useEffect(() => {
+    if (onTabChange) {
+      const currentRoute = state.routes[state.index].name;
+      onTabChange(currentRoute);
+    }
+  }, [state.index, onTabChange]);
+  
   const tabs: TabConfig[] = [
     { id: 'Home', label: 'Trang chủ', icon: 'home', library: 'Ionicons' },
     { id: 'Search', label: 'Tìm kiếm', icon: 'search', library: 'Ionicons' },
