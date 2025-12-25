@@ -38,8 +38,8 @@ const SearchVideoViewer: React.FC = () => {
   } = useVideoVisibility();
 
   useEffect(() => {
-    // Scroll to initial video
-    if (flatListRef.current && initialIndex >= 0) {
+    // Scroll to initial video only if videos exist
+    if (flatListRef.current && videos.length > 0 && initialIndex >= 0 && initialIndex < videos.length) {
       setTimeout(() => {
         flatListRef.current?.scrollToIndex({ 
           index: initialIndex, 
