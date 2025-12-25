@@ -49,8 +49,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [shareCount, setShareCount] = useState(video.stats?.shares || 0);
   const [commentCount, setCommentCount] = useState(video.stats?.comments || 0);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
-
-  console.log(video.user);
   
   // Create video player với expo-video
   const player = useVideoPlayer(video.videoUrl, (player) => {

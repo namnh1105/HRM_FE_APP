@@ -135,10 +135,18 @@ const Search: React.FC = () => {
     return text.substring(0, maxLength) + '...';
   };
 
-  const renderVideoItem = ({ item }: { item: Video }) => {
+  const renderVideoItem = ({ item, index }: { item: Video; index: number }) => {
     return (
       <View style={styles.videoItem}>
-        <TouchableOpacity activeOpacity={0.8}>
+        <TouchableOpacity 
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('SearchVideoViewer', {
+            videos: videos,
+            initialIndex: index,
+            searchKeyword: activeSearch,
+            sortBy,
+          })}
+        >
           <Image 
             source={{ uri: item.thumbnailUrl || item.videoUrl }} 
             style={styles.thumbnail}
