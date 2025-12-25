@@ -33,6 +33,62 @@ interface VideoCardProps {
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
+// Floating Heart Component
+const FloatingHeart: React.FC<{ x: number; y: number }> = ({ x, y }) => {
+  const translateY = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Animate heart floating up
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: -200,
+        duration: 1500,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1.2,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 1500,
+        delay: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.floatingHeart,
+        {
+          left: x,
+          top: y,
+          transform: [
+            { translateY },
+            { scale },
+            { rotate: `${Math.random() * 40 - 20}deg` },
+          ],
+          opacity,
+        },
+      ]}
+    >
+      <Ionicons name="heart" size={60} color="#ff3040" />
+    </Animated.View>
+  );
+};
+
 const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, customHeight }) => {
   const navigation = useNavigation();
   const { requireAuth } = useRequireAuth();
@@ -49,6 +105,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [shareCount, setShareCount] = useState(video.stats?.shares || 0);
   const [commentCount, setCommentCount] = useState(video.stats?.comments || 0);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+  const [floatingHearts, setFloatingHearts] = useState<Array<{ id: number; x: number; y: number }>>([]);
   
   // Create video player với expo-video
   const player = useVideoPlayer(video.videoUrl, (player) => {
@@ -58,6 +115,8 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   
   const isMounted = useRef(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTapRef = useRef<number>(0);
+  const tapCountRef = useRef<number>(0);
   const followButtonScale = useRef(new Animated.Value(1)).current;
   const followButtonOpacity = useRef(new Animated.Value(1)).current;
   const checkmarkScale = useRef(new Animated.Value(0)).current;
@@ -174,6 +233,43 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       console.error('Error toggling playback:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300;
+    
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      // Double tap detected
+      tapCountRef.current += 1;
+      
+      // Create floating heart
+      const heartId = Date.now() + Math.random();
+      const x = Math.random() * (screenWidth * 0.6) + screenWidth * 0.2; // Random x in center area
+      const y = screenHeight * 0.4 + Math.random() * (screenHeight * 0.2); // Random y in middle area
+      
+      setFloatingHearts(prev => [...prev, { id: heartId, x, y }]);
+      
+      // Remove heart after animation
+      setTimeout(() => {
+        setFloatingHearts(prev => prev.filter(heart => heart.id !== heartId));
+      }, 1500);
+      
+      // Like video only if not already liked
+      if (!isLiked) {
+        handleLike();
+      }
+      
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+      setTimeout(() => {
+        if (Date.now() - lastTapRef.current >= DOUBLE_TAP_DELAY) {
+          // Single tap - toggle playback
+          togglePlayback();
+        }
+      }, DOUBLE_TAP_DELAY);
     }
   };
 
@@ -319,7 +415,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
       <TouchableOpacity 
         style={[styles.videoContainer, { height: videoHeight }]} 
         activeOpacity={1}
-        onPress={togglePlayback}
+        onPress={handleDoubleTap}
       >
         <VideoView
           player={player}
@@ -350,6 +446,11 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
             <Ionicons name="play" size={60} color="rgba(255,255,255,0.9)" />
           </View>
         )}
+        
+        {/* Floating Hearts */}
+        {floatingHearts.map(heart => (
+          <FloatingHeart key={heart.id} x={heart.x} y={heart.y} />
+        ))}
       </TouchableOpacity>
 
       {/* Caption - Bottom left */}
@@ -534,6 +635,10 @@ const styles = StyleSheet.create({
     height: 60,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  floatingHeart: {
+    position: 'absolute',
+    zIndex: 999,
   },
   bottomLeftContent: {
     position: 'absolute',

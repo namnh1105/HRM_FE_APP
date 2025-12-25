@@ -71,14 +71,7 @@ const MainTabs: React.FC = () => {
         headerShown: false,
         lazy: false,
       }}
-      tabBar={(props) => {
-        // Track current tab
-        const activeRoute = props.state.routes[props.state.index].name;
-        if (activeRoute !== currentTab) {
-          setCurrentTab(activeRoute);
-        }
-        return <BottomNavbar {...props} />;
-      }}
+      tabBar={(props) => <BottomNavbar {...props} onTabChange={setCurrentTab} />}
       initialRouteName="Home"
     >
       <Tab.Screen 
