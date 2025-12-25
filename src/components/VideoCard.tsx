@@ -47,7 +47,10 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   const [isSaved, setIsSaved] = useState(false);
   const [saveCount, setSaveCount] = useState(video.stats?.saves || 0);
   const [shareCount, setShareCount] = useState(video.stats?.shares || 0);
+  const [commentCount, setCommentCount] = useState(video.stats?.comments || 0);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+
+  console.log(video.user);
   
   // Create video player với expo-video
   const player = useVideoPlayer(video.videoUrl, (player) => {
@@ -87,7 +90,8 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
   // Update follow button visibility based on API response
   useEffect(() => {
     // Show button only if user is not following and it's not their own video
-    setShowFollowButton(!video.user.isFollowing);
+    const shouldShow = !video.user.isFollowing;
+    setShowFollowButton(shouldShow);
     setIsFollowing(video.user.isFollowing || false);
   }, [video.user.isFollowing]);
 
@@ -194,6 +198,12 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
 
     requireAuth(async () => {
       try {
+        // Call API first
+        await followUser(video.user.id).unwrap();
+        
+        // Update state immediately to prevent re-showing
+        setIsFollowing(true);
+        
         // Animation: + button scales down and fades
         Animated.parallel([
           Animated.timing(followButtonScale, {
@@ -239,10 +249,6 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
             }, 500);
           });
         });
-
-        // Call API
-        await followUser(video.user.id).unwrap();
-        setIsFollowing(true);
       } catch (error) {
         console.error('Follow error:', error);
         // Reset animation on error
@@ -250,6 +256,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
         followButtonOpacity.setValue(1);
         checkmarkScale.setValue(0);
         checkmarkOpacity.setValue(0);
+        setIsFollowing(false);
       }
     }, 'theo dõi người dùng');
   };
@@ -455,7 +462,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
           onPress={() => requireAuth(() => setCommentsModalVisible(true), 'bình luận')}
         >
           <Ionicons name="chatbubble-outline" size={26} color="#fff" />
-          <Text style={styles.actionText}>{formatNumber(video.stats?.comments || 0)}</Text>
+          <Text style={styles.actionText}>{formatNumber(commentCount)}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
@@ -478,6 +485,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, isActive, onLoadMore, cust
         visible={commentsModalVisible}
         onClose={() => setCommentsModalVisible(false)}
         videoId={video.id}
+        onCommentCountChange={setCommentCount}
       />
     </View>
   );

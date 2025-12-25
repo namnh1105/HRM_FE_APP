@@ -25,12 +25,14 @@ interface CommentsModalProps {
   visible: boolean;
   onClose: () => void;
   videoId: string;
+  onCommentCountChange?: (newCount: number) => void;
 }
 
 const CommentsModal: React.FC<CommentsModalProps> = ({
   visible,
   onClose,
   videoId,
+  onCommentCountChange,
 }) => {
   const navigation = useNavigation<any>();
   const [commentText, setCommentText] = useState('');
@@ -56,7 +58,12 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
 
       setCommentText('');
       setReplyingTo(null);
-      refetch();
+      const result = await refetch();
+      
+      // Cập nhật số lượng bình luận trong VideoCard
+      if (result.data && onCommentCountChange) {
+        onCommentCountChange(result.data.length);
+      }
     } catch (error) {
       console.error('Failed to create comment:', error);
     }
