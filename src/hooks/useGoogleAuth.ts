@@ -76,9 +76,10 @@ export const useGoogleAuth = ({ onSuccess, onError }: UseGoogleAuthProps = {}) =
           // Gọi API backend qua RTK Query
           const result = await googleAuth({ idToken }).unwrap();
 
-          if (result.success && result.data) {
-            Alert.alert("Thành công", `Xin chào: ${result.data.user.givenName || result.data.user.username}`);
-            onSuccess?.(result.data.user);
+          if ((result as any).success && (result as any).data) {
+            const data = (result as any).data;
+            Alert.alert("Thành công", `Xin chào: ${data.user.givenName || data.user.username}`);
+            onSuccess?.(data.user);
           }
         } catch (error: any) {
           const errorMsg = error.data?.message || error.message || "Lỗi khi xác thực với server";

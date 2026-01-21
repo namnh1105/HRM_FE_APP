@@ -4,13 +4,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import MainTabs from './MainTabs';
-import { SignUp, Login, UserProfile, ChatRoom, FollowList, AddVideo, UploadDraft, Notifications, NotificationSettings } from '../screens';
-import SearchVideoViewer from '../screens/SearchVideoViewer';
+import { SignUp, Login } from '../screens';
 
 const Stack = createNativeStackNavigator();
 
 const RootNavigator: React.FC = () => {
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const [isInitializing, setIsInitializing] = React.useState(true);
 
   React.useEffect(() => {
@@ -31,18 +30,10 @@ const RootNavigator: React.FC = () => {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {/* Main app stack - always available */}
+      {/* Main app stack */}
       <Stack.Screen name="MainTabs" component={MainTabs} />
       
-      {/* Stack screens - có nút back, không có bottom navbar */}
-      <Stack.Screen name="SearchVideoViewer" component={SearchVideoViewer} />
-      <Stack.Screen name="AddVideo" component={AddVideo} />
-      <Stack.Screen name="UploadDraft" component={UploadDraft} />
-      <Stack.Screen name="UserProfile" component={UserProfile} />
-      <Stack.Screen name="ChatRoom" component={ChatRoom} />
-      <Stack.Screen name="FollowList" component={FollowList} />
-      <Stack.Screen name="Notifications" component={Notifications} />
-      <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
+      {/* Auth screens */}
       <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="SignUp" component={SignUp} />
     </Stack.Navigator>

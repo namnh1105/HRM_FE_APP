@@ -1,228 +1,107 @@
-import React, { useRef, useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Dimensions,
-  StatusBar,
-  TouchableOpacity,
-} from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
-import { Video } from '../types/api';
-import VideoCard from '../components/VideoCard';
-import { useVideoData, useVideoVisibility, FeedType } from '../hooks';
-import LoadingIndicator from '../components/LoadingIndicator';
-
-const { height: screenHeight } = Dimensions.get('window');
-const TAB_BAR_HEIGHT = 80; // Approximate height of bottom tab bar
-const adjustedHeight = screenHeight - TAB_BAR_HEIGHT;
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 const Home: React.FC = () => {
-  const flatListRef = useRef<FlatList>(null);
-  const isFocused = useIsFocused();
-  const [feedType, setFeedType] = useState<FeedType>('forYou');
+  const navigation = useNavigation<any>();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
 
-  const {
-    videos,
-    loading,
-    loadingMore,
-    handleLoadMore,
-  } = useVideoData(feedType);
-
-  const {
-    currentIndex,
-    viewabilityConfig,
-    onViewableItemsChanged,
-  } = useVideoVisibility();
-
-  // Scroll to top when switching tabs
-  const handleTabChange = (newFeedType: FeedType) => {
-    setFeedType(newFeedType);
-    // Small delay to ensure state is updated
-    setTimeout(() => {
-      try {
-        if (flatListRef.current && videos.length > 0) {
-          flatListRef.current.scrollToIndex({ index: 0, animated: false });
-        }
-      } catch (error) {
-        // Fallback to scrollToOffset if scrollToIndex fails
-        if (flatListRef.current) {
-          flatListRef.current.scrollToOffset({ offset: 0, animated: false });
-        }
-      }
-    }, 100);
+  const handleLoginPress = () => {
+    navigation.navigate('Login');
   };
 
-  const renderVideo = ({ item, index }: { item: Video; index: number }) => (
-    <VideoCard 
-      video={item} 
-      isActive={index === currentIndex && isFocused} 
-      onLoadMore={index === videos.length - 2 ? handleLoadMore : undefined}
-      customHeight={adjustedHeight}
-    />
-  );
-
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>
-        {feedType === 'following' ? 'Chưa có video từ người bạn follow' : 'Chưa có video nào'}
-      </Text>
-      <Text style={styles.emptySubText}>
-        {feedType === 'following' 
-          ? 'Hãy follow người khác để xem video của họ' 
-          : 'Hãy thử làm mới trang'}
-      </Text>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
-        <LoadingIndicator size="large" color="#fff" />
-        <Text style={styles.loadingText}>Đang tải video...</Text>
-      </View>
-    );
-  }
+  const handleSignUpPress = () => {
+    navigation.navigate('SignUp');
+  };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" hidden />
+      <Text style={styles.title}>Welcome to App</Text>
       
-      {/* Tab Selector */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, feedType === 'forYou' && styles.activeTab]}
-          onPress={() => handleTabChange('forYou')}
-        >
-          <Text style={[styles.tabText, feedType === 'forYou' && styles.activeTabText]}>
-            Đề xuất
+      {isAuthenticated ? (
+        <View style={styles.userContainer}>
+          <Text style={styles.welcomeText}>
+            Hello, {user?.name || 'User'}!
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, feedType === 'following' && styles.activeTab]}
-          onPress={() => handleTabChange('following')}
-        >
-          <Text style={[styles.tabText, feedType === 'following' && styles.activeTabText]}>
-            Đã follow
+          <Text style={styles.subtitle}>
+            You are successfully logged in.
           </Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        ref={flatListRef}
-        data={videos}
-        renderItem={renderVideo}
-        keyExtractor={(item) => `${feedType}-${item.id}`}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToInterval={adjustedHeight}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.1}
-        ListEmptyComponent={renderEmpty}
-        getItemLayout={(data, index) => ({
-          length: adjustedHeight,
-          offset: adjustedHeight * index,
-          index,
-        })}
-        contentContainerStyle={styles.flatListContent}
-        style={styles.flatList}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        initialNumToRender={1}
-      />
-      
-      {loadingMore && (
-        <View style={styles.loadMoreContainer}>
-          <LoadingIndicator size="small" color="#fff" />
+        </View>
+      ) : (
+        <View style={styles.authContainer}>
+          <Text style={styles.subtitle}>
+            Please login or sign up to continue
+          </Text>
+          
+          <TouchableOpacity style={styles.button} onPress={handleLoginPress}>
+            <Text style={styles.buttonText}>Login</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.button, styles.signUpButton]} onPress={handleSignUpPress}>
+            <Text style={[styles.buttonText, styles.signUpButtonText]}>Sign Up</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-  },
-  tabContainer: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
-    paddingHorizontal: 20,
-    gap: 20,
+    padding: 20,
+    backgroundColor: '#f5f5f5',
   },
-  tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#333',
   },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#fff',
-  },
-  tabText: {
+  subtitle: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#999',
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
   },
-  activeTabText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  flatList: {
-    flex: 1,
-  },
-  flatListContent: {
-    flexGrow: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  userContainer: {
     alignItems: 'center',
-    backgroundColor: '#000',
   },
-  loadingText: {
-    fontSize: 16,
-    color: '#fff',
-    marginTop: 12,
-    fontWeight: '500',
-  },
-  loadMoreContainer: {
-    position: 'absolute',
-    bottom: 100,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-    height: screenHeight,
-  },
-  emptyText: {
+  welcomeText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
-    marginBottom: 8,
+    color: '#333',
+    marginBottom: 10,
   },
-  emptySubText: {
+  authContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  button: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    marginBottom: 15,
+    width: '100%',
+    maxWidth: 250,
+  },
+  signUpButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#007bff',
+  },
+  buttonText: {
+    color: '#fff',
     fontSize: 16,
-    color: '#ccc',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  signUpButtonText: {
+    color: '#007bff',
   },
 });
 

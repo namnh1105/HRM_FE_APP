@@ -5,8 +5,10 @@ import type { AppDispatch } from '../index';
 export interface UserInfo {
   id: string;
   username: string;
-  givenName: string;
-  familyName: string;
+  name?: string;
+  email?: string;
+  givenName?: string;
+  familyName?: string;
 }
 
 export interface AuthState {

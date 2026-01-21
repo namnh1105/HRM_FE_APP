@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useGoogleAuth } from '../hooks/useGoogleAuth';
 import { logout } from '../store/slices/authSlice';
 import { performCompleteLogout } from '../store';
-import { getGlobalDisconnectSocket } from './ChatContext';
 import { RootState } from '../store';
 
 interface GoogleUser {
@@ -125,9 +124,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // 2. Clear local state
       setUser(null);
       
-      // 3. Get disconnect function and perform complete logout
-      const disconnectSocket = getGlobalDisconnectSocket();
-      await performCompleteLogout(disconnectSocket || undefined);
+      // 3. Perform complete logout
+      await performCompleteLogout();
       
       console.log('[AuthContext] Sign out completed successfully');
     } catch (error) {
