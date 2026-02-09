@@ -4,7 +4,15 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import MainTabs from './MainTabs';
-import { SignUp, Login } from '../screens';
+import {
+  Login,
+  SignUp,
+  ForgotPassword,
+  CreateLeaveRequest,
+  AttendanceHistory,
+  Salary,
+  WorkSchedule,
+} from '../screens';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,19 +31,26 @@ const RootNavigator: React.FC = () => {
   if (isInitializing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#000" />
+        <ActivityIndicator size="large" color="#3B82F6" />
       </View>
     );
   }
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {/* Main app stack */}
+      {/* Main app with bottom tabs */}
       <Stack.Screen name="MainTabs" component={MainTabs} />
-      
+
       {/* Auth screens */}
       <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="SignUp" component={SignUp} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+
+      {/* HRM detail screens */}
+      <Stack.Screen name="CreateLeaveRequest" component={CreateLeaveRequest} />
+      <Stack.Screen name="AttendanceHistory" component={AttendanceHistory} />
+      <Stack.Screen name="Salary" component={Salary} />
+      <Stack.Screen name="WorkSchedule" component={WorkSchedule} />
     </Stack.Navigator>
   );
 };
@@ -45,7 +60,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
   },
 });
 

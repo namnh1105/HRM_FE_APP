@@ -137,6 +137,14 @@ const Login = ({ navigation }: any) => {
                 placeholderTextColor="#999"
               />
             </View>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ForgotPassword')}
+              activeOpacity={0.7}
+              style={styles.forgotPasswordBtn}
+            >
+              <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -282,6 +290,15 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: PRIMARY_BUTTON_COLOR,
+  },
+  forgotPasswordBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: PRIMARY_BUTTON_COLOR,
+    fontWeight: '600',
   },
   buttonText: { 
     color: "#fff", 

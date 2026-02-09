@@ -1,6 +1,12 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Profile } from '../screens';
+import {
+  Dashboard,
+  LeaveRequest,
+  Attendance,
+  Notifications,
+  Profile,
+} from '../screens';
 import BottomNavbar from '../components/BottomNavbar';
 
 const Tab = createBottomTabNavigator();
@@ -13,7 +19,10 @@ const MainTabs: React.FC = () => {
         headerShown: false,
       }}
     >
-      <Tab.Screen name="Home" component={Home} />
+      <Tab.Screen name="Dashboard" component={Dashboard} />
+      <Tab.Screen name="LeaveRequest" component={LeaveRequest} />
+      <Tab.Screen name="Attendance" component={Attendance} />
+      <Tab.Screen name="Notifications" component={Notifications} />
       <Tab.Screen name="Profile" component={Profile} />
     </Tab.Navigator>
   );

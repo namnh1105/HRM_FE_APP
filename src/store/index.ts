@@ -3,10 +3,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from './api/authApi';
 import { userApi } from './api/userApi';
 import authReducer, { restoreAuth } from './slices/authSlice';
+import attendanceReducer from './slices/attendanceSlice';
+import leaveReducer from './slices/leaveSlice';
+import notificationReducer from './slices/notificationSlice';
+import salaryReducer from './slices/salarySlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    attendance: attendanceReducer,
+    leave: leaveReducer,
+    notification: notificationReducer,
+    salary: salaryReducer,
     [authApi.reducerPath]: authApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
   },
