@@ -5,19 +5,27 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { useDashboard } from '../hooks/useDashboard';
 
 const Dashboard: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { todayRecord } = useSelector((state: RootState) => state.attendance);
-  const { unreadCount, notifications } = useSelector((state: RootState) => state.notification);
+  const {
+    user,
+    isAuthenticated,
+    todayRecord,
+    isAttendanceLoading,
+    unreadCount,
+    recentNotifications,
+    quickActions,
+    getStatusLabel,
+    getStatusColor,
+    getNotificationIcon,
+    navigateToLogin,
+    navigateToNotifications,
+  } = useDashboard();
 
   // If not authenticated, show login prompt
   if (!isAuthenticated) {
@@ -29,7 +37,7 @@ const Dashboard: React.FC = () => {
           <Text style={styles.authSubtitle}>Vui lòng đăng nhập để tiếp tục</Text>
           <TouchableOpacity
             style={styles.loginBtn}
-            onPress={() => navigation.navigate('Login')}
+            onPress={navigateToLogin}
           >
             <Text style={styles.loginBtnText}>Đăng nhập</Text>
           </TouchableOpacity>
@@ -37,76 +45,6 @@ const Dashboard: React.FC = () => {
       </SafeAreaView>
     );
   }
-
-  const getStatusLabel = () => {
-    switch (todayRecord.status) {
-      case 'checked_in':
-        return 'Đang làm việc';
-      case 'checked_out':
-        return 'Đã tan ca';
-      default:
-        return 'Chưa chấm công';
-    }
-  };
-
-  const getStatusColor = () => {
-    switch (todayRecord.status) {
-      case 'checked_in':
-        return '#10B981';
-      case 'checked_out':
-        return '#6B7280';
-      default:
-        return '#F59E0B';
-    }
-  };
-
-  const recentNotifications = notifications.filter((n) => !n.isRead).slice(0, 3);
-
-  const quickActions = [
-    {
-      icon: 'finger-print' as const,
-      label: 'Chấm công',
-      color: '#3B82F6',
-      bg: '#EFF6FF',
-      onPress: () => navigation.navigate('Attendance'),
-    },
-    {
-      icon: 'document-text' as const,
-      label: 'Xin nghỉ',
-      color: '#8B5CF6',
-      bg: '#F5F3FF',
-      onPress: () => navigation.navigate('CreateLeaveRequest'),
-    },
-    {
-      icon: 'wallet' as const,
-      label: 'Xem lương',
-      color: '#10B981',
-      bg: '#ECFDF5',
-      onPress: () => navigation.navigate('Salary'),
-    },
-    {
-      icon: 'calendar' as const,
-      label: 'Lịch làm việc',
-      color: '#F59E0B',
-      bg: '#FFFBEB',
-      onPress: () => navigation.navigate('WorkSchedule'),
-    },
-  ];
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'attendance':
-        return 'time';
-      case 'leave':
-        return 'document-text';
-      case 'salary':
-        return 'wallet';
-      case 'hr':
-        return 'people';
-      default:
-        return 'notifications';
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -119,7 +57,7 @@ const Dashboard: React.FC = () => {
           </View>
           <TouchableOpacity
             style={styles.notifBtn}
-            onPress={() => navigation.navigate('Notifications')}
+            onPress={navigateToNotifications}
           >
             <Ionicons name="notifications-outline" size={24} color="#1E293B" />
             {unreadCount > 0 && (
@@ -140,12 +78,15 @@ const Dashboard: React.FC = () => {
               <Text style={styles.statusBadgeText}>{getStatusLabel()}</Text>
             </View>
           </View>
+          {isAttendanceLoading ? (
+            <ActivityIndicator size="small" color="#3B82F6" style={{ paddingVertical: 16 }} />
+          ) : (
           <View style={styles.statusRow}>
             <View style={styles.statusItem}>
               <Ionicons name="log-in-outline" size={20} color="#3B82F6" />
               <Text style={styles.statusLabel}>Vào</Text>
               <Text style={styles.statusValue}>
-                {todayRecord.checkInTime || '--:--'}
+                {todayRecord?.check_in_time || '--:--'}
               </Text>
             </View>
             <View style={styles.statusDivider} />
@@ -153,7 +94,7 @@ const Dashboard: React.FC = () => {
               <Ionicons name="log-out-outline" size={20} color="#EF4444" />
               <Text style={styles.statusLabel}>Ra</Text>
               <Text style={styles.statusValue}>
-                {todayRecord.checkOutTime || '--:--'}
+                {todayRecord?.check_out_time || '--:--'}
               </Text>
             </View>
             <View style={styles.statusDivider} />
@@ -161,12 +102,13 @@ const Dashboard: React.FC = () => {
               <Ionicons name="time-outline" size={20} color="#10B981" />
               <Text style={styles.statusLabel}>Giờ làm</Text>
               <Text style={styles.statusValue}>
-                {todayRecord.workHours != null
-                  ? `${todayRecord.workHours}h`
+                {todayRecord?.working_hours != null
+                  ? `${todayRecord.working_hours}h`
                   : '--'}
               </Text>
             </View>
           </View>
+          )}
         </View>
 
         {/* Quick Actions */}
@@ -190,7 +132,7 @@ const Dashboard: React.FC = () => {
         {/* Recent Notifications */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Thông báo mới</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+          <TouchableOpacity onPress={navigateToNotifications}>
             <Text style={styles.seeAll}>Xem tất cả</Text>
           </TouchableOpacity>
         </View>
@@ -205,7 +147,7 @@ const Dashboard: React.FC = () => {
             <TouchableOpacity
               key={notif.id}
               style={styles.notifCard}
-              onPress={() => navigation.navigate('Notifications')}
+              onPress={navigateToNotifications}
               activeOpacity={0.7}
             >
               <View style={styles.notifIcon}>

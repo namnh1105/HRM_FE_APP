@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -8,41 +8,21 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useForgotPassword } from '../hooks/useForgotPassword';
 
 const ForgotPassword: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  const handleSubmit = () => {
-    if (!email.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập email hoặc số điện thoại.');
-      return;
-    }
-    // Mock submission
-    setIsSubmitted(true);
-  };
+  const {
+    email,
+    setEmail,
+    isSubmitted,
+    fadeAnim,
+    slideAnim,
+    handleSubmit,
+    goBack,
+  } = useForgotPassword(navigation);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,7 +33,7 @@ const ForgotPassword: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Back */}
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => navigation.goBack()}
+          onPress={goBack}
           activeOpacity={0.7}
         >
           <Ionicons name="arrow-back" size={28} color="#1E293B" />
@@ -108,7 +88,7 @@ const ForgotPassword: React.FC<{ navigation: any }> = ({ navigation }) => {
               </Text>
               <TouchableOpacity
                 style={[styles.submitBtn, { backgroundColor: '#10B981' }]}
-                onPress={() => navigation.goBack()}
+                onPress={goBack}
                 activeOpacity={0.8}
               >
                 <Text style={styles.submitText}>Quay lại đăng nhập</Text>

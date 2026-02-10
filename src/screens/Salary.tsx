@@ -5,38 +5,57 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
-import type { SalaryDetail } from '../types/hrm';
-
-const formatVND = (amount: number) =>
-  amount.toLocaleString('vi-VN') + ' ₫';
+import { useSalary, formatVND } from '../hooks/useSalary';
 
 const Salary: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const { salaryHistory } = useSelector((state: RootState) => state.salary);
-  const [selectedIndex, setSelectedIndex] = React.useState(0);
-
-  const selected: SalaryDetail | undefined = salaryHistory[selectedIndex];
-
-  const monthLabel = (s: SalaryDetail) =>
-    `Tháng ${String(s.month).padStart(2, '0')}/${s.year}`;
+  const {
+    salaryHistory,
+    isLoading,
+    isError,
+    selectedIndex,
+    setSelectedIndex,
+    selected,
+    monthLabel,
+    goBack,
+  } = useSalary();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Lương & phúc lợi</Text>
         <View style={{ width: 40 }} />
       </View>
 
+      {isLoading && (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Đang tải dữ liệu lương...</Text>
+        </View>
+      )}
+
+      {isError && (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>Không thể tải dữ liệu lương. Vui lòng thử lại.</Text>
+        </View>
+      )}
+
+      {!isLoading && !isError && salaryHistory.length === 0 && (
+        <View style={styles.centered}>
+          <Ionicons name="document-text-outline" size={48} color="#94A3B8" />
+          <Text style={styles.emptyText}>Chưa có dữ liệu lương.</Text>
+        </View>
+      )}
+
+      {!isLoading && !isError && salaryHistory.length > 0 && (
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Month Selector */}
         <ScrollView
@@ -67,10 +86,10 @@ const Salary: React.FC = () => {
             {/* Net Salary Card */}
             <View style={styles.netCard}>
               <Text style={styles.netLabel}>Lương thực nhận</Text>
-              <Text style={styles.netValue}>{formatVND(selected.netSalary)}</Text>
-              {selected.paidDate && (
+              <Text style={styles.netValue}>{formatVND(selected.net_salary)}</Text>
+              {selected.payment_date && (
                 <Text style={styles.paidDate}>
-                  Ngày trả: {new Date(selected.paidDate).toLocaleDateString('vi-VN')}
+                  Ngày trả: {new Date(selected.payment_date).toLocaleDateString('vi-VN')}
                 </Text>
               )}
             </View>
@@ -78,23 +97,25 @@ const Salary: React.FC = () => {
             {/* Breakdown */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Thu nhập</Text>
-              <DetailRow label="Lương cơ bản" value={selected.baseSalary} color="#1E293B" />
+              <DetailRow label="Lương cơ bản" value={selected.base_salary} color="#1E293B" />
               <DetailRow label="Phụ cấp" value={selected.allowance} color="#10B981" />
-              <DetailRow label="Làm thêm giờ" value={selected.overtime} color="#3B82F6" />
+              <DetailRow label="Làm thêm giờ" value={selected.overtime_pay} color="#3B82F6" />
               <DetailRow label="Thưởng" value={selected.bonus} color="#8B5CF6" />
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Khấu trừ</Text>
-              <DetailRow label="Khấu trừ khác" value={-selected.deduction} color="#EF4444" />
-              <DetailRow label="Bảo hiểm" value={-selected.insurance} color="#EF4444" />
-              <DetailRow label="Thuế TNCN" value={-selected.tax} color="#EF4444" />
+              <DetailRow label="BHXH" value={-selected.social_insurance} color="#EF4444" />
+              <DetailRow label="BHYT" value={-selected.health_insurance} color="#EF4444" />
+              <DetailRow label="BHTN" value={-selected.unemployment_insurance} color="#EF4444" />
+              <DetailRow label="Thuế TNCN" value={-selected.personal_income_tax} color="#EF4444" />
+              <DetailRow label="Khấu trừ khác" value={-(selected.total_deductions - selected.social_insurance - selected.health_insurance - selected.unemployment_insurance - selected.personal_income_tax)} color="#EF4444" />
             </View>
 
             {/* Total */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tổng thực nhận</Text>
-              <Text style={styles.totalValue}>{formatVND(selected.netSalary)}</Text>
+              <Text style={styles.totalValue}>{formatVND(selected.net_salary)}</Text>
             </View>
 
             {/* Download */}
@@ -107,6 +128,7 @@ const Salary: React.FC = () => {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -277,6 +299,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3B82F6',
     marginLeft: 8,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 80,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#94A3B8',
   },
 });
 

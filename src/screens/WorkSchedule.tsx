@@ -5,82 +5,70 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-
-// Mock shift data
-const SHIFTS = [
-  { id: '1', name: 'Ca sáng', startTime: '08:00', endTime: '12:00', color: '#3B82F6' },
-  { id: '2', name: 'Ca chiều', startTime: '13:00', endTime: '17:00', color: '#8B5CF6' },
-  { id: '3', name: 'Ca tối', startTime: '18:00', endTime: '22:00', color: '#F59E0B' },
-];
-
-// Mock weekly schedule
-const getWeekSchedule = () => {
-  const days = [];
-  const today = new Date();
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
-
-  const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
-
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(startOfWeek);
-    date.setDate(startOfWeek.getDate() + i);
-    const isWeekend = i >= 5;
-    const isToday =
-      date.toISOString().split('T')[0] === today.toISOString().split('T')[0];
-
-    days.push({
-      dayName: dayNames[i],
-      date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-      fullDate: date.toISOString().split('T')[0],
-      isWeekend,
-      isToday,
-      shift: isWeekend
-        ? null
-        : { name: 'Ca sáng + chiều', time: '08:00 - 17:00', color: '#3B82F6' },
-    });
-  }
-  return days;
-};
-
-// Mock upcoming holidays
-const HOLIDAYS = [
-  { date: '30/04/2026', name: 'Ngày Giải phóng miền Nam' },
-  { date: '01/05/2026', name: 'Quốc tế Lao động' },
-  { date: '02/09/2026', name: 'Quốc khánh' },
-];
+import {
+  useWorkSchedule,
+  formatShiftTime,
+  getShiftColor,
+  HOLIDAYS,
+} from '../hooks/useWorkSchedule';
 
 const WorkSchedule: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const weekSchedule = getWeekSchedule();
+  const {
+    shifts,
+    isLoading,
+    error,
+    refetch,
+    weekSchedule,
+    goBack,
+  } = useWorkSchedule();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Lịch làm việc</Text>
         <View style={{ width: 40 }} />
       </View>
 
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Đang tải lịch làm việc...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>Không thể tải dữ liệu</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={refetch}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Shifts Legend */}
         <Text style={styles.sectionTitle}>Ca làm việc</Text>
         <View style={styles.shiftsRow}>
-          {SHIFTS.map((shift) => (
+          {shifts.map((shift, index) => (
             <View key={shift.id} style={styles.shiftCard}>
-              <View style={[styles.shiftDot, { backgroundColor: shift.color }]} />
-              <View>
+              <View style={[styles.shiftDot, { backgroundColor: getShiftColor(index) }]} />
+              <View style={{ flex: 1 }}>
                 <Text style={styles.shiftName}>{shift.name}</Text>
                 <Text style={styles.shiftTime}>
-                  {shift.startTime} - {shift.endTime}
+                  {formatShiftTime(shift.start_time)} - {formatShiftTime(shift.end_time)}
                 </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={styles.shiftHours}>{shift.total_hours}h</Text>
+                {shift.is_night_shift && (
+                  <Ionicons name="moon" size={14} color="#8B5CF6" />
+                )}
               </View>
             </View>
           ))}
@@ -141,6 +129,7 @@ const WorkSchedule: React.FC = () => {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -178,6 +167,36 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 12,
   },
+  // Loading / Error
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 80,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  retryBtn: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#3B82F6',
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
   // Shifts
   shiftsRow: {
     paddingHorizontal: 20,
@@ -210,6 +229,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     marginTop: 2,
+  },
+  shiftHours: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
   },
   // Week
   weekCard: {

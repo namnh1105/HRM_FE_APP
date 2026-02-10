@@ -1,41 +1,27 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
-import type { AttendanceRecord } from '../types/hrm';
+import { useAttendanceHistory } from '../hooks/useAttendanceHistory';
+import type { AttendanceRecord } from '../types/attendance';
 
 const AttendanceHistory: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const { history } = useSelector((state: RootState) => state.attendance);
-
-  const getStatusInfo = (status: string) => {
-    switch (status) {
-      case 'checked_out':
-        return { label: 'Hoàn thành', color: '#10B981', bg: '#ECFDF5' };
-      case 'checked_in':
-        return { label: 'Đang làm', color: '#3B82F6', bg: '#EFF6FF' };
-      default:
-        return { label: 'Chưa chấm', color: '#F59E0B', bg: '#FEF3C7' };
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    const dayName = dayNames[date.getDay()];
-    return {
-      dayName,
-      day: String(date.getDate()).padStart(2, '0'),
-      month: String(date.getMonth() + 1).padStart(2, '0'),
-    };
-  };
+  const {
+    history,
+    isLoading,
+    isError,
+    refetch,
+    getStatusInfo,
+    formatDate,
+    presentCount,
+    totalHours,
+    absentCount,
+    goBack,
+  } = useAttendanceHistory();
 
   const renderItem = ({ item }: { item: AttendanceRecord }) => {
-    const statusInfo = getStatusInfo(item.status);
-    const dateInfo = formatDate(item.date);
+    const statusInfo = getStatusInfo(item);
+    const dateInfo = formatDate(item.work_date);
 
     return (
       <View style={styles.card}>
@@ -47,18 +33,18 @@ const AttendanceHistory: React.FC = () => {
         <View style={styles.info}>
           <View style={styles.timeRow}>
             <Ionicons name="log-in-outline" size={16} color="#3B82F6" />
-            <Text style={styles.timeText}>{item.checkInTime || '--:--'}</Text>
+            <Text style={styles.timeText}>{item.check_in_time || '--:--'}</Text>
             <Ionicons name="arrow-forward" size={14} color="#CBD5E1" style={{ marginHorizontal: 6 }} />
             <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-            <Text style={styles.timeText}>{item.checkOutTime || '--:--'}</Text>
+            <Text style={styles.timeText}>{item.check_out_time || '--:--'}</Text>
           </View>
           <Text style={styles.hoursText}>
-            {item.workHours != null ? `${item.workHours} giờ làm việc` : 'Chưa có dữ liệu'}
+            {item.working_hours != null ? `${item.working_hours} giờ làm việc` : 'Chưa có dữ liệu'}
           </Text>
-          {item.location && (
+          {item.check_in_location && (
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={12} color="#94A3B8" />
-              <Text style={styles.locationText}>{item.location}</Text>
+              <Text style={styles.locationText}>{item.check_in_location}</Text>
             </View>
           )}
         </View>
@@ -75,7 +61,7 @@ const AttendanceHistory: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Lịch sử chấm công</Text>
@@ -86,32 +72,47 @@ const AttendanceHistory: React.FC = () => {
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
           <Text style={styles.summaryValue}>
-            {history.filter((r) => r.status === 'checked_out').length}
+            {presentCount}
           </Text>
           <Text style={styles.summaryLabel}>Ngày đi làm</Text>
         </View>
         <View style={styles.summaryCard}>
           <Text style={[styles.summaryValue, { color: '#10B981' }]}>
-            {history.reduce((sum, r) => sum + (r.workHours || 0), 0).toFixed(1)}h
+            {totalHours}h
           </Text>
           <Text style={styles.summaryLabel}>Tổng giờ</Text>
         </View>
         <View style={styles.summaryCard}>
           <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>
-            {history.filter((r) => r.status === 'not_checked').length}
+            {absentCount}
           </Text>
           <Text style={styles.summaryLabel}>Chưa chấm</Text>
         </View>
       </View>
 
       {/* List */}
-      <FlatList
-        data={history}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>Không thể tải dữ liệu</Text>
+          <TouchableOpacity onPress={refetch} style={styles.retryBtn}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={history}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -240,6 +241,35 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  retryBtn: {
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: '#3B82F6',
+    borderRadius: 10,
+  },
+  retryText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 

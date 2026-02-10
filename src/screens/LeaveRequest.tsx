@@ -5,28 +5,37 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
-import { setFilterStatus } from '../store/slices/leaveSlice';
-import type { LeaveRequest, LeaveStatus } from '../types/hrm';
-import { LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS } from '../types/hrm';
+import { useLeaveRequests } from '../hooks/useLeaveRequests';
+import type { LeaveRequest, LeaveStatus } from '../types/leave';
+import { LEAVE_TYPE_LABELS, LEAVE_STATUS_LABELS } from '../types/leave';
 
 const FILTERS: { label: string; value: LeaveStatus | 'all' }[] = [
   { label: 'Tất cả', value: 'all' },
-  { label: 'Chờ duyệt', value: 'pending' },
-  { label: 'Đã duyệt', value: 'approved' },
-  { label: 'Từ chối', value: 'rejected' },
+  { label: 'Chờ duyệt', value: 'PENDING' },
+  { label: 'Đã duyệt', value: 'APPROVED' },
+  { label: 'Từ chối', value: 'REJECTED' },
 ];
 
 const LeaveRequestScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { requests, filterStatus } = useSelector((state: RootState) => state.leave);
+  const {
+    isAuthenticated,
+    filterStatus,
+    setFilterStatus,
+    filteredRequests,
+    isLoading,
+    isError,
+    refetch,
+    getStatusColor,
+    getTypeIcon,
+    formatDate,
+    handleCancel,
+    navigateToCreate,
+    navigateToLogin,
+  } = useLeaveRequests();
 
   if (!isAuthenticated) {
     return (
@@ -36,7 +45,7 @@ const LeaveRequestScreen: React.FC = () => {
           <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
           <TouchableOpacity
             style={styles.loginBtn}
-            onPress={() => navigation.navigate('Login')}
+            onPress={navigateToLogin}
           >
             <Text style={styles.loginBtnText}>Đăng nhập</Text>
           </TouchableOpacity>
@@ -44,45 +53,6 @@ const LeaveRequestScreen: React.FC = () => {
       </SafeAreaView>
     );
   }
-
-  const filteredRequests =
-    filterStatus === 'all'
-      ? requests
-      : requests.filter((r) => r.status === filterStatus);
-
-  const getStatusColor = (status: LeaveStatus) => {
-    switch (status) {
-      case 'pending':
-        return { bg: '#FEF3C7', text: '#D97706' };
-      case 'approved':
-        return { bg: '#ECFDF5', text: '#10B981' };
-      case 'rejected':
-        return { bg: '#FEE2E2', text: '#EF4444' };
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'annual_leave':
-        return 'sunny';
-      case 'sick_leave':
-        return 'medkit';
-      case 'business_trip':
-        return 'airplane';
-      case 'overtime':
-        return 'time';
-      default:
-        return 'document-text';
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
 
   const renderItem = ({ item }: { item: LeaveRequest }) => {
     const statusColor = getStatusColor(item.status);
@@ -92,9 +62,9 @@ const LeaveRequestScreen: React.FC = () => {
         <View style={styles.cardHeader}>
           <View style={styles.typeRow}>
             <View style={styles.typeIcon}>
-              <Ionicons name={getTypeIcon(item.type) as any} size={18} color="#3B82F6" />
+              <Ionicons name={getTypeIcon(item.leave_type) as any} size={18} color="#3B82F6" />
             </View>
-            <Text style={styles.typeName}>{LEAVE_TYPE_LABELS[item.type]}</Text>
+            <Text style={styles.typeName}>{LEAVE_TYPE_LABELS[item.leave_type]}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
             <Text style={[styles.statusText, { color: statusColor.text }]}>
@@ -106,8 +76,8 @@ const LeaveRequestScreen: React.FC = () => {
         <View style={styles.dateRow}>
           <Ionicons name="calendar-outline" size={14} color="#94A3B8" />
           <Text style={styles.dateText}>
-            {formatDate(item.startDate)}
-            {item.startDate !== item.endDate && ` → ${formatDate(item.endDate)}`}
+            {formatDate(item.start_date)}
+            {item.start_date !== item.end_date && ` → ${formatDate(item.end_date)}`}
           </Text>
         </View>
 
@@ -115,15 +85,56 @@ const LeaveRequestScreen: React.FC = () => {
           {item.reason}
         </Text>
 
-        {item.approvedBy && (
-          <Text style={styles.approver}>Người duyệt: {item.approvedBy}</Text>
+        {item.approver_name && (
+          <Text style={styles.approver}>Người duyệt: {item.approver_name}</Text>
         )}
-        {item.rejectedReason && (
-          <Text style={styles.rejectedReason}>Lý do: {item.rejectedReason}</Text>
+        {item.approver_comment && (
+          <Text style={styles.rejectedReason}>Nhận xét: {item.approver_comment}</Text>
+        )}
+
+        {item.status === 'PENDING' && (
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={() => handleCancel(item.id)}
+          >
+            <Ionicons name="close-circle-outline" size={16} color="#EF4444" />
+            <Text style={styles.cancelBtnText}>Hủy đơn</Text>
+          </TouchableOpacity>
         )}
       </View>
     );
   };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Đơn từ</Text>
+        </View>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Đang tải...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Đơn từ</Text>
+        </View>
+        <View style={styles.centered}>
+          <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>Không thể tải dữ liệu</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={refetch}>
+            <Text style={styles.retryBtnText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -132,7 +143,7 @@ const LeaveRequestScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Đơn từ</Text>
         <TouchableOpacity
           style={styles.addBtn}
-          onPress={() => navigation.navigate('CreateLeaveRequest')}
+          onPress={navigateToCreate}
         >
           <Ionicons name="add" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -147,7 +158,7 @@ const LeaveRequestScreen: React.FC = () => {
               styles.filterChip,
               filterStatus === f.value && styles.filterChipActive,
             ]}
-            onPress={() => dispatch(setFilterStatus(f.value))}
+            onPress={() => setFilterStatus(f.value)}
           >
             <Text
               style={[
@@ -228,6 +239,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Loading / Error
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 12,
+  },
+  errorText: {
+    fontSize: 15,
+    color: '#EF4444',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  retryBtn: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+  },
+  retryBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Filters
   filterRow: {
@@ -324,6 +363,22 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  cancelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
+  },
+  cancelBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginLeft: 4,
   },
   // Empty
   empty: {

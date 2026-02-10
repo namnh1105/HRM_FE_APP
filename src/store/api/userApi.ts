@@ -1,23 +1,10 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQuery } from './baseQuery';
 import { ApiResponse, User, VideoListData } from '../../types/api';
-import { API_BASE_URL } from '../../utils/constants';
+import { UserProfileData } from '../../types/user';
 
-const baseQuery = fetchBaseQuery({
-  baseUrl: API_BASE_URL,
-  prepareHeaders: async (headers: any) => {
-    const token = await AsyncStorage.getItem('authToken');
-    if (token) {
-      headers.set('authorization', `Bearer ${token}`);
-    }
-    headers.set('Content-Type', 'application/json');
-    return headers;
-  },
-});
-
-export interface UserProfileData {
-  user: User;
-}
+// Re-export for backward compatibility
+export type { UserProfileData } from '../../types/user';
 
 export const userApi = createApi({
   reducerPath: 'userApi',

@@ -2,26 +2,39 @@ import { configureStore } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from './api/authApi';
 import { userApi } from './api/userApi';
+import { attendanceApi } from './api/attendanceApi';
+import { leaveApi } from './api/leaveApi';
+import { payrollApi } from './api/payrollApi';
+import { employeeApi } from './api/employeeApi';
+import { departmentApi } from './api/departmentApi';
+import { workshiftApi } from './api/workshiftApi';
+import { notificationApi } from './api/notificationApi';
 import authReducer, { restoreAuth } from './slices/authSlice';
-import attendanceReducer from './slices/attendanceSlice';
-import leaveReducer from './slices/leaveSlice';
-import notificationReducer from './slices/notificationSlice';
-import salaryReducer from './slices/salarySlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    attendance: attendanceReducer,
-    leave: leaveReducer,
-    notification: notificationReducer,
-    salary: salaryReducer,
     [authApi.reducerPath]: authApi.reducer,
     [userApi.reducerPath]: userApi.reducer,
+    [attendanceApi.reducerPath]: attendanceApi.reducer,
+    [leaveApi.reducerPath]: leaveApi.reducer,
+    [payrollApi.reducerPath]: payrollApi.reducer,
+    [employeeApi.reducerPath]: employeeApi.reducer,
+    [departmentApi.reducerPath]: departmentApi.reducer,
+    [workshiftApi.reducerPath]: workshiftApi.reducer,
+    [notificationApi.reducerPath]: notificationApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
       .concat(authApi.middleware)
-      .concat(userApi.middleware),
+      .concat(userApi.middleware)
+      .concat(attendanceApi.middleware)
+      .concat(leaveApi.middleware)
+      .concat(payrollApi.middleware)
+      .concat(employeeApi.middleware)
+      .concat(departmentApi.middleware)
+      .concat(workshiftApi.middleware)
+      .concat(notificationApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
@@ -61,6 +74,13 @@ export const initializeAuth = async () => {
 export const resetAllApiStates = () => {
   store.dispatch(authApi.util.resetApiState());
   store.dispatch(userApi.util.resetApiState());
+  store.dispatch(attendanceApi.util.resetApiState());
+  store.dispatch(leaveApi.util.resetApiState());
+  store.dispatch(payrollApi.util.resetApiState());
+  store.dispatch(employeeApi.util.resetApiState());
+  store.dispatch(departmentApi.util.resetApiState());
+  store.dispatch(workshiftApi.util.resetApiState());
+  store.dispatch(notificationApi.util.resetApiState());
   console.log('[Store] All RTK Query states have been reset');
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
 const logoImage = require('../../assets/logo.jpg');
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthContext } from '../context/AuthContext';
+import { useSignUp } from '../hooks/useSignUp';
 import CustomAlert from '../components/CustomAlert';
 import LoadingIndicator from '../components/LoadingIndicator';
 
@@ -23,110 +23,23 @@ const GOOGLE_BUTTON_COLOR = '#F7F7F7';
 const FACEBOOK_BUTTON_COLOR = '#1877F2';
 
 const SignUp = ({ navigation }: any) => {
-  const [givenName, setGivenName] = useState('');
-  const [familyName, setFamilyName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const [alertConfig, setAlertConfig] = useState({
-    visible: false,
-    title: '',
-    message: '',
-    type: 'info' as 'success' | 'error' | 'info' | 'warning',
-  });
+  const {
+    givenName, setGivenName,
+    familyName, setFamilyName,
+    username, setUsername,
+    password, setPassword,
+    confirmPassword, setConfirmPassword,
+    loading,
+    alertConfig,
+    fadeAnim,
+    slideAnim,
+    signInWithGoogle,
+    handleSignUp,
+    showFacebookAlert,
+    closeAlert,
+    goBack,
+  } = useSignUp(navigation);
 
-  const { signInWithGoogle, user } = useAuthContext();
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  // Close modal when authenticated - RootNavigator will handle navigation
-  React.useEffect(() => {
-    if (user) {
-      navigation.goBack();
-    }
-  }, [user, navigation]);
-
-  // NORMAL SIGN UP
-  const handleSignUp = async () => {
-    if (!givenName || !familyName || !username || !password || !confirmPassword) {
-      setAlertConfig({
-        visible: true,
-        title: 'Lỗi',
-        message: 'Vui lòng nhập đầy đủ thông tin',
-        type: 'warning',
-      });
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setAlertConfig({
-        visible: true,
-        title: 'Lỗi',
-        message: 'Mật khẩu không trùng khớp',
-        type: 'error',
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, givenName, familyName, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setAlertConfig({
-          visible: true,
-          title: 'Đăng ký thất bại',
-          message: data.message || `Lỗi: ${res.status}`,
-          type: 'error',
-        });
-        return;
-      }
-
-      setAlertConfig({
-        visible: true,
-        title: 'Thành công',
-        message: 'Đăng ký thành công! Hãy đăng nhập để tiếp tục.',
-        type: 'success',
-      });
-      
-      setTimeout(() => {
-        navigation.navigate("Login");
-      }, 1500);
-    } catch {
-      setAlertConfig({
-        visible: true,
-        title: 'Lỗi',
-        message: 'Không thể kết nối server',
-        type: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
@@ -141,7 +54,7 @@ const SignUp = ({ navigation }: any) => {
           {/* Back button */}
           <TouchableOpacity 
             style={styles.backButton} 
-            onPress={() => navigation.goBack()}
+            onPress={goBack}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={28} color="#333" />
@@ -249,12 +162,7 @@ const SignUp = ({ navigation }: any) => {
 
             <TouchableOpacity
               style={[styles.socialButton, styles.facebookButton]}
-              onPress={() => setAlertConfig({
-                visible: true,
-                title: 'Thông báo',
-                message: 'Tính năng đăng nhập Facebook sẽ sớm được hỗ trợ',
-                type: 'info',
-              })}
+              onPress={showFacebookAlert}
               activeOpacity={0.8}
             >
               <Ionicons name="logo-facebook" size={24} color="#fff" style={styles.socialIcon} />
@@ -269,7 +177,7 @@ const SignUp = ({ navigation }: any) => {
         title={alertConfig.title}
         message={alertConfig.message}
         type={alertConfig.type}
-        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+        onClose={closeAlert}
       />
     </SafeAreaView>
   );

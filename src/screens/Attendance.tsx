@@ -1,31 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
-import { checkIn, checkOut } from '../store/slices/attendanceSlice';
+import { useAttendance } from '../hooks/useAttendance';
 
 const Attendance: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { todayRecord, history } = useSelector((state: RootState) => state.attendance);
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  // Live clock
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const {
+    isAuthenticated,
+    timeStr,
+    dateStr,
+    todayRecord,
+    todayLoading,
+    historyLoading,
+    isProcessing,
+    canCheckIn,
+    canCheckOut,
+    isCheckedOut,
+    historyRecords,
+    handleCheckIn,
+    handleCheckOut,
+    formatTime,
+    navigateToLogin,
+    navigateToHistory,
+  } = useAttendance();
 
   if (!isAuthenticated) {
     return (
@@ -35,7 +39,7 @@ const Attendance: React.FC = () => {
           <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
           <TouchableOpacity
             style={styles.loginBtn}
-            onPress={() => navigation.navigate('Login')}
+            onPress={navigateToLogin}
           >
             <Text style={styles.loginBtnText}>Đăng nhập</Text>
           </TouchableOpacity>
@@ -43,46 +47,6 @@ const Attendance: React.FC = () => {
       </SafeAreaView>
     );
   }
-
-  const timeStr = currentTime.toLocaleTimeString('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-  const dateStr = currentTime.toLocaleDateString('vi-VN', {
-    weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-
-  const handleCheckIn = () => {
-    Alert.alert('Xác nhận chấm công vào', 'Bạn có muốn chấm công vào ngay bây giờ?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Chấm công',
-        onPress: () => dispatch(checkIn()),
-      },
-    ]);
-  };
-
-  const handleCheckOut = () => {
-    Alert.alert('Xác nhận chấm công ra', 'Bạn có muốn chấm công ra ngay bây giờ?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Chấm công',
-        style: 'destructive',
-        onPress: () => dispatch(checkOut()),
-      },
-    ]);
-  };
-
-  const isCheckedIn = todayRecord.status === 'checked_in';
-  const isCheckedOut = todayRecord.status === 'checked_out';
-  const canCheckIn = todayRecord.status === 'not_checked';
-  const canCheckOut = isCheckedIn;
-
-  const recentHistory = history.filter((r) => r.date !== todayRecord.date).slice(0, 5);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -98,37 +62,46 @@ const Attendance: React.FC = () => {
           <Text style={styles.date}>{dateStr}</Text>
         </View>
 
+        {/* Loading state */}
+        {(todayLoading || isProcessing) && (
+          <ActivityIndicator size="large" color="#3B82F6" style={{ marginVertical: 20 }} />
+        )}
+
         {/* Check-in / Check-out Button */}
-        <View style={styles.buttonSection}>
-          {canCheckIn && (
-            <TouchableOpacity
-              style={[styles.mainBtn, styles.checkInBtn]}
-              onPress={handleCheckIn}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="finger-print" size={40} color="#FFF" />
-              <Text style={styles.mainBtnText}>CHẤM CÔNG VÀO</Text>
-            </TouchableOpacity>
-          )}
+        {!todayLoading && (
+          <View style={styles.buttonSection}>
+            {canCheckIn && (
+              <TouchableOpacity
+                style={[styles.mainBtn, styles.checkInBtn]}
+                onPress={handleCheckIn}
+                activeOpacity={0.8}
+                disabled={isProcessing}
+              >
+                <Ionicons name="finger-print" size={40} color="#FFF" />
+                <Text style={styles.mainBtnText}>CHẤM CÔNG VÀO</Text>
+              </TouchableOpacity>
+            )}
 
-          {canCheckOut && (
-            <TouchableOpacity
-              style={[styles.mainBtn, styles.checkOutBtn]}
-              onPress={handleCheckOut}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="finger-print" size={40} color="#FFF" />
-              <Text style={styles.mainBtnText}>CHẤM CÔNG RA</Text>
-            </TouchableOpacity>
-          )}
+            {canCheckOut && (
+              <TouchableOpacity
+                style={[styles.mainBtn, styles.checkOutBtn]}
+                onPress={handleCheckOut}
+                activeOpacity={0.8}
+                disabled={isProcessing}
+              >
+                <Ionicons name="finger-print" size={40} color="#FFF" />
+                <Text style={styles.mainBtnText}>CHẤM CÔNG RA</Text>
+              </TouchableOpacity>
+            )}
 
-          {isCheckedOut && (
-            <View style={[styles.mainBtn, styles.doneBtn]}>
-              <Ionicons name="checkmark-circle" size={40} color="#FFF" />
-              <Text style={styles.mainBtnText}>ĐÃ HOÀN THÀNH</Text>
-            </View>
-          )}
-        </View>
+            {isCheckedOut && (
+              <View style={[styles.mainBtn, styles.doneBtn]}>
+                <Ionicons name="checkmark-circle" size={40} color="#FFF" />
+                <Text style={styles.mainBtnText}>ĐÃ HOÀN THÀNH</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Today Info */}
         <View style={styles.todayCard}>
@@ -138,21 +111,21 @@ const Attendance: React.FC = () => {
               <Ionicons name="log-in-outline" size={20} color="#3B82F6" />
               <Text style={styles.todayLabel}>Giờ vào</Text>
               <Text style={styles.todayValue}>
-                {todayRecord.checkInTime || '--:--'}
+                {formatTime(todayRecord?.check_in_time ?? null)}
               </Text>
             </View>
             <View style={styles.todayItem}>
               <Ionicons name="log-out-outline" size={20} color="#EF4444" />
               <Text style={styles.todayLabel}>Giờ ra</Text>
               <Text style={styles.todayValue}>
-                {todayRecord.checkOutTime || '--:--'}
+                {formatTime(todayRecord?.check_out_time ?? null)}
               </Text>
             </View>
             <View style={styles.todayItem}>
               <Ionicons name="time-outline" size={20} color="#10B981" />
               <Text style={styles.todayLabel}>Tổng giờ</Text>
               <Text style={styles.todayValue}>
-                {todayRecord.workHours != null ? `${todayRecord.workHours}h` : '--'}
+                {todayRecord?.working_hours != null ? `${todayRecord.working_hours}h` : '--'}
               </Text>
             </View>
           </View>
@@ -161,22 +134,26 @@ const Attendance: React.FC = () => {
         {/* History */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Lịch sử gần đây</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('AttendanceHistory')}>
+          <TouchableOpacity onPress={navigateToHistory}>
             <Text style={styles.seeAll}>Xem tất cả</Text>
           </TouchableOpacity>
         </View>
 
-        {recentHistory.map((record) => (
+        {historyLoading && (
+          <ActivityIndicator size="small" color="#3B82F6" style={{ marginVertical: 12 }} />
+        )}
+
+        {historyRecords.map((record) => (
           <View key={record.id} style={styles.historyCard}>
             <View style={styles.historyDate}>
-              <Text style={styles.historyDateText}>{record.date}</Text>
+              <Text style={styles.historyDateText}>{record.work_date}</Text>
             </View>
             <View style={styles.historyInfo}>
               <Text style={styles.historyTime}>
-                {record.checkInTime || '--:--'} → {record.checkOutTime || '--:--'}
+                {formatTime(record.check_in_time)} → {formatTime(record.check_out_time)}
               </Text>
               <Text style={styles.historyHours}>
-                {record.workHours != null ? `${record.workHours} giờ` : '--'}
+                {record.working_hours != null ? `${record.working_hours} giờ` : '--'}
               </Text>
             </View>
             <View
@@ -184,7 +161,7 @@ const Attendance: React.FC = () => {
                 styles.historyStatus,
                 {
                   backgroundColor:
-                    record.status === 'checked_out' ? '#ECFDF5' : '#FEF3C7',
+                    record.check_out_time ? '#ECFDF5' : '#FEF3C7',
                 },
               ]}
             >
@@ -193,11 +170,11 @@ const Attendance: React.FC = () => {
                   styles.historyStatusText,
                   {
                     color:
-                      record.status === 'checked_out' ? '#10B981' : '#F59E0B',
+                      record.check_out_time ? '#10B981' : '#F59E0B',
                   },
                 ]}
               >
-                {record.status === 'checked_out' ? '✓' : '•'}
+                {record.check_out_time ? '✓' : '•'}
               </Text>
             </View>
           </View>

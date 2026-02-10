@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
+import { useGetMyNotificationsQuery } from '../store/api/notificationApi';
 
 interface TabConfig {
   name: string;
@@ -31,7 +32,9 @@ const ACTIVE_COLOR = '#3B82F6';
 const INACTIVE_COLOR = '#94A3B8';
 
 const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
-  const { unreadCount } = useSelector((s: RootState) => s.notification);
+  const { isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { data: notifData } = useGetMyNotificationsQuery(undefined, { skip: !isAuthenticated });
+  const unreadCount = (notifData?.data ?? []).filter((n) => !n.isRead).length;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>

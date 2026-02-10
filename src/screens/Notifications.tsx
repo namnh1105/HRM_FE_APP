@@ -5,22 +5,27 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
-import { markAsRead, markAllAsRead } from '../store/slices/notificationSlice';
-import type { HrmNotification, NotificationType } from '../types/hrm';
+import { useNotifications } from '../hooks/useNotifications';
+import type { HrmNotification } from '../types/notification';
 
 const Notifications: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { notifications, unreadCount } = useSelector(
-    (state: RootState) => state.notification,
-  );
+  const {
+    isAuthenticated,
+    notifications,
+    unreadCount,
+    isLoading,
+    isError,
+    refetch,
+    getIcon,
+    formatTime,
+    markAsRead,
+    markAllAsRead,
+    navigateToLogin,
+  } = useNotifications();
 
   if (!isAuthenticated) {
     return (
@@ -30,7 +35,7 @@ const Notifications: React.FC = () => {
           <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
           <TouchableOpacity
             style={styles.loginBtn}
-            onPress={() => navigation.navigate('Login')}
+            onPress={navigateToLogin}
           >
             <Text style={styles.loginBtnText}>Đăng nhập</Text>
           </TouchableOpacity>
@@ -39,33 +44,30 @@ const Notifications: React.FC = () => {
     );
   }
 
-  const getIcon = (type: NotificationType) => {
-    switch (type) {
-      case 'attendance':
-        return { name: 'time', color: '#3B82F6', bg: '#EFF6FF' };
-      case 'leave':
-        return { name: 'document-text', color: '#8B5CF6', bg: '#F5F3FF' };
-      case 'salary':
-        return { name: 'wallet', color: '#10B981', bg: '#ECFDF5' };
-      case 'hr':
-        return { name: 'people', color: '#F59E0B', bg: '#FFFBEB' };
-      default:
-        return { name: 'notifications', color: '#64748B', bg: '#F1F5F9' };
-    }
-  };
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.authPrompt}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={[styles.authTitle, { marginTop: 12 }]}>Đang tải thông báo...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffHours < 1) return 'Vừa xong';
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
-  };
+  if (isError) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.authPrompt}>
+          <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
+          <Text style={[styles.authTitle, { color: '#EF4444' }]}>Không thể tải thông báo</Text>
+          <TouchableOpacity style={styles.loginBtn} onPress={refetch}>
+            <Text style={styles.loginBtnText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const renderItem = ({ item }: { item: HrmNotification }) => {
     const iconInfo = getIcon(item.type);
@@ -73,7 +75,7 @@ const Notifications: React.FC = () => {
     return (
       <TouchableOpacity
         style={[styles.card, !item.isRead && styles.cardUnread]}
-        onPress={() => dispatch(markAsRead(item.id))}
+        onPress={() => { if (!item.isRead) markAsRead(item.id); }}
         activeOpacity={0.7}
       >
         <View style={[styles.iconBox, { backgroundColor: iconInfo.bg }]}>
@@ -101,7 +103,7 @@ const Notifications: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Thông báo</Text>
         {unreadCount > 0 && (
-          <TouchableOpacity onPress={() => dispatch(markAllAsRead())}>
+          <TouchableOpacity onPress={() => markAllAsRead()}>
             <Text style={styles.markAll}>Đánh dấu đã đọc</Text>
           </TouchableOpacity>
         )}

@@ -5,48 +5,27 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store';
-import { logout } from '../store/slices/authSlice';
-
-// Mock employee profile data
-const EMPLOYEE_PROFILE = {
-  department: 'Phòng Công nghệ',
-  position: 'Lập trình viên',
-  employeeId: 'NV-2024-001',
-  joinDate: '15/03/2024',
-  contractType: 'Toàn thời gian',
-  phone: '0901234567',
-};
-
-interface MenuItem {
-  icon: string;
-  label: string;
-  color: string;
-  onPress: () => void;
-  badge?: string;
-}
+import { useProfile } from '../hooks/useProfile';
+import InfoRow from '../components/InfoRow';
 
 const Profile: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-
-  const handleLogout = () => {
-    Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Đăng xuất',
-        style: 'destructive',
-        onPress: () => dispatch(logout()),
-      },
-    ]);
-  };
+  const {
+    isAuthenticated,
+    user,
+    profile,
+    isLoading,
+    error,
+    refetch,
+    displayName,
+    menuItems,
+    handleLogout,
+    navigateToLogin,
+    navigateToSignUp,
+  } = useProfile();
 
   if (!isAuthenticated) {
     return (
@@ -59,11 +38,11 @@ const Profile: React.FC = () => {
           <Text style={styles.authSub}>Đăng nhập để xem hồ sơ cá nhân</Text>
           <TouchableOpacity
             style={styles.loginBtn}
-            onPress={() => navigation.navigate('Login')}
+            onPress={navigateToLogin}
           >
             <Text style={styles.loginBtnText}>Đăng nhập</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+          <TouchableOpacity onPress={navigateToSignUp}>
             <Text style={styles.signUpLink}>Chưa có tài khoản? Đăng ký</Text>
           </TouchableOpacity>
         </View>
@@ -71,42 +50,31 @@ const Profile: React.FC = () => {
     );
   }
 
-  const menuItems: MenuItem[] = [
-    {
-      icon: 'calendar',
-      label: 'Lịch làm việc',
-      color: '#F59E0B',
-      onPress: () => navigation.navigate('WorkSchedule'),
-    },
-    {
-      icon: 'wallet',
-      label: 'Lương & phúc lợi',
-      color: '#10B981',
-      onPress: () => navigation.navigate('Salary'),
-    },
-    {
-      icon: 'time',
-      label: 'Lịch sử chấm công',
-      color: '#3B82F6',
-      onPress: () => navigation.navigate('AttendanceHistory'),
-    },
-    {
-      icon: 'document-text',
-      label: 'Hợp đồng lao động',
-      color: '#8B5CF6',
-      onPress: () => Alert.alert('Thông báo', 'Tính năng đang phát triển'),
-    },
-    {
-      icon: 'lock-closed',
-      label: 'Đổi mật khẩu',
-      color: '#64748B',
-      onPress: () => Alert.alert('Thông báo', 'Tính năng đang phát triển'),
-    },
-  ];
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.authPrompt}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={[styles.authSub, { marginTop: 12 }]}>Đang tải thông tin...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const displayName = user?.name || user?.givenName
-    ? `${user?.givenName || ''} ${user?.familyName || ''}`.trim()
-    : user?.username || 'Nhân viên';
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.authPrompt}>
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Text style={[styles.authTitle, { marginTop: 12 }]}>Lỗi tải dữ liệu</Text>
+          <Text style={styles.authSub}>Không thể tải thông tin hồ sơ</Text>
+          <TouchableOpacity style={styles.loginBtn} onPress={refetch}>
+            <Text style={styles.loginBtnText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -124,19 +92,21 @@ const Profile: React.FC = () => {
             </Text>
           </View>
           <Text style={styles.userName}>{displayName}</Text>
-          <Text style={styles.userEmail}>{user?.email || EMPLOYEE_PROFILE.phone}</Text>
-          <View style={styles.idBadge}>
-            <Text style={styles.idText}>{EMPLOYEE_PROFILE.employeeId}</Text>
-          </View>
+          <Text style={styles.userEmail}>{profile?.email || user?.email || profile?.phone || ''}</Text>
+          {profile?.employee_code && (
+            <View style={styles.idBadge}>
+              <Text style={styles.idText}>{profile.employee_code}</Text>
+            </View>
+          )}
         </View>
 
         {/* Employee Info */}
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>Thông tin công việc</Text>
-          <InfoRow icon="business" label="Phòng ban" value={EMPLOYEE_PROFILE.department} />
-          <InfoRow icon="briefcase" label="Chức vụ" value={EMPLOYEE_PROFILE.position} />
-          <InfoRow icon="calendar" label="Ngày vào làm" value={EMPLOYEE_PROFILE.joinDate} />
-          <InfoRow icon="document" label="Hợp đồng" value={EMPLOYEE_PROFILE.contractType} />
+          <InfoRow icon="business" label="Phòng ban" value={profile?.department_name || 'Chưa cập nhật'} />
+          <InfoRow icon="briefcase" label="Chức vụ" value={profile?.position || 'Chưa cập nhật'} />
+          <InfoRow icon="calendar" label="Ngày vào làm" value={profile?.join_date || 'Chưa cập nhật'} />
+          <InfoRow icon="shield-checkmark" label="Trạng thái" value={profile?.employment_status || 'Chưa cập nhật'} />
         </View>
 
         {/* Menu Items */}
@@ -169,22 +139,6 @@ const Profile: React.FC = () => {
   );
 };
 
-// Reusable info row
-const InfoRow = ({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-}) => (
-  <View style={infoStyles.row}>
-    <Ionicons name={icon as any} size={18} color="#94A3B8" />
-    <Text style={infoStyles.label}>{label}</Text>
-    <Text style={infoStyles.value}>{value}</Text>
-  </View>
-);
 
 const infoStyles = StyleSheet.create({
   row: {

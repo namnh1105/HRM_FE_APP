@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,72 +6,41 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Alert,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useDispatch } from 'react-redux';
-import { addRequest } from '../store/slices/leaveSlice';
-import type { LeaveType } from '../types/hrm';
-import { LEAVE_TYPE_LABELS } from '../types/hrm';
+import { useCreateLeaveRequest } from '../hooks/useCreateLeaveRequest';
+import type { LeaveType } from '../types/leave';
+import { LEAVE_TYPE_LABELS } from '../types/leave';
 
 const LEAVE_TYPES: { value: LeaveType; icon: string }[] = [
-  { value: 'annual_leave', icon: 'sunny' },
-  { value: 'sick_leave', icon: 'medkit' },
-  { value: 'business_trip', icon: 'airplane' },
-  { value: 'overtime', icon: 'time' },
-  { value: 'other', icon: 'document-text' },
+  { value: 'ANNUAL_LEAVE', icon: 'sunny' },
+  { value: 'SICK_LEAVE', icon: 'medkit' },
+  { value: 'UNPAID_LEAVE', icon: 'airplane' },
+  { value: 'COMPENSATORY_LEAVE', icon: 'time' },
+  { value: 'OTHER', icon: 'document-text' },
 ];
 
 const CreateLeaveRequest: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const dispatch = useDispatch();
-
-  const [selectedType, setSelectedType] = useState<LeaveType>('annual_leave');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [reason, setReason] = useState('');
-
-  const handleSubmit = () => {
-    if (!startDate.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập ngày bắt đầu (DD/MM/YYYY)');
-      return;
-    }
-    if (!reason.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập lý do');
-      return;
-    }
-
-    // Parse date from DD/MM/YYYY format
-    const parseDate = (str: string) => {
-      const parts = str.split('/');
-      if (parts.length === 3) {
-        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-      }
-      return str;
-    };
-
-    dispatch(
-      addRequest({
-        type: selectedType,
-        startDate: parseDate(startDate),
-        endDate: endDate.trim() ? parseDate(endDate) : parseDate(startDate),
-        reason: reason.trim(),
-      }),
-    );
-
-    Alert.alert('Thành công', 'Đơn đã được gửi, chờ duyệt.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
-  };
+  const {
+    selectedType,
+    setSelectedType,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    reason,
+    setReason,
+    isLoading,
+    handleSubmit,
+    goBack,
+  } = useCreateLeaveRequest();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Tạo đơn mới</Text>
@@ -154,9 +123,14 @@ const CreateLeaveRequest: React.FC = () => {
         />
 
         {/* Submit */}
-        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} activeOpacity={0.8}>
-          <Ionicons name="paper-plane" size={20} color="#FFF" />
-          <Text style={styles.submitText}>Gửi đơn</Text>
+        <TouchableOpacity
+          style={[styles.submitBtn, isLoading && { opacity: 0.6 }]}
+          onPress={handleSubmit}
+          activeOpacity={0.8}
+          disabled={isLoading}
+        >
+          <Ionicons name={isLoading ? 'hourglass' : 'paper-plane'} size={20} color="#FFF" />
+          <Text style={styles.submitText}>{isLoading ? 'Đang gửi...' : 'Gửi đơn'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
