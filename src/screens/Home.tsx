@@ -12,13 +12,9 @@ const Home: React.FC = () => {
     navigation.navigate('Login');
   };
 
-  const handleSignUpPress = () => {
-    navigation.navigate('SignUp');
-  };
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to App</Text>
+      <Text style={styles.title}>Welcome to HRM App</Text>
       
       {isAuthenticated ? (
         <View style={styles.userContainer}>
@@ -32,15 +28,11 @@ const Home: React.FC = () => {
       ) : (
         <View style={styles.authContainer}>
           <Text style={styles.subtitle}>
-            Please login or sign up to continue
+            Vui lòng đăng nhập để tiếp tục
           </Text>
           
           <TouchableOpacity style={styles.button} onPress={handleLoginPress}>
-            <Text style={styles.buttonText}>Login</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={[styles.button, styles.signUpButton]} onPress={handleSignUpPress}>
-            <Text style={[styles.buttonText, styles.signUpButtonText]}>Sign Up</Text>
+            <Text style={styles.buttonText}>Đăng nhập</Text>
           </TouchableOpacity>
         </View>
       )}

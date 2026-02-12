@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAttendance } from '../hooks/useAttendance';
+import { formatTime } from '../utils';
 
 const Attendance: React.FC = () => {
   const {
@@ -26,7 +27,6 @@ const Attendance: React.FC = () => {
     historyRecords,
     handleCheckIn,
     handleCheckOut,
-    formatTime,
     navigateToLogin,
     navigateToHistory,
   } = useAttendance();

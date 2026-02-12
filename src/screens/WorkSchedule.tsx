@@ -11,10 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useWorkSchedule,
-  formatShiftTime,
   getShiftColor,
   HOLIDAYS,
 } from '../hooks/useWorkSchedule';
+import { formatShiftTime } from '../utils';
 
 const WorkSchedule: React.FC = () => {
   const {

@@ -42,7 +42,7 @@
     },
     "newArchEnabled": true,
     "extra": {
-      "apiBaseUrl": "https://scrolla.bitoj.io.vn/api/v1",
+      "apiBaseUrl": "https://worksphere.bitoj.io.vn/api/v1",
       "eas": {
         "projectId": "caead81b-fa83-4399-add5-751b9c8aeff0"
       }
@@ -71,7 +71,8 @@
         }
       ],
       "expo-font",
-      "expo-video"
+      "expo-video",
+      "expo-secure-store"
     ]
   }
 }

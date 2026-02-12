@@ -56,13 +56,19 @@ export const useProfile = () => {
       icon: 'document-text',
       label: 'Hợp đồng lao động',
       color: '#8B5CF6',
-      onPress: () => Alert.alert('Thông báo', 'Tính năng đang phát triển'),
+      onPress: () => navigation.navigate('Contracts'),
+    },
+    {
+      icon: 'school',
+      label: 'Bằng cấp & chứng chỉ',
+      color: '#06B6D4',
+      onPress: () => navigation.navigate('Degrees'),
     },
     {
       icon: 'lock-closed',
       label: 'Đổi mật khẩu',
       color: '#64748B',
-      onPress: () => Alert.alert('Thông báo', 'Tính năng đang phát triển'),
+      onPress: () => navigation.navigate('ChangePassword'),
     },
   ];
 
@@ -73,7 +79,6 @@ export const useProfile = () => {
     || 'Nhân viên';
 
   const navigateToLogin = () => navigation.navigate('Login');
-  const navigateToSignUp = () => navigation.navigate('SignUp');
 
   return {
     isAuthenticated,
@@ -86,6 +91,5 @@ export const useProfile = () => {
     menuItems,
     handleLogout,
     navigateToLogin,
-    navigateToSignUp,
   };
 };

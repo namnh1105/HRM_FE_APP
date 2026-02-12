@@ -9,7 +9,9 @@ import Toast from 'react-native-toast-message';
 function AppContent() {
   useEffect(() => {
     // Restore auth state on app start
-    initializeAuth();
+    setTimeout(() => {
+      initializeAuth();
+    }, 100);
   }, []);
 
   return (

@@ -1,15 +1,20 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from './baseQuery';
-import { ApiResponse, User, VideoListData } from '../../types/api';
-import { UserProfileData } from '../../types/user';
+import type { ApiResponse } from '../../types/common';
+import type { UserProfileData } from '../../types/user';
 
 // Re-export for backward compatibility
 export type { UserProfileData } from '../../types/user';
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export const userApi = createApi({
   reducerPath: 'userApi',
   baseQuery,
-  tagTypes: ['User', 'UserVideos'],
+  tagTypes: ['User'],
   endpoints: (builder) => ({
     getUserById: builder.query<ApiResponse<UserProfileData>, string>({
       query: (userId) => ({
@@ -18,18 +23,19 @@ export const userApi = createApi({
       }),
       providesTags: (result, error, userId) => [{ type: 'User', id: userId }],
     }),
-    
-    getUserVideos: builder.query<ApiResponse<VideoListData>, { userId: string; page?: number; size?: number }>({
-      query: ({ userId, page = 1, size = 10 }) => ({
-        url: `/videos/user/${userId}?page=${page}&size=${size}`,
-        method: 'GET',
+
+    /** PUT /users/profile/password */
+    changePassword: builder.mutation<ApiResponse<null>, ChangePasswordRequest>({
+      query: (body) => ({
+        url: '/users/profile/password',
+        method: 'PUT',
+        body,
       }),
-      providesTags: (result, error, { userId }) => [{ type: 'UserVideos', id: userId }],
     }),
   }),
 });
 
 export const {
   useGetUserByIdQuery,
-  useGetUserVideosQuery,
+  useChangePasswordMutation,
 } = userApi;

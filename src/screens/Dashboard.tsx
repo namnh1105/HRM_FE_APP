@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDashboard } from '../hooks/useDashboard';
+import { formatTime } from '../utils';
 
 const Dashboard: React.FC = () => {
   const {
@@ -53,7 +54,7 @@ const Dashboard: React.FC = () => {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>Xin chào,</Text>
-            <Text style={styles.userName}>{user?.name || user?.username || 'Nhân viên'}</Text>
+            <Text style={styles.userName}>{user?.givenName} {user?.familyName}</Text>
           </View>
           <TouchableOpacity
             style={styles.notifBtn}
@@ -86,7 +87,7 @@ const Dashboard: React.FC = () => {
               <Ionicons name="log-in-outline" size={20} color="#3B82F6" />
               <Text style={styles.statusLabel}>Vào</Text>
               <Text style={styles.statusValue}>
-                {todayRecord?.check_in_time || '--:--'}
+                {formatTime(todayRecord?.check_in_time)}
               </Text>
             </View>
             <View style={styles.statusDivider} />
@@ -94,7 +95,7 @@ const Dashboard: React.FC = () => {
               <Ionicons name="log-out-outline" size={20} color="#EF4444" />
               <Text style={styles.statusLabel}>Ra</Text>
               <Text style={styles.statusValue}>
-                {todayRecord?.check_out_time || '--:--'}
+                {formatTime(todayRecord?.check_out_time)}
               </Text>
             </View>
             <View style={styles.statusDivider} />

@@ -6,12 +6,14 @@ import { RootState } from '../store';
 import MainTabs from './MainTabs';
 import {
   Login,
-  SignUp,
   ForgotPassword,
   CreateLeaveRequest,
   AttendanceHistory,
   Salary,
   WorkSchedule,
+  Contracts,
+  ChangePassword,
+  Degrees,
 } from '../screens';
 
 const Stack = createNativeStackNavigator();
@@ -43,7 +45,6 @@ const RootNavigator: React.FC = () => {
 
       {/* Auth screens */}
       <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen name="SignUp" component={SignUp} />
       <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
 
       {/* HRM detail screens */}
@@ -51,6 +52,9 @@ const RootNavigator: React.FC = () => {
       <Stack.Screen name="AttendanceHistory" component={AttendanceHistory} />
       <Stack.Screen name="Salary" component={Salary} />
       <Stack.Screen name="WorkSchedule" component={WorkSchedule} />
+      <Stack.Screen name="Contracts" component={Contracts} />
+      <Stack.Screen name="ChangePassword" component={ChangePassword} />
+      <Stack.Screen name="Degrees" component={Degrees} />
     </Stack.Navigator>
   );
 };

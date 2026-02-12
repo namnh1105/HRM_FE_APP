@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAttendanceHistory } from '../hooks/useAttendanceHistory';
+import { formatTime } from '../utils';
 import type { AttendanceRecord } from '../types/attendance';
 
 const AttendanceHistory: React.FC = () => {
@@ -33,10 +34,10 @@ const AttendanceHistory: React.FC = () => {
         <View style={styles.info}>
           <View style={styles.timeRow}>
             <Ionicons name="log-in-outline" size={16} color="#3B82F6" />
-            <Text style={styles.timeText}>{item.check_in_time || '--:--'}</Text>
+            <Text style={styles.timeText}>{formatTime(item.check_in_time)}</Text>
             <Ionicons name="arrow-forward" size={14} color="#CBD5E1" style={{ marginHorizontal: 6 }} />
             <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-            <Text style={styles.timeText}>{item.check_out_time || '--:--'}</Text>
+            <Text style={styles.timeText}>{formatTime(item.check_out_time)}</Text>
           </View>
           <Text style={styles.hoursText}>
             {item.working_hours != null ? `${item.working_hours} giờ làm việc` : 'Chưa có dữ liệu'}

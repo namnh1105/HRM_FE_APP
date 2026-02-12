@@ -6,6 +6,7 @@ import {
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
 } from '../store/api/notificationApi';
+import { formatRelativeTime } from '../utils';
 import type { NotificationType } from '../types/notification';
 
 export const useNotifications = () => {
@@ -36,19 +37,6 @@ export const useNotifications = () => {
     }
   };
 
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffHours < 1) return 'Vừa xong';
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
-  };
-
   const markAsRead = (id: string) => doMarkAsRead(id);
   const markAllAsRead = () => doMarkAllAsRead();
   const navigateToLogin = () => navigation.navigate('Login');
@@ -61,7 +49,7 @@ export const useNotifications = () => {
     isError,
     refetch,
     getIcon,
-    formatTime,
+    formatTime: formatRelativeTime,
     markAsRead,
     markAllAsRead,
     navigateToLogin,

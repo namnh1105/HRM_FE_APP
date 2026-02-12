@@ -8,21 +8,18 @@ export const departmentApi = createApi({
   baseQuery,
   tagTypes: ['Department'],
   endpoints: (builder) => ({
-    /** GET /departments */
     getDepartments: builder.query<ApiResponse<Department[]>, void>({
       query: () => '/departments',
       providesTags: ['Department'],
     }),
 
-    /** GET /departments/:id */
     getDepartmentById: builder.query<ApiResponse<Department>, string>({
       query: (id) => `/departments/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'Department', id }],
     }),
 
-    /** GET /departments/:id/employees */
-    getDepartmentEmployees: builder.query<ApiResponse<Department>, string>({
-      query: (id) => `/departments/${id}/employees`,
+    getSubDepartments: builder.query<ApiResponse<Department[]>, string>({
+      query: (id) => `/departments/${id}/sub-departments`,
       providesTags: (_result, _error, id) => [{ type: 'Department', id }],
     }),
   }),
@@ -31,5 +28,5 @@ export const departmentApi = createApi({
 export const {
   useGetDepartmentsQuery,
   useGetDepartmentByIdQuery,
-  useGetDepartmentEmployeesQuery,
+  useGetSubDepartmentsQuery,
 } = departmentApi;

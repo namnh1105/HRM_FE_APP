@@ -24,7 +24,6 @@ const Profile: React.FC = () => {
     menuItems,
     handleLogout,
     navigateToLogin,
-    navigateToSignUp,
   } = useProfile();
 
   if (!isAuthenticated) {
@@ -42,9 +41,7 @@ const Profile: React.FC = () => {
           >
             <Text style={styles.loginBtnText}>Đăng nhập</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={navigateToSignUp}>
-            <Text style={styles.signUpLink}>Chưa có tài khoản? Đăng ký</Text>
-          </TouchableOpacity>
+          <Text style={styles.signUpLink}>Liên hệ quản trị viên để tạo tài khoản</Text>
         </View>
       </SafeAreaView>
     );

@@ -12,13 +12,11 @@ export const attendanceApi = createApi({
   baseQuery,
   tagTypes: ['AttendanceToday', 'AttendanceHistory'],
   endpoints: (builder) => ({
-    /** GET /attendances/me/today */
     getAttendanceToday: builder.query<ApiResponse<AttendanceRecord | null>, void>({
       query: () => '/attendances/me/today',
       providesTags: ['AttendanceToday'],
     }),
 
-    /** GET /attendances/me/history?start_date=...&end_date=... */
     getAttendanceHistory: builder.query<
       ApiResponse<AttendanceRecord[]>,
       { start_date: string; end_date: string }
@@ -28,7 +26,6 @@ export const attendanceApi = createApi({
       providesTags: ['AttendanceHistory'],
     }),
 
-    /** POST /attendances/check-in */
     checkIn: builder.mutation<ApiResponse<AttendanceRecord>, CheckInRequest | void>({
       query: (body) => ({
         url: '/attendances/check-in',
@@ -38,7 +35,6 @@ export const attendanceApi = createApi({
       invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
     }),
 
-    /** POST /attendances/check-out */
     checkOut: builder.mutation<ApiResponse<AttendanceRecord>, CheckOutRequest | void>({
       query: (body) => ({
         url: '/attendances/check-out',

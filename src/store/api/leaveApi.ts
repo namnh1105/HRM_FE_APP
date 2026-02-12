@@ -30,7 +30,6 @@ export const leaveApi = createApi({
       providesTags: ['MyLeaveRequests'],
     }),
 
-    /** POST /leave-requests */
     createLeaveRequest: builder.mutation<ApiResponse<LeaveRequest>, CreateLeaveRequestPayload>({
       query: (body) => ({
         url: '/leave-requests',
@@ -40,7 +39,7 @@ export const leaveApi = createApi({
       invalidatesTags: ['MyLeaveRequests'],
     }),
 
-    /** PUT /leave-requests/:id/cancel */
+
     cancelLeaveRequest: builder.mutation<ApiResponse<LeaveRequest>, string>({
       query: (id) => ({
         url: `/leave-requests/${id}/cancel`,
@@ -49,13 +48,12 @@ export const leaveApi = createApi({
       invalidatesTags: ['MyLeaveRequests'],
     }),
 
-    /** PUT /leave-requests/:id/review */
     reviewLeaveRequest: builder.mutation<
       ApiResponse<LeaveRequest>,
       { id: string; body: ReviewLeaveRequestPayload }
     >({
       query: ({ id, body }) => ({
-        url: `/leave-requests/${id}/review`,
+        url: `/leave-requests/${id}/approve`,
         method: 'PUT',
         body,
       }),

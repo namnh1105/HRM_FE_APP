@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useGetActiveWorkShiftsQuery } from '../store/api/workshiftApi';
+import { formatShiftTime } from '../utils';
 import type { WorkShift } from '../types/workshift';
 
 const SHIFT_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#EF4444', '#EC4899'];
 const DAY_NAMES = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
 
-export const formatShiftTime = (t: string) => t.slice(0, 5);
 export const getShiftColor = (index: number) => SHIFT_COLORS[index % SHIFT_COLORS.length];
 
 export interface WeekDay {

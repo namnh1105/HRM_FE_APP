@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { restoreAccessToken, clearTokens } from '../services/tokenStorage';
 import { authApi } from './api/authApi';
 import { userApi } from './api/userApi';
 import { attendanceApi } from './api/attendanceApi';
@@ -9,7 +10,9 @@ import { employeeApi } from './api/employeeApi';
 import { departmentApi } from './api/departmentApi';
 import { workshiftApi } from './api/workshiftApi';
 import { notificationApi } from './api/notificationApi';
-import authReducer, { restoreAuth } from './slices/authSlice';
+import { contractApi } from './api/contractApi';
+import { degreeApi } from './api/degreeApi';
+import authReducer, { restoreAuth, logout } from './slices/authSlice';
 
 export const store = configureStore({
   reducer: {
@@ -23,6 +26,8 @@ export const store = configureStore({
     [departmentApi.reducerPath]: departmentApi.reducer,
     [workshiftApi.reducerPath]: workshiftApi.reducer,
     [notificationApi.reducerPath]: notificationApi.reducer,
+    [contractApi.reducerPath]: contractApi.reducer,
+    [degreeApi.reducerPath]: degreeApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -34,17 +39,22 @@ export const store = configureStore({
       .concat(employeeApi.middleware)
       .concat(departmentApi.middleware)
       .concat(workshiftApi.middleware)
-      .concat(notificationApi.middleware),
+      .concat(notificationApi.middleware)
+      .concat(contractApi.middleware)
+      .concat(degreeApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
-// Initialize auth state from AsyncStorage
+// Initialize auth state from SecureStore + AsyncStorage
 export const initializeAuth = async () => {
   try {
-    console.log('[Store] Initializing auth from AsyncStorage...');
-    const authToken = await AsyncStorage.getItem('authToken');
+    console.log('[Store] Initializing auth from SecureStore...');
+    
+    // Restore access token from SecureStore → memory
+    const authToken = await restoreAccessToken();
+    // User info is non-sensitive, kept in AsyncStorage
     const userInfo = await AsyncStorage.getItem('userInfo');
     
     console.log('[Store] Auth data check:', {
@@ -56,11 +66,12 @@ export const initializeAuth = async () => {
       try {
         const user = JSON.parse(userInfo);
         store.dispatch(restoreAuth({ accessToken: authToken, user }));
-        console.log('[Store] Auth restored from AsyncStorage for user:', user.username);
+        console.log('[Store] Auth restored from SecureStore for user:', user.username);
       } catch (parseError) {
         console.error('[Store] Error parsing user info:', parseError);
         // Clear invalid data
-        await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
+        await clearTokens();
+        await AsyncStorage.removeItem('userInfo');
       }
     } else {
       console.log('[Store] No auth data found - user is not authenticated');
@@ -81,6 +92,8 @@ export const resetAllApiStates = () => {
   store.dispatch(departmentApi.util.resetApiState());
   store.dispatch(workshiftApi.util.resetApiState());
   store.dispatch(notificationApi.util.resetApiState());
+  store.dispatch(contractApi.util.resetApiState());
+  store.dispatch(degreeApi.util.resetApiState());
   console.log('[Store] All RTK Query states have been reset');
 };
 
@@ -89,27 +102,31 @@ export const performCompleteLogout = async () => {
   try {
     console.log('[Store] Starting complete logout...');
     
-    // 1. Clear AsyncStorage first and wait for completion
+    // 1. Clear tokens from SecureStore (Keychain/Keystore)
+    console.log('[Store] Clearing SecureStore tokens...');
+    await clearTokens();
+    
+    // 2. Clear non-sensitive data from AsyncStorage
     console.log('[Store] Clearing AsyncStorage...');
-    await AsyncStorage.multiRemove(['authToken', 'userInfo', 'refreshToken']);
+    await AsyncStorage.removeItem('userInfo');
     
     // Verify AsyncStorage is cleared
-    const verifyToken = await AsyncStorage.getItem('authToken');
     const verifyUser = await AsyncStorage.getItem('userInfo');
-    console.log('[Store] AsyncStorage cleared. Verification:', { 
-      tokenCleared: verifyToken === null, 
+    console.log('[Store] Storage cleared. Verification:', { 
       userCleared: verifyUser === null 
     });
     
-    // 3. Reset all RTK Query cache
+    // 3. Dispatch Redux logout
+    store.dispatch(logout());
+    
+    // 4. Reset all RTK Query cache
     resetAllApiStates();
     
     console.log('[Store] Logout completed successfully. App state is now cleared.');
-    
-    // Note: We don't reload the app anymore, navigation will handle showing Login screen
   } catch (error) {
     console.error('[Store] Error during complete logout:', error);
     // Fallback: still reset states even if there's an error
+    store.dispatch(logout());
     resetAllApiStates();
   }
 };

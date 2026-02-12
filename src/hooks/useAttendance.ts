@@ -107,12 +107,6 @@ export const useAttendance = () => {
     ]);
   };
 
-  const formatTime = (isoTime: string | null) => {
-    if (!isoTime) return '--:--';
-    const timePart = isoTime.includes('T') ? isoTime.split('T')[1] : isoTime;
-    return timePart?.substring(0, 5) || '--:--';
-  };
-
   const navigateToLogin = () => navigation.navigate('Login');
   const navigateToHistory = () => navigation.navigate('AttendanceHistory');
 
@@ -130,7 +124,6 @@ export const useAttendance = () => {
     historyRecords,
     handleCheckIn,
     handleCheckOut,
-    formatTime,
     navigateToLogin,
     navigateToHistory,
   };

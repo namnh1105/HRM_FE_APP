@@ -5,22 +5,17 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   Animated,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-const logoImage = require('../../assets/logo.jpg');
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthLogin } from '../hooks';
-import { useAuthContext } from '../context/AuthContext';
 import CustomAlert from '../components/CustomAlert';
 import LoadingIndicator from '../components/LoadingIndicator';
 
 const PRIMARY_BUTTON_COLOR = '#6B4CE6';
-const GOOGLE_BUTTON_COLOR = '#F7F7F7';
-const FACEBOOK_BUTTON_COLOR = '#1877F2';
 
 const Login = ({ navigation }: any) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -33,15 +28,13 @@ const Login = ({ navigation }: any) => {
   });
 
   const {
-    username,
-    setUsername,
+    email,
+    setEmail,
     password,
     setPassword,
     isLoading,
     handleLogin,
   } = useAuthLogin(navigation);
-
-  const { signInWithGoogle, user } = useAuthContext();
 
   useEffect(() => {
     Animated.parallel([
@@ -58,17 +51,6 @@ const Login = ({ navigation }: any) => {
       }),
     ]).start();
   }, []);
-
-  // Close modal when authenticated - RootNavigator will handle navigation
-  React.useEffect(() => {
-    if (user) {
-      navigation.goBack();
-    }
-  }, [user, navigation]);
-
-  const navigateToSignUp = () => {
-    navigation.navigate('SignUp');
-  };
 
   const onLoginPress = async () => {
     try {
@@ -107,23 +89,19 @@ const Login = ({ navigation }: any) => {
             },
           ]}
         >
-          <View style={styles.logoContainer}>
-            <Image source={logoImage} style={styles.logoImage} />
-            <Text style={styles.logoText}>Scrolla</Text>
-          </View>
-
-          <Text style={styles.title}>Đăng nhập vào Scrolla</Text>
+          <Text style={styles.title}>Đăng nhập HRM</Text>
 
           <View style={styles.formContainer}>
             <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+              <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                value={username}
-                onChangeText={setUsername}
-                placeholder="Tên đăng nhập"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email"
                 placeholderTextColor="#999"
                 autoCapitalize="none"
+                keyboardType="email-address"
               />
             </View>
             <View style={styles.inputContainer}>
@@ -159,42 +137,6 @@ const Login = ({ navigation }: any) => {
               <Text style={styles.buttonText}>Đăng nhập</Text>
             )}
           </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>HOẶC</Text>
-            <View style={styles.divider} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.socialButton, styles.googleButton]}
-            onPress={signInWithGoogle}
-            activeOpacity={0.8}
-          >
-            <Image source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} style={styles.googleIcon} />
-            <Text style={styles.googleButtonText}>Tiếp tục với Google</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.socialButton, styles.facebookButton]}
-            onPress={() => setAlertConfig({
-              visible: true,
-              title: 'Thông báo',
-              message: 'Tính năng đăng nhập Facebook sẽ sớm được hỗ trợ',
-              type: 'info',
-            })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="logo-facebook" size={24} color="#fff" style={styles.socialIcon} />
-            <Text style={styles.socialButtonText}>Tiếp tục với Facebook</Text>
-          </TouchableOpacity>
-
-          <View style={styles.bottom}>
-            <Text style={styles.bottomText}>Bạn chưa có tài khoản? </Text>
-            <TouchableOpacity onPress={navigateToSignUp} activeOpacity={0.7}>
-              <Text style={styles.register}>Đăng ký</Text>
-            </TouchableOpacity>
-          </View>
         </Animated.View>
       </KeyboardAvoidingView>
 
@@ -232,21 +174,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logoImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 16,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#333',
-    marginTop: 8,
   },
   title: { 
     fontSize: 24, 
@@ -333,32 +260,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 3,
     elevation: 2,
-  },
-  googleButton: {
-    backgroundColor: GOOGLE_BUTTON_COLOR,
-    borderWidth: 1.5,
-    borderColor: '#E0E0E0',
-  },
-  googleButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  facebookButton: {
-    backgroundColor: FACEBOOK_BUTTON_COLOR,
-  },
-  socialButtonText: { 
-    color: "#fff", 
-    fontSize: 16, 
-    fontWeight: "600",
-  },
-  googleIcon: { 
-    width: 24, 
-    height: 24, 
-    marginRight: 10 
-  },
-  socialIcon: { 
-    marginRight: 10,
   },
   bottom: {
     flexDirection: 'row',
