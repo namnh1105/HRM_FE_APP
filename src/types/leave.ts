@@ -15,29 +15,29 @@ export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 export interface LeaveRequest {
   id: string;
-  employee_id: string;
-  employee_name: string;
-  leave_type: LeaveType;
-  start_date: string;
-  end_date: string;
-  total_days: number;
+  employeeId: string;
+  employeeName: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
   reason: string;
   status: LeaveStatus;
-  approver_id: string | null;
-  approver_name: string | null;
-  approved_at: string | null;
-  approver_comment: string | null;
-  attachment_url: string | null;
-  created_at: string;
-  updated_at: string;
+  approverId: string | null;
+  approverName: string | null;
+  approvedAt: string | null;
+  approverComment: string | null;
+  attachmentUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CreateLeaveRequestPayload {
-  leave_type: LeaveType;
-  start_date: string;
-  end_date: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
   reason: string;
-  attachment_url?: string;
+  attachmentUrl?: string;
 }
 
 export interface ReviewLeaveRequestPayload {

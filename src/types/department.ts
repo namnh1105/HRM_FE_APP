@@ -7,11 +7,11 @@ export interface Department {
   description: string | null;
   phone: string | null;
   email: string | null;
-  manager_id: string | null;
-  manager_name: string | null;
-  parent_department_id: string | null;
-  parent_department_name: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  managerId: string | null;
+  managerName: string | null;
+  parentDepartmentId: string | null;
+  parentDepartmentName: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

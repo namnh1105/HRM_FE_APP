@@ -4,21 +4,21 @@ export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'EXPIRED' | 'TERMINATED' | 'PE
 
 export interface Contract {
   id: string;
-  contract_code: string;
-  employee_id: string;
-  employee_name: string;
-  employee_code: string;
-  contract_type: ContractType;
-  start_date: string;
-  end_date: string | null;
-  signing_date: string | null;
-  base_salary: number;
-  salary_coefficient: number;
+  contractCode: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  contractType: ContractType;
+  startDate: string;
+  endDate: string | null;
+  signingDate: string | null;
+  baseSalary: number;
+  salaryCoefficient: number;
   status: ContractStatus;
   note: string | null;
-  attachment_url: string | null;
-  created_at: string;
-  updated_at: string;
+  attachmentUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {

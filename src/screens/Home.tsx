@@ -1,41 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 
 const Home: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-
-  const handleLoginPress = () => {
-    navigation.navigate('Login');
-  };
+  const { user } = useSelector((state: RootState) => state.auth);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to HRM App</Text>
       
-      {isAuthenticated ? (
-        <View style={styles.userContainer}>
-          <Text style={styles.welcomeText}>
-            Hello, {user?.name || 'User'}!
-          </Text>
-          <Text style={styles.subtitle}>
-            You are successfully logged in.
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.authContainer}>
-          <Text style={styles.subtitle}>
-            Vui lòng đăng nhập để tiếp tục
-          </Text>
-          
-          <TouchableOpacity style={styles.button} onPress={handleLoginPress}>
-            <Text style={styles.buttonText}>Đăng nhập</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={styles.userContainer}>
+        <Text style={styles.welcomeText}>
+          Hello, {user?.name || 'User'}!
+        </Text>
+        <Text style={styles.subtitle}>
+          You are successfully logged in.
+        </Text>
+      </View>
     </View>
   );
 };
@@ -68,34 +50,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 10,
   },
-  authContainer: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  button: {
-    backgroundColor: '#007bff',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    marginBottom: 15,
-    width: '100%',
-    maxWidth: 250,
-  },
-  signUpButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#007bff',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  signUpButtonText: {
-    color: '#007bff',
-  },
 });
 
 export default Home;
-

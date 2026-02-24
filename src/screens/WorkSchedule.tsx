@@ -11,14 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useWorkSchedule,
-  getShiftColor,
   HOLIDAYS,
 } from '../hooks/useWorkSchedule';
-import { formatShiftTime } from '../utils';
 
 const WorkSchedule: React.FC = () => {
   const {
-    shifts,
+    todayShifts,
     isLoading,
     error,
     refetch,
@@ -52,27 +50,21 @@ const WorkSchedule: React.FC = () => {
         </View>
       ) : (
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Shifts Legend */}
-        <Text style={styles.sectionTitle}>Ca làm việc</Text>
-        <View style={styles.shiftsRow}>
-          {shifts.map((shift, index) => (
-            <View key={shift.id} style={styles.shiftCard}>
-              <View style={[styles.shiftDot, { backgroundColor: getShiftColor(index) }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.shiftName}>{shift.name}</Text>
-                <Text style={styles.shiftTime}>
-                  {formatShiftTime(shift.start_time)} - {formatShiftTime(shift.end_time)}
-                </Text>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={styles.shiftHours}>{shift.total_hours}h</Text>
-                {shift.is_night_shift && (
-                  <Ionicons name="moon" size={14} color="#8B5CF6" />
-                )}
-              </View>
+        {/* Today's Shifts */}
+        {todayShifts.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Ca hôm nay</Text>
+            <View style={styles.todayCard}>
+              {todayShifts.map((s, idx) => (
+                <View key={idx} style={styles.todayShiftRow}>
+                  <View style={[styles.shiftDot, { backgroundColor: s.color }]} />
+                  <Text style={styles.todayShiftName}>{s.name}</Text>
+                  <Text style={styles.todayShiftTime}>{s.time}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        )}
 
         {/* Weekly Schedule */}
         <Text style={styles.sectionTitle}>Lịch tuần này</Text>
@@ -98,13 +90,17 @@ const WorkSchedule: React.FC = () => {
                 </Text>
                 <Text style={styles.dayDate}>{day.date}</Text>
               </View>
-              {day.shift ? (
-                <View style={styles.dayShift}>
-                  <View style={[styles.shiftIndicator, { backgroundColor: day.shift.color }]} />
-                  <View>
-                    <Text style={styles.dayShiftName}>{day.shift.name}</Text>
-                    <Text style={styles.dayShiftTime}>{day.shift.time}</Text>
-                  </View>
+              {day.shifts.length > 0 ? (
+                <View style={styles.dayShifts}>
+                  {day.shifts.map((s, sIdx) => (
+                    <View key={sIdx} style={styles.dayShift}>
+                      <View style={[styles.shiftIndicator, { backgroundColor: s.color }]} />
+                      <View>
+                        <Text style={styles.dayShiftName}>{s.name}</Text>
+                        <Text style={styles.dayShiftTime}>{s.time}</Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
               ) : (
                 <Text style={styles.dayOff}>Nghỉ</Text>
@@ -197,43 +193,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  // Shifts
-  shiftsRow: {
-    paddingHorizontal: 20,
-  },
-  shiftCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
+  // Today's shifts
+  todayCard: {
+    marginHorizontal: 20,
+    backgroundColor: '#EFF6FF',
     borderRadius: 12,
     padding: 14,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
   },
-  shiftDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
+  todayShiftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
   },
-  shiftName: {
+  todayShiftName: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#1E293B',
+    color: '#1E40AF',
+    marginLeft: 0,
   },
-  shiftTime: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 2,
-  },
-  shiftHours: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
+  todayShiftTime: {
+    fontSize: 13,
+    color: '#3B82F6',
+    fontWeight: '500',
   },
   // Week
   weekCard: {
@@ -279,6 +263,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     marginTop: 2,
+  },
+  dayShifts: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
   dayShift: {
     flexDirection: 'row',

@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { restoreAccessToken, clearTokens } from '../services/tokenStorage';
+import { restoreAccessToken, clearTokens, getAccessToken } from '../services/tokenStorage';
 import { authApi } from './api/authApi';
 import { userApi } from './api/userApi';
 import { attendanceApi } from './api/attendanceApi';
@@ -12,7 +12,8 @@ import { workshiftApi } from './api/workshiftApi';
 import { notificationApi } from './api/notificationApi';
 import { contractApi } from './api/contractApi';
 import { degreeApi } from './api/degreeApi';
-import authReducer, { restoreAuth, logout } from './slices/authSlice';
+import authReducer, { restoreAuth, logout, mapToUserInfo } from './slices/authSlice';
+import type { UserInfo } from './slices/authSlice';
 
 export const store = configureStore({
   reducer: {
@@ -64,9 +65,31 @@ export const initializeAuth = async () => {
     
     if (authToken && userInfo) {
       try {
-        const user = JSON.parse(userInfo);
+        const rawUser = JSON.parse(userInfo);
+        // Map backend format (snake_case) → UserInfo (camelCase)
+        const user = mapToUserInfo(rawUser);
         store.dispatch(restoreAuth({ accessToken: authToken, user }));
         console.log('[Store] Auth restored from SecureStore for user:', user.username);
+
+        // Proactively validate token & refresh user data in background.
+        // If access token expired, baseQuery will auto-refresh via refresh token.
+        store.dispatch(
+          authApi.endpoints.getUserProfile.initiate(undefined, { forceRefetch: true })
+        )
+          .unwrap()
+          .then((result: any) => {
+            if (result?.success && result?.data) {
+              const freshUser = mapToUserInfo(result.data);
+              const currentToken = getAccessToken() || authToken;
+              store.dispatch(restoreAuth({ accessToken: currentToken, user: freshUser }));
+              // Persist the correctly-mapped user info
+              AsyncStorage.setItem('userInfo', JSON.stringify(freshUser));
+              console.log('[Store] User profile validated & refreshed for:', freshUser.username);
+            }
+          })
+          .catch((err: any) => {
+            console.warn('[Store] Token validation failed (may need re-login):', err);
+          });
       } catch (parseError) {
         console.error('[Store] Error parsing user info:', parseError);
         // Clear invalid data

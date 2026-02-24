@@ -40,9 +40,9 @@ export const useCreateLeaveRequest = () => {
     if (!validate()) return;
 
     const payload: CreateLeaveRequestPayload = {
-      leave_type: selectedType,
-      start_date: parseDate(startDate),
-      end_date: endDate.trim() ? parseDate(endDate) : parseDate(startDate),
+      leaveType: selectedType,
+      startDate: parseDate(startDate),
+      endDate: endDate.trim() ? parseDate(endDate) : parseDate(startDate),
       reason: reason.trim(),
     };
 

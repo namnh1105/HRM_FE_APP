@@ -14,7 +14,6 @@ import { formatTime } from '../utils';
 
 const Attendance: React.FC = () => {
   const {
-    isAuthenticated,
     timeStr,
     dateStr,
     todayRecord,
@@ -24,29 +23,13 @@ const Attendance: React.FC = () => {
     canCheckIn,
     canCheckOut,
     isCheckedOut,
+    isAllDone,
     historyRecords,
     handleCheckIn,
     handleCheckOut,
-    navigateToLogin,
     navigateToHistory,
+    upcomingShift,
   } = useAttendance();
-
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
-          <Ionicons name="lock-closed-outline" size={64} color="#94A3B8" />
-          <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={navigateToLogin}
-          >
-            <Text style={styles.loginBtnText}>Đăng nhập</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -61,6 +44,42 @@ const Attendance: React.FC = () => {
           <Text style={styles.time}>{timeStr}</Text>
           <Text style={styles.date}>{dateStr}</Text>
         </View>
+
+        {/* Upcoming / Current Shift Info */}
+        {upcomingShift && (
+          <View style={styles.shiftCard}>
+            <View style={styles.shiftCardHeader}>
+              <View style={[styles.shiftStatusDot, { backgroundColor: upcomingShift.isActive ? '#10B981' : '#F59E0B' }]} />
+              <Text style={styles.shiftCardTitle}>
+                {upcomingShift.isActive ? 'Ca đang diễn ra' : 'Ca sắp tới'}
+              </Text>
+            </View>
+            <Text style={styles.shiftName}>{upcomingShift.name}</Text>
+            <View style={styles.shiftTimeRow}>
+              <Ionicons name="time-outline" size={16} color="#3B82F6" />
+              <Text style={styles.shiftTimeText}>
+                {upcomingShift.startTime} - {upcomingShift.endTime}
+              </Text>
+            </View>
+            {!upcomingShift.isActive && upcomingShift.minutesUntilStart > 0 && (
+              <View style={styles.shiftCountdown}>
+                <Ionicons name="hourglass-outline" size={14} color="#F59E0B" />
+                <Text style={styles.shiftCountdownText}>
+                  Bắt đầu sau {upcomingShift.minutesUntilStart >= 60
+                    ? `${Math.floor(upcomingShift.minutesUntilStart / 60)}h${upcomingShift.minutesUntilStart % 60 > 0 ? ` ${upcomingShift.minutesUntilStart % 60} phút` : ''}`
+                    : `${upcomingShift.minutesUntilStart} phút`}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {!upcomingShift && !todayLoading && (
+          <View style={styles.noShiftCard}>
+            <Ionicons name="calendar-outline" size={20} color="#94A3B8" />
+            <Text style={styles.noShiftText}>Không có ca làm việc sắp tới</Text>
+          </View>
+        )}
 
         {/* Loading state */}
         {(todayLoading || isProcessing) && (
@@ -77,8 +96,9 @@ const Attendance: React.FC = () => {
                 activeOpacity={0.8}
                 disabled={isProcessing}
               >
-                <Ionicons name="finger-print" size={40} color="#FFF" />
+                <Ionicons name="scan" size={40} color="#FFF" />
                 <Text style={styles.mainBtnText}>CHẤM CÔNG VÀO</Text>
+                <Text style={styles.mainBtnSubText}>Nhận diện khuôn mặt</Text>
               </TouchableOpacity>
             )}
 
@@ -89,12 +109,13 @@ const Attendance: React.FC = () => {
                 activeOpacity={0.8}
                 disabled={isProcessing}
               >
-                <Ionicons name="finger-print" size={40} color="#FFF" />
+                <Ionicons name="scan" size={40} color="#FFF" />
                 <Text style={styles.mainBtnText}>CHẤM CÔNG RA</Text>
+                <Text style={styles.mainBtnSubText}>Nhận diện khuôn mặt</Text>
               </TouchableOpacity>
             )}
 
-            {isCheckedOut && (
+            {isAllDone && (
               <View style={[styles.mainBtn, styles.doneBtn]}>
                 <Ionicons name="checkmark-circle" size={40} color="#FFF" />
                 <Text style={styles.mainBtnText}>ĐÃ HOÀN THÀNH</Text>
@@ -111,21 +132,21 @@ const Attendance: React.FC = () => {
               <Ionicons name="log-in-outline" size={20} color="#3B82F6" />
               <Text style={styles.todayLabel}>Giờ vào</Text>
               <Text style={styles.todayValue}>
-                {formatTime(todayRecord?.check_in_time ?? null)}
+                {formatTime(todayRecord?.checkInTime ?? null)}
               </Text>
             </View>
             <View style={styles.todayItem}>
               <Ionicons name="log-out-outline" size={20} color="#EF4444" />
               <Text style={styles.todayLabel}>Giờ ra</Text>
               <Text style={styles.todayValue}>
-                {formatTime(todayRecord?.check_out_time ?? null)}
+                {formatTime(todayRecord?.checkOutTime ?? null)}
               </Text>
             </View>
             <View style={styles.todayItem}>
               <Ionicons name="time-outline" size={20} color="#10B981" />
               <Text style={styles.todayLabel}>Tổng giờ</Text>
               <Text style={styles.todayValue}>
-                {todayRecord?.working_hours != null ? `${todayRecord.working_hours}h` : '--'}
+                {todayRecord?.workingHours != null ? `${todayRecord.workingHours}h` : '--'}
               </Text>
             </View>
           </View>
@@ -146,14 +167,14 @@ const Attendance: React.FC = () => {
         {historyRecords.map((record) => (
           <View key={record.id} style={styles.historyCard}>
             <View style={styles.historyDate}>
-              <Text style={styles.historyDateText}>{record.work_date}</Text>
+              <Text style={styles.historyDateText}>{record.workDate}</Text>
             </View>
             <View style={styles.historyInfo}>
               <Text style={styles.historyTime}>
-                {formatTime(record.check_in_time)} → {formatTime(record.check_out_time)}
+                {formatTime(record.checkInTime)} → {formatTime(record.checkOutTime)}
               </Text>
               <Text style={styles.historyHours}>
-                {record.working_hours != null ? `${record.working_hours} giờ` : '--'}
+                {record.workingHours != null ? `${record.workingHours} giờ` : '--'}
               </Text>
             </View>
             <View
@@ -161,7 +182,7 @@ const Attendance: React.FC = () => {
                 styles.historyStatus,
                 {
                   backgroundColor:
-                    record.check_out_time ? '#ECFDF5' : '#FEF3C7',
+                    record.checkOutTime ? '#ECFDF5' : '#FEF3C7',
                 },
               ]}
             >
@@ -170,11 +191,11 @@ const Attendance: React.FC = () => {
                   styles.historyStatusText,
                   {
                     color:
-                      record.check_out_time ? '#10B981' : '#F59E0B',
+                      record.checkOutTime ? '#10B981' : '#F59E0B',
                   },
                 ]}
               >
-                {record.check_out_time ? '✓' : '•'}
+                {record.checkOutTime ? '✓' : '•'}
               </Text>
             </View>
           </View>
@@ -190,30 +211,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-  },
-  authPrompt: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  authTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#64748B',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  loginBtn: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-  },
-  loginBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   header: {
     paddingHorizontal: 20,
@@ -274,6 +271,94 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 8,
     letterSpacing: 0.5,
+  },
+  mainBtnSubText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 10,
+    marginTop: 4,
+  },
+  // Upcoming Shift Card
+  shiftCard: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  shiftCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  shiftStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  shiftCardTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  shiftName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 6,
+  },
+  shiftTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  shiftTimeText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  shiftCountdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    gap: 6,
+  },
+  shiftCountdownText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#D97706',
+  },
+  noShiftCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+  },
+  noShiftText: {
+    fontSize: 13,
+    color: '#94A3B8',
   },
   // Today Card
   todayCard: {

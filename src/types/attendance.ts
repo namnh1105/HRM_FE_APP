@@ -15,37 +15,37 @@ export type CheckInFlowStatus = 'not_checked' | 'checked_in' | 'checked_out';
 
 export interface AttendanceRecord {
   id: string;
-  employee_id: string;
-  employee_name: string;
-  work_date: string;
-  check_in_time: string | null;
-  check_out_time: string | null;
-  check_in_ip: string | null;
-  check_out_ip: string | null;
-  check_in_location: string | null;
-  check_out_location: string | null;
+  employeeId: string;
+  employeeName: string;
+  workDate: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  checkInIp: string | null;
+  checkOutIp: string | null;
+  checkInLocation: string | null;
+  checkOutLocation: string | null;
   status: AttendanceStatus;
-  working_hours: number;
-  overtime_hours: number;
-  late_minutes: number;
-  early_leave_minutes: number;
+  workingHours: number;
+  overtimeHours: number;
+  lateMinutes: number;
+  earlyLeaveMinutes: number;
   note: string | null;
-  work_shift_id: string | null;
-  created_at: string;
-  updated_at: string;
-  created_by: string | null;
-  updated_by: string | null;
-  is_deleted: boolean;
-  deleted_at: string | null;
-  deleted_by: string | null;
+  workShiftId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string | null;
+  updatedBy: string | null;
+  isDeleted: boolean;
+  deletedAt: string | null;
+  deletedBy: string | null;
 }
 
 export interface CheckInRequest {
   note?: string;
-  check_in_location?: string;
+  checkInLocation?: string;
 }
 
 export interface CheckOutRequest {
   note?: string;
-  check_out_location?: string;
+  checkOutLocation?: string;
 }

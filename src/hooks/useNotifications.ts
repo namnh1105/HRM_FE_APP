@@ -1,6 +1,4 @@
 import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
 import {
   useGetMyNotificationsQuery,
   useMarkAsReadMutation,
@@ -11,11 +9,8 @@ import type { NotificationType } from '../types/notification';
 
 export const useNotifications = () => {
   const navigation = useNavigation<any>();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
-  const { data, isLoading, isError, refetch } = useGetMyNotificationsQuery(undefined, {
-    skip: !isAuthenticated,
-  });
+  const { data, isLoading, isError, refetch } = useGetMyNotificationsQuery(undefined);
   const [doMarkAsRead] = useMarkAsReadMutation();
   const [doMarkAllAsRead] = useMarkAllAsReadMutation();
 
@@ -39,10 +34,8 @@ export const useNotifications = () => {
 
   const markAsRead = (id: string) => doMarkAsRead(id);
   const markAllAsRead = () => doMarkAllAsRead();
-  const navigateToLogin = () => navigation.navigate('Login');
 
   return {
-    isAuthenticated,
     notifications,
     unreadCount,
     isLoading,
@@ -52,6 +45,5 @@ export const useNotifications = () => {
     formatTime: formatRelativeTime,
     markAsRead,
     markAllAsRead,
-    navigateToLogin,
   };
 };

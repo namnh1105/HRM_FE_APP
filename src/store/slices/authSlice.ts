@@ -29,6 +29,22 @@ const initialState: AuthState = {
   permissions: [],
 };
 
+/**
+ * Map raw backend user → UserInfo.
+ * Backend now returns camelCase fields directly.
+ */
+export const mapToUserInfo = (raw: any): UserInfo => ({
+  id: raw.id,
+  username: raw.username || raw.email,
+  name: raw.name,
+  email: raw.email,
+  givenName: raw.givenName,
+  familyName: raw.familyName,
+  avatarUrl: raw.avatarUrl || undefined,
+  roles: raw.roles || [],
+  permissions: raw.permissions || [],
+});
+
 const authSlice = createSlice({
   name: 'auth',
   initialState, 

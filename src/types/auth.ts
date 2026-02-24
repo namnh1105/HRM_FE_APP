@@ -9,27 +9,27 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   data: {
-    access_token: string;
-    refresh_token: string;
-    token_type: string;
-    expires_in: number;
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresIn: number;
     user: {
       id: string;
       email: string;
       name: string | null;
       roles: string[];
       permissions: string[];
-      given_name: string;
-      family_name: string;
-      avatar_url: string | null;
-      is_active: boolean;
-      created_at: string | null;
-      updated_at: string;
-      created_by: string;
-      updated_by: string | null;
-      is_deleted: boolean;
-      deleted_at: string | null;
-      deleted_by: string | null;
+      givenName: string;
+      familyName: string;
+      avatarUrl: string | null;
+      isActive: boolean;
+      createdAt: string | null;
+      updatedAt: string;
+      createdBy: string;
+      updatedBy: string | null;
+      isDeleted: boolean;
+      deletedAt: string | null;
+      deletedBy: string | null;
     };
   };
   timestamp: string;
@@ -50,8 +50,8 @@ export interface RegisterResponse {
     user: {
       id: string;
       username: string;
-      given_name: string;
-      family_name: string;
+      givenName: string;
+      familyName: string;
     };
   };
 }
@@ -64,9 +64,9 @@ export interface UserProfileResponse {
   data: {
     id: string;
     username: string;
-    given_name: string;
-    family_name: string;
-    avatar_url: string;
+    givenName: string;
+    familyName: string;
+    avatarUrl: string;
     followersCount: number;
     followingCount: number;
     isFollowing: boolean;

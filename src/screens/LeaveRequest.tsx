@@ -22,7 +22,6 @@ const FILTERS: { label: string; value: LeaveStatus | 'all' }[] = [
 
 const LeaveRequestScreen: React.FC = () => {
   const {
-    isAuthenticated,
     filterStatus,
     setFilterStatus,
     filteredRequests,
@@ -34,25 +33,7 @@ const LeaveRequestScreen: React.FC = () => {
     formatDate,
     handleCancel,
     navigateToCreate,
-    navigateToLogin,
   } = useLeaveRequests();
-
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
-          <Ionicons name="lock-closed-outline" size={64} color="#94A3B8" />
-          <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={navigateToLogin}
-          >
-            <Text style={styles.loginBtnText}>Đăng nhập</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   const renderItem = ({ item }: { item: LeaveRequest }) => {
     const statusColor = getStatusColor(item.status);
@@ -62,9 +43,9 @@ const LeaveRequestScreen: React.FC = () => {
         <View style={styles.cardHeader}>
           <View style={styles.typeRow}>
             <View style={styles.typeIcon}>
-              <Ionicons name={getTypeIcon(item.leave_type) as any} size={18} color="#3B82F6" />
+              <Ionicons name={getTypeIcon(item.leaveType) as any} size={18} color="#3B82F6" />
             </View>
-            <Text style={styles.typeName}>{LEAVE_TYPE_LABELS[item.leave_type]}</Text>
+            <Text style={styles.typeName}>{LEAVE_TYPE_LABELS[item.leaveType]}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
             <Text style={[styles.statusText, { color: statusColor.text }]}>
@@ -76,8 +57,8 @@ const LeaveRequestScreen: React.FC = () => {
         <View style={styles.dateRow}>
           <Ionicons name="calendar-outline" size={14} color="#94A3B8" />
           <Text style={styles.dateText}>
-            {formatDate(item.start_date)}
-            {item.start_date !== item.end_date && ` → ${formatDate(item.end_date)}`}
+            {formatDate(item.startDate)}
+            {item.startDate !== item.endDate && ` → ${formatDate(item.endDate)}`}
           </Text>
         </View>
 
@@ -85,11 +66,11 @@ const LeaveRequestScreen: React.FC = () => {
           {item.reason}
         </Text>
 
-        {item.approver_name && (
-          <Text style={styles.approver}>Người duyệt: {item.approver_name}</Text>
+        {item.approverName && (
+          <Text style={styles.approver}>Người duyệt: {item.approverName}</Text>
         )}
-        {item.approver_comment && (
-          <Text style={styles.rejectedReason}>Nhận xét: {item.approver_comment}</Text>
+        {item.approverComment && (
+          <Text style={styles.rejectedReason}>Nhận xét: {item.approverComment}</Text>
         )}
 
         {item.status === 'PENDING' && (
@@ -194,30 +175,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-  },
-  authPrompt: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  authTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#64748B',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  loginBtn: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-  },
-  loginBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',

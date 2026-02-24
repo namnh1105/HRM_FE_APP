@@ -17,8 +17,8 @@ import type { Contract } from '../types/contract';
 import { CONTRACT_TYPE_LABELS, CONTRACT_STATUS_LABELS, CONTRACT_STATUS_COLORS } from '../types/contract';
 
 const Contracts: React.FC = () => {
-  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
-  const { data: profileData } = useGetMyProfileQuery(undefined, { skip: !isAuthenticated });
+  const { user } = useAppSelector((state) => state.auth);
+  const { data: profileData } = useGetMyProfileQuery(undefined);
   
   const employeeId = profileData?.data?.id;
   const { 
@@ -39,9 +39,9 @@ const Contracts: React.FC = () => {
       <View key={contract.id} style={styles.card}>
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.contractCode}>{contract.contract_code}</Text>
+            <Text style={styles.contractCode}>{contract.contractCode}</Text>
             <Text style={styles.contractType}>
-              {CONTRACT_TYPE_LABELS[contract.contract_type]}
+              {CONTRACT_TYPE_LABELS[contract.contractType]}
             </Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
@@ -56,16 +56,16 @@ const Contracts: React.FC = () => {
             <Ionicons name="calendar-outline" size={16} color="#666" />
             <Text style={styles.infoLabel}>Ngày bắt đầu:</Text>
             <Text style={styles.infoValue}>
-              {new Date(contract.start_date).toLocaleDateString('vi-VN')}
+              {new Date(contract.startDate).toLocaleDateString('vi-VN')}
             </Text>
           </View>
 
-          {contract.end_date && (
+          {contract.endDate && (
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={16} color="#666" />
               <Text style={styles.infoLabel}>Ngày kết thúc:</Text>
               <Text style={styles.infoValue}>
-                {new Date(contract.end_date).toLocaleDateString('vi-VN')}
+                {new Date(contract.endDate).toLocaleDateString('vi-VN')}
               </Text>
             </View>
           )}
@@ -74,22 +74,22 @@ const Contracts: React.FC = () => {
             <Ionicons name="cash-outline" size={16} color="#666" />
             <Text style={styles.infoLabel}>Lương cơ bản:</Text>
             <Text style={styles.infoValue}>
-              {contract.base_salary.toLocaleString('vi-VN')} VNĐ
+              {contract.baseSalary.toLocaleString('vi-VN')} VNĐ
             </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Ionicons name="calculator-outline" size={16} color="#666" />
             <Text style={styles.infoLabel}>Hệ số lương:</Text>
-            <Text style={styles.infoValue}>{contract.salary_coefficient}</Text>
+            <Text style={styles.infoValue}>{contract.salaryCoefficient}</Text>
           </View>
 
-          {contract.signing_date && (
+          {contract.signingDate && (
             <View style={styles.infoRow}>
               <Ionicons name="document-text-outline" size={16} color="#666" />
               <Text style={styles.infoLabel}>Ngày ký:</Text>
               <Text style={styles.infoValue}>
-                {new Date(contract.signing_date).toLocaleDateString('vi-VN')}
+                {new Date(contract.signingDate).toLocaleDateString('vi-VN')}
               </Text>
             </View>
           )}
@@ -104,18 +104,6 @@ const Contracts: React.FC = () => {
       </View>
     );
   };
-
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
-          <Ionicons name="lock-closed-outline" size={64} color="#94A3B8" />
-          <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
-          <Text style={styles.authSub}>Đăng nhập để xem hợp đồng lao động</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -265,24 +253,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1E293B',
     lineHeight: 20,
-  },
-  authPrompt: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  authTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  authSub: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,

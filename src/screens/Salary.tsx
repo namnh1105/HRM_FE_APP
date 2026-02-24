@@ -86,10 +86,10 @@ const Salary: React.FC = () => {
             {/* Net Salary Card */}
             <View style={styles.netCard}>
               <Text style={styles.netLabel}>Lương thực nhận</Text>
-              <Text style={styles.netValue}>{formatVND(selected.net_salary)}</Text>
-              {selected.payment_date && (
+              <Text style={styles.netValue}>{formatVND(selected.netSalary)}</Text>
+              {selected.paymentDate && (
                 <Text style={styles.paidDate}>
-                  Ngày trả: {new Date(selected.payment_date).toLocaleDateString('vi-VN')}
+                  Ngày trả: {new Date(selected.paymentDate).toLocaleDateString('vi-VN')}
                 </Text>
               )}
             </View>
@@ -97,25 +97,25 @@ const Salary: React.FC = () => {
             {/* Breakdown */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Thu nhập</Text>
-              <DetailRow label="Lương cơ bản" value={selected.base_salary} color="#1E293B" />
+              <DetailRow label="Lương cơ bản" value={selected.baseSalary} color="#1E293B" />
               <DetailRow label="Phụ cấp" value={selected.allowance} color="#10B981" />
-              <DetailRow label="Làm thêm giờ" value={selected.overtime_pay} color="#3B82F6" />
+              <DetailRow label="Làm thêm giờ" value={selected.overtimePay} color="#3B82F6" />
               <DetailRow label="Thưởng" value={selected.bonus} color="#8B5CF6" />
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Khấu trừ</Text>
-              <DetailRow label="BHXH" value={-selected.social_insurance} color="#EF4444" />
-              <DetailRow label="BHYT" value={-selected.health_insurance} color="#EF4444" />
-              <DetailRow label="BHTN" value={-selected.unemployment_insurance} color="#EF4444" />
-              <DetailRow label="Thuế TNCN" value={-selected.personal_income_tax} color="#EF4444" />
-              <DetailRow label="Khấu trừ khác" value={-(selected.total_deductions - selected.social_insurance - selected.health_insurance - selected.unemployment_insurance - selected.personal_income_tax)} color="#EF4444" />
+              <DetailRow label="BHXH" value={-selected.socialInsurance} color="#EF4444" />
+              <DetailRow label="BHYT" value={-selected.healthInsurance} color="#EF4444" />
+              <DetailRow label="BHTN" value={-selected.unemploymentInsurance} color="#EF4444" />
+              <DetailRow label="Thuế TNCN" value={-selected.personalIncomeTax} color="#EF4444" />
+              <DetailRow label="Khấu trừ khác" value={-(selected.totalDeductions - selected.socialInsurance - selected.healthInsurance - selected.unemploymentInsurance - selected.personalIncomeTax)} color="#EF4444" />
             </View>
 
             {/* Total */}
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Tổng thực nhận</Text>
-              <Text style={styles.totalValue}>{formatVND(selected.net_salary)}</Text>
+              <Text style={styles.totalValue}>{formatVND(selected.netSalary)}</Text>
             </View>
 
             {/* Download */}

@@ -11,8 +11,8 @@ export const useAttendanceHistory = () => {
     const start = new Date();
     start.setDate(start.getDate() - 90);
     return {
-      start_date: start.toISOString().split('T')[0],
-      end_date: end.toISOString().split('T')[0],
+      startDate: start.toISOString().split('T')[0],
+      endDate: end.toISOString().split('T')[0],
     };
   }, []);
 
@@ -20,10 +20,10 @@ export const useAttendanceHistory = () => {
   const history = data?.data ?? [];
 
   const getStatusInfo = (record: AttendanceRecord) => {
-    if (record.check_out_time) {
+    if (record.checkOutTime) {
       return { label: 'Hoàn thành', color: '#10B981', bg: '#ECFDF5' };
     }
-    if (record.check_in_time) {
+    if (record.checkInTime) {
       return { label: 'Đang làm', color: '#3B82F6', bg: '#EFF6FF' };
     }
     return { label: 'Chưa chấm', color: '#F59E0B', bg: '#FEF3C7' };
@@ -42,7 +42,7 @@ export const useAttendanceHistory = () => {
 
   // Summary stats
   const presentCount = history.filter((r) => r.status === 'PRESENT').length;
-  const totalHours = history.reduce((sum, r) => sum + (r.working_hours || 0), 0).toFixed(1);
+  const totalHours = history.reduce((sum, r) => sum + (r.workingHours || 0), 0).toFixed(1);
   const absentCount = history.filter((r) => r.status === 'ABSENT').length;
 
   const goBack = () => navigation.goBack();

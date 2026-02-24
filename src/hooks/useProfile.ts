@@ -16,10 +16,8 @@ interface MenuItem {
 export const useProfile = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-  const { data: profileData, isLoading, error, refetch } = useGetMyProfileQuery(undefined, {
-    skip: !isAuthenticated,
-  });
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { data: profileData, isLoading, error, refetch } = useGetMyProfileQuery(undefined);
   const profile = profileData?.data;
 
   const handleLogout = () => {
@@ -72,16 +70,13 @@ export const useProfile = () => {
     },
   ];
 
-  const displayName = profile?.full_name
+  const displayName = profile?.fullName
     || user?.name
     || (user?.givenName ? `${user?.givenName || ''} ${user?.familyName || ''}`.trim() : null)
     || user?.username
     || 'Nhân viên';
 
-  const navigateToLogin = () => navigation.navigate('Login');
-
   return {
-    isAuthenticated,
     user,
     profile,
     isLoading,
@@ -90,6 +85,5 @@ export const useProfile = () => {
     displayName,
     menuItems,
     handleLogout,
-    navigateToLogin,
   };
 };

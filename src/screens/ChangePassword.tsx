@@ -11,11 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useChangePasswordMutation } from '../store/api/userApi';
-import { useAppSelector } from '../hooks';
 import LoadingIndicator from '../components/LoadingIndicator';
 
 const ChangePassword: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -74,17 +72,6 @@ const ChangePassword: React.FC<{ navigation: any }> = ({ navigation }) => {
       Alert.alert('Lỗi', errorMessage);
     }
   };
-
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
-          <Ionicons name="lock-closed-outline" size={64} color="#94A3B8" />
-          <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -271,18 +258,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFF',
-  },
-  authPrompt: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  authTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginTop: 16,
   },
 });
 

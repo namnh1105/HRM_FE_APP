@@ -7,6 +7,49 @@ import type {
   CheckOutRequest,
 } from '../../types/attendance';
 
+// ── Face recognition response types ──────────────────────────────────
+export interface FaceCheckinData {
+  employeeId: string;
+  employeeName: string;
+  checkInTime: string;
+  workDate: string;
+  workShift?: {
+    id: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+  };
+  lateMinutes: number;
+  status: string;
+  attendanceId: string;
+}
+
+export interface FaceCheckoutData {
+  employeeId: string;
+  employeeName: string;
+  checkInTime: string;
+  checkOutTime: string;
+  workDate: string;
+  workShift?: {
+    id: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+  };
+  workingHours: number;
+  lateMinutes: number;
+  earlyLeaveMinutes: number;
+  status: string;
+  attendanceId: string;
+}
+
+export interface FaceAttendanceParams {
+  photoUri: string;
+  employeeId: string;
+  latitude: number;
+  longitude: number;
+}
+
 export const attendanceApi = createApi({
   reducerPath: 'attendanceApi',
   baseQuery,
@@ -19,10 +62,10 @@ export const attendanceApi = createApi({
 
     getAttendanceHistory: builder.query<
       ApiResponse<AttendanceRecord[]>,
-      { start_date: string; end_date: string }
+      { startDate: string; endDate: string }
     >({
-      query: ({ start_date, end_date }) =>
-        `/attendances/me/history?start_date=${start_date}&end_date=${end_date}`,
+      query: ({ startDate, endDate }) =>
+        `/attendances/me/history?startDate=${startDate}&endDate=${endDate}`,
       providesTags: ['AttendanceHistory'],
     }),
 
@@ -43,6 +86,47 @@ export const attendanceApi = createApi({
       }),
       invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
     }),
+
+    // ── Face recognition mutations ────────────────────────────────────
+    faceCheckin: builder.mutation<ApiResponse<FaceCheckinData>, FaceAttendanceParams>({
+      query: ({ photoUri, employeeId, latitude, longitude }) => {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: photoUri,
+          type: 'image/jpeg',
+          name: 'face.jpg',
+        } as any);
+        formData.append('employee_id', employeeId);
+        formData.append('latitude', latitude.toString());
+        formData.append('longitude', longitude.toString());
+        return {
+          url: '/face-api/attendances/check-in',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
+    }),
+
+    faceCheckout: builder.mutation<ApiResponse<FaceCheckoutData>, FaceAttendanceParams>({
+      query: ({ photoUri, employeeId, latitude, longitude }) => {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: photoUri,
+          type: 'image/jpeg',
+          name: 'face.jpg',
+        } as any);
+        formData.append('employee_id', employeeId);
+        formData.append('latitude', latitude.toString());
+        formData.append('longitude', longitude.toString());
+        return {
+          url: '/face-api/attendances/check-out',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
+    }),
   }),
 });
 
@@ -51,4 +135,6 @@ export const {
   useGetAttendanceHistoryQuery,
   useCheckInMutation,
   useCheckOutMutation,
+  useFaceCheckinMutation,
+  useFaceCheckoutMutation,
 } = attendanceApi;

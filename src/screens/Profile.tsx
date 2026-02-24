@@ -14,7 +14,6 @@ import InfoRow from '../components/InfoRow';
 
 const Profile: React.FC = () => {
   const {
-    isAuthenticated,
     user,
     profile,
     isLoading,
@@ -23,36 +22,14 @@ const Profile: React.FC = () => {
     displayName,
     menuItems,
     handleLogout,
-    navigateToLogin,
   } = useProfile();
-
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person-outline" size={48} color="#CBD5E1" />
-          </View>
-          <Text style={styles.authTitle}>Chưa đăng nhập</Text>
-          <Text style={styles.authSub}>Đăng nhập để xem hồ sơ cá nhân</Text>
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={navigateToLogin}
-          >
-            <Text style={styles.loginBtnText}>Đăng nhập</Text>
-          </TouchableOpacity>
-          <Text style={styles.signUpLink}>Liên hệ quản trị viên để tạo tài khoản</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={[styles.authSub, { marginTop: 12 }]}>Đang tải thông tin...</Text>
+          <Text style={styles.loadingText}>Đang tải thông tin...</Text>
         </View>
       </SafeAreaView>
     );
@@ -61,12 +38,12 @@ const Profile: React.FC = () => {
   if (error) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
+        <View style={styles.loadingContainer}>
           <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
-          <Text style={[styles.authTitle, { marginTop: 12 }]}>Lỗi tải dữ liệu</Text>
-          <Text style={styles.authSub}>Không thể tải thông tin hồ sơ</Text>
-          <TouchableOpacity style={styles.loginBtn} onPress={refetch}>
-            <Text style={styles.loginBtnText}>Thử lại</Text>
+          <Text style={[styles.loadingText, { marginTop: 12, color: '#EF4444' }]}>Lỗi tải dữ liệu</Text>
+          <Text style={styles.loadingText}>Không thể tải thông tin hồ sơ</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -90,9 +67,9 @@ const Profile: React.FC = () => {
           </View>
           <Text style={styles.userName}>{displayName}</Text>
           <Text style={styles.userEmail}>{profile?.email || user?.email || profile?.phone || ''}</Text>
-          {profile?.employee_code && (
+          {profile?.employeeCode && (
             <View style={styles.idBadge}>
-              <Text style={styles.idText}>{profile.employee_code}</Text>
+              <Text style={styles.idText}>{profile.employeeCode}</Text>
             </View>
           )}
         </View>
@@ -100,10 +77,10 @@ const Profile: React.FC = () => {
         {/* Employee Info */}
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>Thông tin công việc</Text>
-          <InfoRow icon="business" label="Phòng ban" value={profile?.department_name || 'Chưa cập nhật'} />
+          <InfoRow icon="business" label="Phòng ban" value={profile?.departmentName || 'Chưa cập nhật'} />
           <InfoRow icon="briefcase" label="Chức vụ" value={profile?.position || 'Chưa cập nhật'} />
-          <InfoRow icon="calendar" label="Ngày vào làm" value={profile?.join_date || 'Chưa cập nhật'} />
-          <InfoRow icon="shield-checkmark" label="Trạng thái" value={profile?.employment_status || 'Chưa cập nhật'} />
+          <InfoRow icon="calendar" label="Ngày vào làm" value={profile?.joinDate || 'Chưa cập nhật'} />
+          <InfoRow icon="shield-checkmark" label="Trạng thái" value={profile?.employmentStatus || 'Chưa cập nhật'} />
         </View>
 
         {/* Menu Items */}
@@ -163,48 +140,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  // Auth prompt
-  authPrompt: {
+  // Loading/Error states
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
   },
-  avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  authTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  authSub: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 6,
-    marginBottom: 24,
-  },
-  loginBtn: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  loginBtnText: {
-    color: '#FFF',
+  loadingText: {
     fontSize: 16,
-    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 12,
+    textAlign: 'center',
   },
-  signUpLink: {
+  retryButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    color: '#FFF',
     fontSize: 14,
-    color: '#3B82F6',
     fontWeight: '600',
   },
   // Header

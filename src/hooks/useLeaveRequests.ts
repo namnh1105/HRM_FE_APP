@@ -1,19 +1,14 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
 import { useGetMyLeaveRequestsQuery, useCancelLeaveRequestMutation } from '../store/api/leaveApi';
 import type { LeaveStatus } from '../types/leave';
 
 export const useLeaveRequests = () => {
   const navigation = useNavigation<any>();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const [filterStatus, setFilterStatus] = useState<LeaveStatus | 'all'>('all');
 
-  const { data, isLoading, isError, refetch } = useGetMyLeaveRequestsQuery(undefined, {
-    skip: !isAuthenticated,
-  });
+  const { data, isLoading, isError, refetch } = useGetMyLeaveRequestsQuery(undefined);
   const [cancelLeaveRequest] = useCancelLeaveRequestMutation();
 
   const allRequests = data?.data ?? [];
@@ -76,10 +71,8 @@ export const useLeaveRequests = () => {
   };
 
   const navigateToCreate = () => navigation.navigate('CreateLeaveRequest');
-  const navigateToLogin = () => navigation.navigate('Login');
 
   return {
-    isAuthenticated,
     filterStatus,
     setFilterStatus,
     filteredRequests,
@@ -91,6 +84,5 @@ export const useLeaveRequests = () => {
     formatDate,
     handleCancel,
     navigateToCreate,
-    navigateToLogin,
   };
 };

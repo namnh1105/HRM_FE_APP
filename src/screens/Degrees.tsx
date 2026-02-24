@@ -10,13 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useGetDegreesQuery } from '../store/api/degreeApi';
-import { useAppSelector } from '../hooks';
+import { useGetAllDegreesQuery } from '../store/api/degreeApi';
 import LoadingIndicator from '../components/LoadingIndicator';
 import { Degree } from '../types/degree';
 
 const Degrees: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const [searchText, setSearchText] = useState('');
   const [filteredDegrees, setFilteredDegrees] = useState<Degree[]>([]);
 
@@ -25,9 +23,7 @@ const Degrees: React.FC<{ navigation: any }> = ({ navigation }) => {
     isLoading,
     error,
     refetch,
-  } = useGetDegreesQuery(undefined, {
-    skip: !isAuthenticated,
-  });
+  } = useGetAllDegreesQuery(undefined);
 
   useEffect(() => {
     if (!degrees) return;
@@ -164,17 +160,6 @@ const Degrees: React.FC<{ navigation: any }> = ({ navigation }) => {
       </TouchableOpacity>
     </View>
   );
-
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
-          <Ionicons name="school-outline" size={64} color="#94A3B8" />
-          <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -417,18 +402,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#64748B',
-    marginTop: 16,
-  },
-  authPrompt: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  authTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
     marginTop: 16,
   },
 });

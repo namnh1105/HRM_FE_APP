@@ -4,15 +4,32 @@ export interface WorkShift {
   id: string;
   name: string;
   code: string;
-  start_time: string;
-  end_time: string;
-  break_duration: number;
-  total_hours: number;
+  startTime: string;
+  endTime: string;
+  breakDuration: number;
+  totalHours: number;
   description: string | null;
-  is_active: boolean;
-  is_night_shift: boolean;
-  created_at: string;
-  updated_at: string;
+  isActive: boolean;
+  isNightShift: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Employee Work Shift Assignment (matching backend EmployeeWorkShiftResponse DTO)
+export interface EmployeeWorkShift {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  workShiftId: string;
+  workShiftName: string;
+  workShiftCode: string;
+  shiftStartTime: string;
+  shiftEndTime: string;
+  date: string;
+  dayOfWeek: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** Frontend-only composite for calendar view */

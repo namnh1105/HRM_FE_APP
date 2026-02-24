@@ -1,12 +1,12 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from './baseQuery';
 import type { ApiResponse } from '../../types/common';
-import type { WorkShift } from '../../types/workshift';
+import type { WorkShift, EmployeeWorkShift } from '../../types/workshift';
 
 export const workshiftApi = createApi({
   reducerPath: 'workshiftApi',
   baseQuery,
-  tagTypes: ['WorkShift'],
+  tagTypes: ['WorkShift', 'EmployeeWorkShift'],
   endpoints: (builder) => ({
     /** GET /work-shifts/enabled */
     getActiveWorkShifts: builder.query<ApiResponse<WorkShift[]>, void>({
@@ -25,6 +25,36 @@ export const workshiftApi = createApi({
       query: (id) => `/work-shifts/${id}`,
       providesTags: (_result, _error, id) => [{ type: 'WorkShift', id }],
     }),
+
+    /** GET /employee-work-shifts/my-shifts - current user's shifts for today */
+    getMyShiftsToday: builder.query<ApiResponse<EmployeeWorkShift[]>, void>({
+      query: () => '/employee-work-shifts/my-shifts',
+      providesTags: ['EmployeeWorkShift'],
+    }),
+
+    /** GET /employee-work-shifts/my-shifts/all - all shift assignments for current user */
+    getMyAllShifts: builder.query<ApiResponse<EmployeeWorkShift[]>, void>({
+      query: () => '/employee-work-shifts/me',
+      providesTags: ['EmployeeWorkShift'],
+    }),
+
+    /** GET /employee-work-shifts/employee/:employeeId - all assignments for employee */
+    getEmployeeWorkShifts: builder.query<ApiResponse<EmployeeWorkShift[]>, string>({
+      query: (employeeId) => `/employee-work-shifts/employee/${employeeId}`,
+      providesTags: (_result, _error, employeeId) => [
+        { type: 'EmployeeWorkShift', id: employeeId },
+      ],
+    }),
+
+    /** GET /employee-work-shifts/employee/:employeeId/date?date=YYYY-MM-DD */
+    getEmployeeShiftsByDate: builder.query<
+      ApiResponse<EmployeeWorkShift[]>,
+      { employeeId: string; date: string }
+    >({
+      query: ({ employeeId, date }) =>
+        `/employee-work-shifts/employee/${employeeId}/date?date=${date}`,
+      providesTags: ['EmployeeWorkShift'],
+    }),
   }),
 });
 
@@ -32,4 +62,8 @@ export const {
   useGetActiveWorkShiftsQuery,
   useGetAllWorkShiftsQuery,
   useGetWorkShiftByIdQuery,
+  useGetMyShiftsTodayQuery,
+  useGetMyAllShiftsQuery,
+  useGetEmployeeWorkShiftsQuery,
+  useGetEmployeeShiftsByDateQuery,
 } = workshiftApi;

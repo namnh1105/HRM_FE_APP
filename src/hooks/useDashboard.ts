@@ -5,32 +5,29 @@ import { useGetAttendanceTodayQuery } from '../store/api/attendanceApi';
 import { useGetMyLeaveRequestsQuery } from '../store/api/leaveApi';
 import { useGetMyPayrollsQuery } from '../store/api/payrollApi';
 import { useGetMyNotificationsQuery } from '../store/api/notificationApi';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const useDashboard = () => {
   const navigation = useNavigation<any>();
-  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
 
-  const { data: notificationRes } = useGetMyNotificationsQuery(undefined, {
-    skip: !isAuthenticated,
-  });
+  const { data: notificationRes } = useGetMyNotificationsQuery(undefined);
   const allNotifications = notificationRes?.data ?? [];
   const unreadCount = allNotifications.filter((n) => !n.isRead).length;
   const notifications = allNotifications.slice(0, 5);
 
   const { data: attendanceRes, isLoading: isAttendanceLoading } =
-    useGetAttendanceTodayQuery(undefined, { skip: !isAuthenticated });
+    useGetAttendanceTodayQuery(undefined);
   const { data: leaveRes, isLoading: isLeaveLoading } =
-    useGetMyLeaveRequestsQuery(undefined, { skip: !isAuthenticated });
+    useGetMyLeaveRequestsQuery(undefined);
   const { data: payrollRes, isLoading: isPayrollLoading } =
-    useGetMyPayrollsQuery(undefined, { skip: !isAuthenticated });
+    useGetMyPayrollsQuery(undefined);
 
   const todayRecord = attendanceRes?.data ?? null;
 
   const derivedStatus = todayRecord
-    ? todayRecord.check_out_time
+    ? todayRecord.checkOutTime
       ? 'checked_out'
-      : todayRecord.check_in_time
+      : todayRecord.checkInTime
         ? 'checked_in'
         : 'not_checked'
     : 'not_checked';
@@ -107,12 +104,10 @@ export const useDashboard = () => {
     }
   };
 
-  const navigateToLogin = () => navigation.navigate('Login');
   const navigateToNotifications = () => navigation.navigate('Notifications');
 
   return {
     user,
-    isAuthenticated,
     todayRecord,
     isAttendanceLoading,
     unreadCount,
@@ -121,7 +116,6 @@ export const useDashboard = () => {
     getStatusLabel,
     getStatusColor,
     getNotificationIcon,
-    navigateToLogin,
     navigateToNotifications,
   };
 };

@@ -14,7 +14,6 @@ import type { HrmNotification } from '../types/notification';
 
 const Notifications: React.FC = () => {
   const {
-    isAuthenticated,
     notifications,
     unreadCount,
     isLoading,
@@ -24,32 +23,14 @@ const Notifications: React.FC = () => {
     formatTime,
     markAsRead,
     markAllAsRead,
-    navigateToLogin,
   } = useNotifications();
-
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
-          <Ionicons name="lock-closed-outline" size={64} color="#94A3B8" />
-          <Text style={styles.authTitle}>Vui lòng đăng nhập</Text>
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={navigateToLogin}
-          >
-            <Text style={styles.loginBtnText}>Đăng nhập</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={[styles.authTitle, { marginTop: 12 }]}>Đang tải thông báo...</Text>
+          <Text style={styles.loadingText}>Đang tải thông báo...</Text>
         </View>
       </SafeAreaView>
     );
@@ -58,11 +39,11 @@ const Notifications: React.FC = () => {
   if (isError) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
+        <View style={styles.loadingContainer}>
           <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
-          <Text style={[styles.authTitle, { color: '#EF4444' }]}>Không thể tải thông báo</Text>
-          <TouchableOpacity style={styles.loginBtn} onPress={refetch}>
-            <Text style={styles.loginBtnText}>Thử lại</Text>
+          <Text style={[styles.loadingText, { color: '#EF4444' }]}>Không thể tải thông báo</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -141,28 +122,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  authPrompt: {
+  // Loading/Error states
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
   },
-  authTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#64748B',
-    marginTop: 16,
-    marginBottom: 24,
-  },
-  loginBtn: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-  },
-  loginBtnText: {
-    color: '#FFF',
+  loadingText: {
     fontSize: 16,
+    color: '#64748B',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  retryButtonText: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: '600',
   },
   header: {

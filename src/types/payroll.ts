@@ -4,33 +4,33 @@ export type PayrollStatus = 'DRAFT' | 'CONFIRMED' | 'PAID' | 'CANCELLED';
 
 export interface SalaryDetail {
   id: string;
-  employee_id: string;
-  employee_name: string;
-  employee_code: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
   month: number;
   year: number;
-  base_salary: number;
-  salary_coefficient: number;
-  working_days: number;
-  actual_working_days: number;
-  overtime_hours: number;
-  overtime_pay: number;
+  baseSalary: number;
+  salaryCoefficient: number;
+  workingDays: number;
+  actualWorkingDays: number;
+  overtimeHours: number;
+  overtimePay: number;
   allowance: number;
   bonus: number;
-  social_insurance: number;
-  health_insurance: number;
-  unemployment_insurance: number;
-  personal_income_tax: number;
-  total_deductions: number;
-  total_income: number;
-  net_salary: number;
+  socialInsurance: number;
+  healthInsurance: number;
+  unemploymentInsurance: number;
+  personalIncomeTax: number;
+  totalDeductions: number;
+  totalIncome: number;
+  netSalary: number;
   status: PayrollStatus;
   note: string | null;
-  payment_date: string | null;
-  created_at: string;
-  updated_at: string;
-  created_by: string | null;
-  updated_by: string | null;
+  paymentDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string | null;
+  updatedBy: string | null;
 }
 
 // --- Vietnamese label maps ---

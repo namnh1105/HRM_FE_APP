@@ -1,6 +1,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { baseQuery } from './baseQuery';
+import { mapToUserInfo } from '../slices/authSlice';
 import { LoginRequest, RegisterRequest } from '../../types/auth';
 
 export type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, UserProfileResponse } from '../../types/auth';
@@ -35,7 +36,9 @@ export const authApi = createApi({
         try {
           const { data } = await queryFulfilled;
           if (data.success && data.data) {
-            await AsyncStorage.setItem('userInfo', JSON.stringify(data.data));
+            // Save mapped UserInfo format (camelCase) for consistent restore
+            const mappedUser = mapToUserInfo(data.data);
+            await AsyncStorage.setItem('userInfo', JSON.stringify(mappedUser));
           }
         } catch (error) {
           console.error('Get user profile failed:', error);

@@ -22,7 +22,7 @@ const AttendanceHistory: React.FC = () => {
 
   const renderItem = ({ item }: { item: AttendanceRecord }) => {
     const statusInfo = getStatusInfo(item);
-    const dateInfo = formatDate(item.work_date);
+    const dateInfo = formatDate(item.workDate);
 
     return (
       <View style={styles.card}>
@@ -34,18 +34,18 @@ const AttendanceHistory: React.FC = () => {
         <View style={styles.info}>
           <View style={styles.timeRow}>
             <Ionicons name="log-in-outline" size={16} color="#3B82F6" />
-            <Text style={styles.timeText}>{formatTime(item.check_in_time)}</Text>
+            <Text style={styles.timeText}>{formatTime(item.checkInTime)}</Text>
             <Ionicons name="arrow-forward" size={14} color="#CBD5E1" style={{ marginHorizontal: 6 }} />
             <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-            <Text style={styles.timeText}>{formatTime(item.check_out_time)}</Text>
+            <Text style={styles.timeText}>{formatTime(item.checkOutTime)}</Text>
           </View>
           <Text style={styles.hoursText}>
-            {item.working_hours != null ? `${item.working_hours} giờ làm việc` : 'Chưa có dữ liệu'}
+            {item.workingHours != null ? `${item.workingHours} giờ làm việc` : 'Chưa có dữ liệu'}
           </Text>
-          {item.check_in_location && (
+          {item.checkInLocation && (
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={12} color="#94A3B8" />
-              <Text style={styles.locationText}>{item.check_in_location}</Text>
+              <Text style={styles.locationText}>{item.checkInLocation}</Text>
             </View>
           )}
         </View>

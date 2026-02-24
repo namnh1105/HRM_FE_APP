@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { useLoginMutation, LoginResponse } from '../store/api/authApi';
-import { setCredentials } from '../store/slices/authSlice';
+import { setCredentials, mapToUserInfo } from '../store/slices/authSlice';
 import { saveTokens } from '../services/tokenStorage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -57,50 +57,30 @@ export const useAuthLogin = (navigation: any) => {
         const result = response.data as LoginResponse;
         console.log('[useAuthLogin] Login result:', JSON.stringify(result, null, 2));
 
-        if (result.success && result.data && result.data.access_token) {
-          console.log('[useAuthLogin] Access token found:', !!result.data.access_token);
+        if (result.success && result.data && result.data.accessToken) {
+          console.log('[useAuthLogin] Access token found:', !!result.data.accessToken);
           
-          // Save to AsyncStorage first
-          await saveAuthData(result.data.access_token, result.data.refresh_token, result.data.user);
+          // Map backend user → UserInfo (consistent camelCase format)
+          const mappedUser = mapToUserInfo(result.data.user);
+          
+          // Save mapped user to AsyncStorage (so restore reads the same format)
+          await saveAuthData(result.data.accessToken, result.data.refreshToken, mappedUser);
           
           // Update Redux state - this triggers RootNavigator
           dispatch(setCredentials({
-            accessToken: result.data.access_token,
-            user: {
-              id: result.data.user.id,
-              username: result.data.user.email, // Use email as username for compatibility
-              name: result.data.user.name,
-              email: result.data.user.email,
-              givenName: result.data.user.given_name,
-              familyName: result.data.user.family_name,
-              avatarUrl: result.data.user.avatar_url || undefined,
-              roles: result.data.user.roles || [],
-              permissions: result.data.user.permissions || [],
-            },
+            accessToken: result.data.accessToken,
+            user: mappedUser,
           }));
           
           console.log('[useAuthLogin] Login successful, credentials saved');
           
-          // Wait a bit for state to propagate
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Navigate back to main app
-          Alert.alert('Đăng nhập thành công', 'Chào mừng bạn đã quay trở lại!', [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'MainTabs' }],
-                });
-              }
-            },
-          ]);
+          // Auth state change will automatically trigger navigation to MainTabs
+          Alert.alert('Đăng nhập thành công', 'Chào mừng bạn đã quay trở lại!');
         } else {
           console.error('[useAuthLogin] Login failed - invalid response structure:', {
             success: result.success,
             hasData: !!result.data,
-            hasAccessToken: !!(result.data && result.data.access_token)
+            hasAccessToken: !!(result.data && result.data.accessToken)
           });
           Alert.alert('Đăng nhập thất bại', result.message || 'Phản hồi từ server không hợp lệ');
         }
@@ -124,10 +104,8 @@ export const useAuthLogin = (navigation: any) => {
   };
 
   const navigateBack = () => {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'MainTabs', params: { screen: 'Profile' } }],
-    });
+    // Navigation is now handled automatically by conditional rendering in RootNavigator
+    // No manual navigation needed
   };
 
   return {

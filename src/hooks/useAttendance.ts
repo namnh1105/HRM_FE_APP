@@ -1,24 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import {
   useGetAttendanceTodayQuery,
   useGetAttendanceHistoryQuery,
-  useCheckInMutation,
-  useCheckOutMutation,
+  useFaceCheckinMutation,
+  useFaceCheckoutMutation,
 } from '../store/api/attendanceApi';
+import { useGetMyProfileQuery } from '../store/api/employeeApi';
+import { useGetMyShiftsTodayQuery } from '../store/api/workshiftApi';
+import { formatShiftTime } from '../utils';
 import type { CheckInFlowStatus } from '../types/attendance';
+import type { EmployeeWorkShift } from '../types/workshift';
+
+/** Map JS getDay() (0=Sun) to backend day_of_week enum */
+const JS_DAY_TO_ENUM: Record<number, string> = {
+  0: 'SUNDAY',
+  1: 'MONDAY',
+  2: 'TUESDAY',
+  3: 'WEDNESDAY',
+  4: 'THURSDAY',
+  5: 'FRIDAY',
+  6: 'SATURDAY',
+};
+
+export interface UpcomingShiftInfo {
+  name: string;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+  minutesUntilStart: number;
+}
 
 export const useAttendance = () => {
   const navigation = useNavigation<any>();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // RTK Query hooks
-  const { data: todayData, isLoading: todayLoading, refetch: refetchToday } =
-    useGetAttendanceTodayQuery(undefined, { skip: !isAuthenticated });
+  const { data: todayData, isLoading: todayLoading } =
+    useGetAttendanceTodayQuery(undefined);
 
   // History: last 30 days
   const thirtyDaysAgo = new Date();
@@ -27,12 +50,20 @@ export const useAttendance = () => {
   const startDate = thirtyDaysAgo.toISOString().split('T')[0];
 
   const { data: historyData, isLoading: historyLoading } = useGetAttendanceHistoryQuery(
-    { start_date: startDate, end_date: today },
-    { skip: !isAuthenticated },
+    { startDate: startDate, endDate: today },
   );
 
-  const [doCheckIn, { isLoading: checkingIn }] = useCheckInMutation();
-  const [doCheckOut, { isLoading: checkingOut }] = useCheckOutMutation();
+  // Employee profile — needed for employee_id when calling face API
+  const { data: profileData } = useGetMyProfileQuery();
+  const employeeId = profileData?.data?.id;
+
+  // My shift assignments — for upcoming shift display
+  const { data: myShiftsData } = useGetMyShiftsTodayQuery();
+  const myAssignments = myShiftsData?.data ?? [];
+
+  // Face recognition mutations
+  const [faceCheckinTrigger] = useFaceCheckinMutation();
+  const [faceCheckoutTrigger] = useFaceCheckoutMutation();
 
   // Live clock
   useEffect(() => {
@@ -56,62 +87,164 @@ export const useAttendance = () => {
   const todayRecord = todayData?.data;
 
   // Derive check-in flow status from backend data
+  // After checkout, allow check-in again (for multi-shift days)
   const flowStatus: CheckInFlowStatus = !todayRecord
     ? 'not_checked'
-    : todayRecord.check_out_time
+    : todayRecord.checkOutTime
       ? 'checked_out'
-      : todayRecord.check_in_time
+      : todayRecord.checkInTime
         ? 'checked_in'
         : 'not_checked';
 
   const isCheckedIn = flowStatus === 'checked_in';
   const isCheckedOut = flowStatus === 'checked_out';
-  const canCheckIn = flowStatus === 'not_checked';
+
+  // ── Upcoming / current shift computation ──────────────────────────
+  const upcomingShift = useMemo((): UpcomingShiftInfo | null => {
+    if (myAssignments.length === 0) return null;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const dayEnum = JS_DAY_TO_ENUM[now.getDay()];
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Filter assignments applicable today
+    const todayAssignments = myAssignments.filter((a: EmployeeWorkShift) => {
+      if (todayStr !== a.date) return false;
+      if (a.dayOfWeek !== null && a.dayOfWeek !== dayEnum) return false;
+      return true;
+    });
+
+    if (todayAssignments.length === 0) return null;
+
+    // Sort by shift start time
+    const sorted = [...todayAssignments].sort((a, b) => {
+      const [ah, am] = a.shiftStartTime.split(':').map(Number);
+      const [bh, bm] = b.shiftStartTime.split(':').map(Number);
+      return ah * 60 + am - (bh * 60 + bm);
+    });
+
+    // Find the next upcoming or currently active shift
+    for (const assignment of sorted) {
+      const [sh, sm] = assignment.shiftStartTime.split(':').map(Number);
+      const [eh, em] = assignment.shiftEndTime.split(':').map(Number);
+      const startMin = sh * 60 + sm;
+      const endMin = eh * 60 + em;
+
+      // Still relevant if current time < shift end + 30 min buffer
+      if (nowMinutes < endMin + 30) {
+        const isActive = nowMinutes >= startMin - 30 && nowMinutes <= endMin;
+        return {
+          name: assignment.workShiftName,
+          startTime: formatShiftTime(assignment.shiftStartTime),
+          endTime: formatShiftTime(assignment.shiftEndTime),
+          isActive,
+          minutesUntilStart: Math.max(0, startMin - nowMinutes),
+        };
+      }
+    }
+
+    return null;
+  }, [myAssignments, currentTime]);
+
+  // After checkout, allow checkin again if there's an upcoming shift (multi-shift days)
+  const canCheckIn = flowStatus === 'not_checked' || (isCheckedOut && upcomingShift != null);
   const canCheckOut = isCheckedIn;
-  const isProcessing = checkingIn || checkingOut;
+  const isAllDone = isCheckedOut && upcomingShift == null;
 
   const historyRecords = (historyData?.data || []).slice(0, 5);
 
+  // ── Camera + GPS + Face API flow ──────────────────────────────────
+  const captureAndSend = async (mode: 'checkin' | 'checkout') => {
+    if (!employeeId) {
+      Alert.alert('Lỗi', 'Không thể xác định thông tin nhân viên. Vui lòng thử lại.');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      // Request camera permission
+      const cameraPerm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!cameraPerm.granted) {
+        Alert.alert('Quyền truy cập', 'Cần quyền truy cập camera để chấm công bằng khuôn mặt.');
+        return;
+      }
+
+      // Request location permission
+      const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+      if (locStatus !== 'granted') {
+        Alert.alert('Quyền truy cập', 'Cần quyền truy cập vị trí để chấm công.');
+        return;
+      }
+
+      // Launch front camera
+      const photo = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.7,
+        cameraType: ImagePicker.CameraType.front,
+      });
+
+      if (photo.canceled) return;
+
+      const photoUri = photo.assets[0].uri;
+
+      // Get GPS coordinates
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const { latitude, longitude } = location.coords;
+
+      // Call face recognition API
+      const result =
+        mode === 'checkin'
+          ? await faceCheckinTrigger({ photoUri, employeeId, latitude, longitude }).unwrap()
+          : await faceCheckoutTrigger({ photoUri, employeeId, latitude, longitude }).unwrap();
+
+      if (!result.success) {
+        Alert.alert('Lỗi', result.message || 'Chấm công thất bại');
+      } else {
+        const shiftInfo = result.data?.workShift
+          ? `\nCa: ${result.data.workShift.name}`
+          : '';
+        Alert.alert(
+          'Thành công',
+          (result.message || (mode === 'checkin' ? 'Check-in thành công' : 'Check-out thành công')) +
+            shiftInfo,
+        );
+      }
+    } catch (error: any) {
+      Alert.alert('Lỗi', error?.message || 'Có lỗi xảy ra khi chấm công');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleCheckIn = () => {
-    Alert.alert('Xác nhận chấm công vào', 'Bạn có muốn chấm công vào ngay bây giờ?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Chấm công',
-        onPress: async () => {
-          try {
-            await doCheckIn().unwrap();
-            refetchToday();
-          } catch (err: any) {
-            Alert.alert('Lỗi', err?.data?.message || 'Chấm công vào thất bại');
-          }
-        },
-      },
-    ]);
+    Alert.alert(
+      'Chấm công vào',
+      'Bạn sẽ chụp ảnh khuôn mặt để xác thực chấm công. Tiếp tục?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Tiếp tục', onPress: () => captureAndSend('checkin') },
+      ],
+    );
   };
 
   const handleCheckOut = () => {
-    Alert.alert('Xác nhận chấm công ra', 'Bạn có muốn chấm công ra ngay bây giờ?', [
-      { text: 'Hủy', style: 'cancel' },
-      {
-        text: 'Chấm công',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await doCheckOut().unwrap();
-            refetchToday();
-          } catch (err: any) {
-            Alert.alert('Lỗi', err?.data?.message || 'Chấm công ra thất bại');
-          }
-        },
-      },
-    ]);
+    Alert.alert(
+      'Chấm công ra',
+      'Bạn sẽ chụp ảnh khuôn mặt để xác thực chấm công. Tiếp tục?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: 'Tiếp tục', style: 'destructive', onPress: () => captureAndSend('checkout') },
+      ],
+    );
   };
 
-  const navigateToLogin = () => navigation.navigate('Login');
   const navigateToHistory = () => navigation.navigate('AttendanceHistory');
 
   return {
-    isAuthenticated,
     timeStr,
     dateStr,
     todayRecord,
@@ -121,10 +254,11 @@ export const useAttendance = () => {
     canCheckIn,
     canCheckOut,
     isCheckedOut,
+    isAllDone,
     historyRecords,
     handleCheckIn,
     handleCheckOut,
-    navigateToLogin,
     navigateToHistory,
+    upcomingShift,
   };
 };

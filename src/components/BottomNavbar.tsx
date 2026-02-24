@@ -23,7 +23,7 @@ interface TabConfig {
 const TABS: TabConfig[] = [
   { name: 'Dashboard', label: 'Trang chủ', icon: 'home' },
   { name: 'LeaveRequest', label: 'Đơn từ', icon: 'document-text' },
-  { name: 'Attendance', label: 'Chấm công', icon: 'finger-print', isCenter: true },
+  { name: 'Attendance', label: 'Chấm công', icon: 'happy', isCenter: true },
   { name: 'Notifications', label: 'Thông báo', icon: 'notifications' },
   { name: 'Profile', label: 'Cá nhân', icon: 'person' },
 ];
@@ -63,7 +63,7 @@ const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
                 activeOpacity={0.8}
               >
                 <View style={[styles.centerBtn, isFocused && styles.centerBtnActive]}>
-                  <Ionicons name="finger-print" size={28} color="#FFF" />
+                  <Ionicons name="happy" size={28} color="#FFF" />
                 </View>
                 <Text
                   style={[

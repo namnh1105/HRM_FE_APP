@@ -1,13 +1,37 @@
 import { useMemo } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { useGetActiveWorkShiftsQuery } from '../store/api/workshiftApi';
+import {
+  useGetActiveWorkShiftsQuery,
+  useGetMyAllShiftsQuery,
+} from '../store/api/workshiftApi';
 import { formatShiftTime } from '../utils';
-import type { WorkShift } from '../types/workshift';
+import type { WorkShift, EmployeeWorkShift } from '../types/workshift';
 
 const SHIFT_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#EF4444', '#EC4899'];
 const DAY_NAMES = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
 
+/** Map our week index (Mon=0 … Sun=6) to backend DayOfWeek enum */
+const WEEK_IDX_TO_ENUM: string[] = [
+  'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY',
+];
+
 export const getShiftColor = (index: number) => SHIFT_COLORS[index % SHIFT_COLORS.length];
+
+/** Map shift id to a consistent color */
+const getShiftColorByName = (shiftId: string, allShifts: WorkShift[]) => {
+  const idx = allShifts.findIndex((s) => s.id === shiftId);
+  return getShiftColor(idx >= 0 ? idx : 0);
+};
+
+/** Format local date as YYYY-MM-DD without timezone issues */
+const toLocalDateStr = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Parse date string (may contain 'T') to YYYY-MM-DD only */
+const normaliseDate = (s: string | null): string | null => {
+  if (!s) return null;
+  return s.split('T')[0];
+};
 
 export interface WeekDay {
   dayName: string;
@@ -15,41 +39,57 @@ export interface WeekDay {
   fullDate: string;
   isWeekend: boolean;
   isToday: boolean;
-  shift: { name: string; time: string; color: string } | null;
+  shifts: { name: string; time: string; color: string }[];
 }
 
-const buildWeekSchedule = (shifts: WorkShift[]): WeekDay[] => {
+const buildWeekSchedule = (
+  allShifts: WorkShift[],
+  allAssignments: EmployeeWorkShift[],
+): WeekDay[] => {
   const days: WeekDay[] = [];
   const today = new Date();
-  const startOfWeek = new Date(today);
-  startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+  const todayStr = toLocalDateStr(today);
 
-  const shiftLabel =
-    shifts.length > 0
-      ? shifts.map((s) => s.name).join(' + ')
-      : 'Chưa có ca';
-  const shiftTimeRange =
-    shifts.length > 0
-      ? `${formatShiftTime(shifts[0].start_time)} - ${formatShiftTime(shifts[shifts.length - 1].end_time)}`
-      : '--:-- - --:--';
-  const shiftColor = shifts.length > 0 ? getShiftColor(0) : '#94A3B8';
+  // Calculate Monday of the current week
+  const startOfWeek = new Date(today);
+  const jsDay = today.getDay(); // 0=Sun, 1=Mon, …, 6=Sat
+  const mondayOffset = jsDay === 0 ? -6 : 1 - jsDay;
+  startOfWeek.setDate(today.getDate() + mondayOffset);
 
   for (let i = 0; i < 7; i++) {
     const date = new Date(startOfWeek);
     date.setDate(startOfWeek.getDate() + i);
+    const dateStr = toLocalDateStr(date);
     const isWeekend = i >= 5;
-    const isToday =
-      date.toISOString().split('T')[0] === today.toISOString().split('T')[0];
+    const isToday = dateStr === todayStr;
+    const dayEnum = WEEK_IDX_TO_ENUM[i]; // e.g. "MONDAY"
+
+    // Find assignments that apply to this day
+    const dayShifts = allAssignments.filter((a) => {
+      // Check if the assignment date matches this day
+      const assignmentDate = normaliseDate(a.date);
+      if (assignmentDate && dateStr !== assignmentDate) return false;
+
+      // Check day_of_week: null → applies to all days; otherwise must match
+      if (a.dayOfWeek !== null && a.dayOfWeek !== undefined) {
+        if (a.dayOfWeek !== dayEnum) return false;
+      }
+      return true;
+    });
+
+    const shifts = dayShifts.map((a) => ({
+      name: a.workShiftName,
+      time: `${formatShiftTime(a.shiftStartTime)} - ${formatShiftTime(a.shiftEndTime)}`,
+      color: getShiftColorByName(a.workShiftId, allShifts),
+    }));
 
     days.push({
       dayName: DAY_NAMES[i],
       date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-      fullDate: date.toISOString().split('T')[0],
+      fullDate: dateStr,
       isWeekend,
       isToday,
-      shift: isWeekend
-        ? null
-        : { name: shiftLabel, time: shiftTimeRange, color: shiftColor },
+      shifts,
     });
   }
   return days;
@@ -64,15 +104,44 @@ export const HOLIDAYS = [
 
 export const useWorkSchedule = () => {
   const navigation = useNavigation<any>();
-  const { data, isLoading, error, refetch } = useGetActiveWorkShiftsQuery();
+  const {
+    data: shiftsData,
+    isLoading: isLoadingShifts,
+    error: shiftsError,
+    refetch: refetchShifts,
+  } = useGetActiveWorkShiftsQuery();
+  const {
+    data: myShiftsData,
+    isLoading: isLoadingMyShifts,
+    error: myShiftsError,
+    refetch: refetchMyShifts,
+  } = useGetMyAllShiftsQuery();
 
-  const shifts = data?.data ?? [];
-  const weekSchedule = useMemo(() => buildWeekSchedule(shifts), [shifts]);
+  const shifts = shiftsData?.data ?? [];
+  const allAssignments = myShiftsData?.data ?? [];
+  const isLoading = isLoadingShifts || isLoadingMyShifts;
+  const error = shiftsError || myShiftsError;
+
+  const weekSchedule = useMemo(
+    () => buildWeekSchedule(shifts, allAssignments),
+    [shifts, allAssignments],
+  );
+
+  const todayShifts = useMemo(
+    () => weekSchedule.find((d) => d.isToday)?.shifts ?? [],
+    [weekSchedule],
+  );
+
+  const refetch = () => {
+    refetchShifts();
+    refetchMyShifts();
+  };
 
   const goBack = () => navigation.goBack();
 
   return {
     shifts,
+    todayShifts,
     isLoading,
     error,
     refetch,

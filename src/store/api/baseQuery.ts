@@ -23,7 +23,6 @@ const rawBaseQuery = fetchBaseQuery({
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
     }
-    headers.set('Content-Type', 'application/json');
     return headers;
   },
 });
@@ -67,20 +66,20 @@ export const baseQuery: BaseQueryFn<
             const data = refreshResult.data as {
               success: boolean;
               data: {
-                access_token: string;
-                token_type: string;
-                expires_in: number;
+                accessToken: string;
+                tokenType: string;
+                expiresIn: number;
               };
             };
 
-            if (data.success && data.data?.access_token) {
+            if (data.success && data.data?.accessToken) {
               // Save new tokens securely
               // Backend may not rotate refresh token — keep existing if not provided
-              await saveTokens(data.data.access_token, refreshToken);
+              await saveTokens(data.data.accessToken, refreshToken);
 
               // Update Redux in-memory state
               const { setAccessTokenInStore } = await import('../slices/authSlice');
-              api.dispatch(setAccessTokenInStore(data.data.access_token));
+              api.dispatch(setAccessTokenInStore(data.data.accessToken));
 
               console.log('[baseQuery] Silent refresh OK — retrying original request');
 

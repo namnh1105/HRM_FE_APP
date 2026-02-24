@@ -15,7 +15,6 @@ import { formatTime } from '../utils';
 const Dashboard: React.FC = () => {
   const {
     user,
-    isAuthenticated,
     todayRecord,
     isAttendanceLoading,
     unreadCount,
@@ -24,28 +23,8 @@ const Dashboard: React.FC = () => {
     getStatusLabel,
     getStatusColor,
     getNotificationIcon,
-    navigateToLogin,
     navigateToNotifications,
   } = useDashboard();
-
-  // If not authenticated, show login prompt
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.authPrompt}>
-          <Ionicons name="lock-closed-outline" size={64} color="#94A3B8" />
-          <Text style={styles.authTitle}>Chào mừng đến HRM</Text>
-          <Text style={styles.authSubtitle}>Vui lòng đăng nhập để tiếp tục</Text>
-          <TouchableOpacity
-            style={styles.loginBtn}
-            onPress={navigateToLogin}
-          >
-            <Text style={styles.loginBtnText}>Đăng nhập</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -87,7 +66,7 @@ const Dashboard: React.FC = () => {
               <Ionicons name="log-in-outline" size={20} color="#3B82F6" />
               <Text style={styles.statusLabel}>Vào</Text>
               <Text style={styles.statusValue}>
-                {formatTime(todayRecord?.check_in_time)}
+                {formatTime(todayRecord?.checkInTime)}
               </Text>
             </View>
             <View style={styles.statusDivider} />
@@ -95,7 +74,7 @@ const Dashboard: React.FC = () => {
               <Ionicons name="log-out-outline" size={20} color="#EF4444" />
               <Text style={styles.statusLabel}>Ra</Text>
               <Text style={styles.statusValue}>
-                {formatTime(todayRecord?.check_out_time)}
+                {formatTime(todayRecord?.checkOutTime)}
               </Text>
             </View>
             <View style={styles.statusDivider} />
@@ -103,8 +82,8 @@ const Dashboard: React.FC = () => {
               <Ionicons name="time-outline" size={20} color="#10B981" />
               <Text style={styles.statusLabel}>Giờ làm</Text>
               <Text style={styles.statusValue}>
-                {todayRecord?.working_hours != null
-                  ? `${todayRecord.working_hours}h`
+                {todayRecord?.workingHours != null
+                  ? `${todayRecord.workingHours}h`
                   : '--'}
               </Text>
             </View>
@@ -180,36 +159,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-  },
-  // Auth prompt
-  authPrompt: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  authTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginTop: 16,
-  },
-  authSubtitle: {
-    fontSize: 15,
-    color: '#64748B',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  loginBtn: {
-    backgroundColor: '#3B82F6',
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    borderRadius: 12,
-  },
-  loginBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   // Header
   header: {
