@@ -10,11 +10,6 @@ import type { WorkShift, EmployeeWorkShift } from '../types/workshift';
 const SHIFT_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#EF4444', '#EC4899'];
 const DAY_NAMES = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
 
-/** Map our week index (Mon=0 … Sun=6) to backend DayOfWeek enum */
-const WEEK_IDX_TO_ENUM: string[] = [
-  'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY',
-];
-
 export const getShiftColor = (index: number) => SHIFT_COLORS[index % SHIFT_COLORS.length];
 
 /** Map shift id to a consistent color */
@@ -62,19 +57,11 @@ const buildWeekSchedule = (
     const dateStr = toLocalDateStr(date);
     const isWeekend = i >= 5;
     const isToday = dateStr === todayStr;
-    const dayEnum = WEEK_IDX_TO_ENUM[i]; // e.g. "MONDAY"
 
-    // Find assignments that apply to this day
+    // Find assignments that apply to this day (match by date)
     const dayShifts = allAssignments.filter((a) => {
-      // Check if the assignment date matches this day
       const assignmentDate = normaliseDate(a.date);
-      if (assignmentDate && dateStr !== assignmentDate) return false;
-
-      // Check day_of_week: null → applies to all days; otherwise must match
-      if (a.dayOfWeek !== null && a.dayOfWeek !== undefined) {
-        if (a.dayOfWeek !== dayEnum) return false;
-      }
-      return true;
+      return assignmentDate === dateStr;
     });
 
     const shifts = dayShifts.map((a) => ({

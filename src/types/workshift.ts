@@ -27,7 +27,6 @@ export interface EmployeeWorkShift {
   shiftStartTime: string;
   shiftEndTime: string;
   date: string;
-  dayOfWeek: string | null;
   createdAt: string;
   updatedAt: string;
 }

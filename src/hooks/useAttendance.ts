@@ -6,25 +6,14 @@ import * as Location from 'expo-location';
 import {
   useGetAttendanceTodayQuery,
   useGetAttendanceHistoryQuery,
-  useFaceCheckinMutation,
-  useFaceCheckoutMutation,
+  useCheckInMutation,
+  useCheckOutMutation,
 } from '../store/api/attendanceApi';
 import { useGetMyProfileQuery } from '../store/api/employeeApi';
 import { useGetMyShiftsTodayQuery } from '../store/api/workshiftApi';
 import { formatShiftTime } from '../utils';
 import type { CheckInFlowStatus } from '../types/attendance';
 import type { EmployeeWorkShift } from '../types/workshift';
-
-/** Map JS getDay() (0=Sun) to backend day_of_week enum */
-const JS_DAY_TO_ENUM: Record<number, string> = {
-  0: 'SUNDAY',
-  1: 'MONDAY',
-  2: 'TUESDAY',
-  3: 'WEDNESDAY',
-  4: 'THURSDAY',
-  5: 'FRIDAY',
-  6: 'SATURDAY',
-};
 
 export interface UpcomingShiftInfo {
   name: string;
@@ -61,9 +50,9 @@ export const useAttendance = () => {
   const { data: myShiftsData } = useGetMyShiftsTodayQuery();
   const myAssignments = myShiftsData?.data ?? [];
 
-  // Face recognition mutations
-  const [faceCheckinTrigger] = useFaceCheckinMutation();
-  const [faceCheckoutTrigger] = useFaceCheckoutMutation();
+  // Face recognition mutations (now go through Java API)
+  const [checkInTrigger] = useCheckInMutation();
+  const [checkOutTrigger] = useCheckOutMutation();
 
   // Live clock
   useEffect(() => {
@@ -105,13 +94,11 @@ export const useAttendance = () => {
 
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
-    const dayEnum = JS_DAY_TO_ENUM[now.getDay()];
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // Filter assignments applicable today
+    // Filter assignments applicable today (match by date)
     const todayAssignments = myAssignments.filter((a: EmployeeWorkShift) => {
       if (a.date && todayStr !== a.date) return false;
-      if (a.dayOfWeek !== null && a.dayOfWeek !== dayEnum) return false;
       return true;
     });
 
@@ -195,11 +182,11 @@ export const useAttendance = () => {
       });
       const { latitude, longitude } = location.coords;
 
-      // Call face recognition API
+      // Call Java attendance API (face verification is handled server-side)
       const result =
         mode === 'checkin'
-          ? await faceCheckinTrigger({ photoUri, employeeId, latitude, longitude }).unwrap()
-          : await faceCheckoutTrigger({ photoUri, employeeId, latitude, longitude }).unwrap();
+          ? await checkInTrigger({ photoUri, latitude, longitude }).unwrap()
+          : await checkOutTrigger({ photoUri, latitude, longitude }).unwrap();
 
       if (!result.success) {
         Alert.alert('Lỗi', result.message || 'Chấm công thất bại');

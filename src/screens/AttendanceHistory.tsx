@@ -42,12 +42,6 @@ const AttendanceHistory: React.FC = () => {
           <Text style={styles.hoursText}>
             {item.workingHours != null ? `${item.workingHours} giờ làm việc` : 'Chưa có dữ liệu'}
           </Text>
-          {item.checkInLocation && (
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={12} color="#94A3B8" />
-              <Text style={styles.locationText}>{item.checkInLocation}</Text>
-            </View>
-          )}
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
           <Text style={[styles.statusText, { color: statusInfo.color }]}>
@@ -222,16 +216,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 4,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  locationText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginLeft: 2,
   },
   statusBadge: {
     paddingHorizontal: 10,

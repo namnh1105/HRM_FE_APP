@@ -22,8 +22,6 @@ export interface AttendanceRecord {
   checkOutTime: string | null;
   checkInIp: string | null;
   checkOutIp: string | null;
-  checkInLocation: string | null;
-  checkOutLocation: string | null;
   status: AttendanceStatus;
   workingHours: number;
   overtimeHours: number;
@@ -41,11 +39,13 @@ export interface AttendanceRecord {
 }
 
 export interface CheckInRequest {
+  latitude?: number;
+  longitude?: number;
   note?: string;
-  checkInLocation?: string;
 }
 
 export interface CheckOutRequest {
+  latitude?: number;
+  longitude?: number;
   note?: string;
-  checkOutLocation?: string;
 }

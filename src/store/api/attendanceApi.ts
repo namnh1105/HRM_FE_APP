@@ -1,61 +1,15 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from './baseQuery';
 import type { ApiResponse } from '../../types/common';
-import type {
-  AttendanceRecord,
-  CheckInRequest,
-  CheckOutRequest,
-} from '../../types/attendance';
+import type { AttendanceRecord } from '../../types/attendance';
 
-// ── Face recognition response types ──────────────────────────────────
-export interface FaceCheckinData {
-  employeeId: string;
-  employeeName: string;
-  checkInTime: string;
-  workDate: string;
-  workShift?: {
-    id: string;
-    name: string;
-    startTime: string;
-    endTime: string;
-  };
-  lateMinutes: number;
-  status: string;
-  attendanceId: string;
-}
-
-export interface FaceCheckoutData {
-  employeeId: string;
-  employeeName: string;
-  checkInTime: string;
-  checkOutTime: string;
-  workDate: string;
-  workShift?: {
-    id: string;
-    name: string;
-    startTime: string;
-    endTime: string;
-  };
-  workingHours: number;
-  lateMinutes: number;
-  earlyLeaveMinutes: number;
-  status: string;
-  attendanceId: string;
-}
-
-export interface FaceAttendanceParams {
-  photoUri: string;
-  employeeId: string;
-  latitude: number;
-  longitude: number;
-}
-
+// ── Face registration response types ─────────────────────────────────
 export interface FaceRegisterParams {
   videoUri: string;
   employeeId: string;
 }
 
-// Response khi enqueue job (PUT /register-face trả về ngay)  
+// Response khi enqueue job (PUT /register trả về ngay)  
 export interface FaceRegisterEnqueueData {
   jobId: string;
   employeeId: string;
@@ -87,6 +41,14 @@ export interface FaceStatusData {
   employeeId: string;
 }
 
+// ── Attendance check-in/out params (sent to Java with face photo) ────
+export interface AttendanceWithFaceParams {
+  photoUri: string;
+  latitude: number;
+  longitude: number;
+  note?: string;
+}
+
 export const attendanceApi = createApi({
   reducerPath: 'attendanceApi',
   baseQuery,
@@ -106,38 +68,20 @@ export const attendanceApi = createApi({
       providesTags: ['AttendanceHistory'],
     }),
 
-    checkIn: builder.mutation<ApiResponse<AttendanceRecord>, CheckInRequest | void>({
-      query: (body) => ({
-        url: '/attendances/check-in',
-        method: 'POST',
-        body: body || {},
-      }),
-      invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
-    }),
-
-    checkOut: builder.mutation<ApiResponse<AttendanceRecord>, CheckOutRequest | void>({
-      query: (body) => ({
-        url: '/attendances/check-out',
-        method: 'POST',
-        body: body || {},
-      }),
-      invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
-    }),
-
-    // ── Face recognition mutations ────────────────────────────────────
-    faceCheckin: builder.mutation<ApiResponse<FaceCheckinData>, FaceAttendanceParams>({
-      query: ({ photoUri, employeeId, latitude, longitude }) => {
+    // ── Check-in with face verification (Java handles everything) ────
+    checkIn: builder.mutation<ApiResponse<AttendanceRecord>, AttendanceWithFaceParams>({
+      query: ({ photoUri, latitude, longitude, note }) => {
         const formData = new FormData();
         formData.append('file', {
           uri: photoUri,
           type: 'image/jpeg',
           name: 'face.jpg',
         } as any);
-        formData.append('employee_id', employeeId);
         formData.append('latitude', latitude.toString());
         formData.append('longitude', longitude.toString());
+        if (note) formData.append('note', note);
         return {
-          url: '/face-api/attendances/check-in',
+          url: '/attendances/check-in',
           method: 'POST',
           body: formData,
         };
@@ -145,19 +89,20 @@ export const attendanceApi = createApi({
       invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
     }),
 
-    faceCheckout: builder.mutation<ApiResponse<FaceCheckoutData>, FaceAttendanceParams>({
-      query: ({ photoUri, employeeId, latitude, longitude }) => {
+    // ── Check-out with face verification (Java handles everything) ───
+    checkOut: builder.mutation<ApiResponse<AttendanceRecord>, AttendanceWithFaceParams>({
+      query: ({ photoUri, latitude, longitude, note }) => {
         const formData = new FormData();
         formData.append('file', {
           uri: photoUri,
           type: 'image/jpeg',
           name: 'face.jpg',
         } as any);
-        formData.append('employee_id', employeeId);
         formData.append('latitude', latitude.toString());
         formData.append('longitude', longitude.toString());
+        if (note) formData.append('note', note);
         return {
-          url: '/face-api/attendances/check-out',
+          url: '/attendances/check-out',
           method: 'POST',
           body: formData,
         };
@@ -165,9 +110,9 @@ export const attendanceApi = createApi({
       invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
     }),
 
-    // ── Face registration ─────────────────────────────────────────────
+    // ── Face registration (Python internal API via reverse proxy) ────
     getFaceStatus: builder.query<ApiResponse<FaceStatusData>, string>({
-      query: (employeeId) => `/face-api/attendances/face-status/${employeeId}`,
+      query: (employeeId) => `/face-api/face/status/${employeeId}`,
       providesTags: ['FaceStatus'],
     }),
 
@@ -181,16 +126,16 @@ export const attendanceApi = createApi({
         } as any);
         formData.append('employee_id', employeeId);
         return {
-          url: '/face-api/attendances/register-face',
+          url: '/face-api/face/register',
           method: 'PUT',
           body: formData,
         };
       },
     }),
 
-    // ── Job status polling ──────────────────────────────────────────
+    // ── Job status polling ───────────────────────────────────────────
     getRegisterFaceJobStatus: builder.query<ApiResponse<FaceRegisterJobStatusData>, string>({
-      query: (jobId) => `/face-api/attendances/register-face/status/${jobId}`,
+      query: (jobId) => `/face-api/face/register/status/${jobId}`,
     }),
   }),
 });
@@ -200,8 +145,6 @@ export const {
   useGetAttendanceHistoryQuery,
   useCheckInMutation,
   useCheckOutMutation,
-  useFaceCheckinMutation,
-  useFaceCheckoutMutation,
   useGetFaceStatusQuery,
   useRegisterFaceMutation,
   useLazyGetRegisterFaceJobStatusQuery,
