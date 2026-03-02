@@ -14,6 +14,7 @@ import {
   Contracts,
   ChangePassword,
   Degrees,
+  FaceRegistration,
 } from '../screens';
 
 const Stack = createNativeStackNavigator();
@@ -51,6 +52,7 @@ const RootNavigator: React.FC = () => {
           <Stack.Screen name="Contracts" component={Contracts} />
           <Stack.Screen name="ChangePassword" component={ChangePassword} />
           <Stack.Screen name="Degrees" component={Degrees} />
+          <Stack.Screen name="FaceRegistration" component={FaceRegistration} />
         </>
       ) : (
         <>

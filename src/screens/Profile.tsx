@@ -113,34 +113,11 @@ const Profile: React.FC = () => {
   );
 };
 
-
-const infoStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
-  },
-  label: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginLeft: 10,
-    flex: 1,
-  },
-  value: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-});
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  // Loading/Error states
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

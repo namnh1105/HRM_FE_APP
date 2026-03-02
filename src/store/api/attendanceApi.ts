@@ -50,10 +50,47 @@ export interface FaceAttendanceParams {
   longitude: number;
 }
 
+export interface FaceRegisterParams {
+  videoUri: string;
+  employeeId: string;
+}
+
+// Response khi enqueue job (PUT /register-face trả về ngay)  
+export interface FaceRegisterEnqueueData {
+  jobId: string;
+  employeeId: string;
+  message: string;
+}
+
+// Response khi polling job status (GET /register-face/status/{jobId})
+export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface FaceRegisterJobResult {
+  message: string;
+  employeeId: string;
+  indexUpdated: boolean;
+  anglesCaptured: string[];
+}
+
+export interface FaceRegisterJobStatusData {
+  jobId: string;
+  status: JobStatus;
+  created_at?: string;
+  updated_at?: string;
+  result?: FaceRegisterJobResult;
+  error?: string;
+  progress?: string;
+}
+
+export interface FaceStatusData {
+  registered: boolean;
+  employeeId: string;
+}
+
 export const attendanceApi = createApi({
   reducerPath: 'attendanceApi',
   baseQuery,
-  tagTypes: ['AttendanceToday', 'AttendanceHistory'],
+  tagTypes: ['AttendanceToday', 'AttendanceHistory', 'FaceStatus'],
   endpoints: (builder) => ({
     getAttendanceToday: builder.query<ApiResponse<AttendanceRecord | null>, void>({
       query: () => '/attendances/me/today',
@@ -127,6 +164,34 @@ export const attendanceApi = createApi({
       },
       invalidatesTags: ['AttendanceToday', 'AttendanceHistory'],
     }),
+
+    // ── Face registration ─────────────────────────────────────────────
+    getFaceStatus: builder.query<ApiResponse<FaceStatusData>, string>({
+      query: (employeeId) => `/face-api/attendances/face-status/${employeeId}`,
+      providesTags: ['FaceStatus'],
+    }),
+
+    registerFace: builder.mutation<ApiResponse<FaceRegisterEnqueueData>, FaceRegisterParams>({
+      query: ({ videoUri, employeeId }) => {
+        const formData = new FormData();
+        formData.append('video', {
+          uri: videoUri,
+          type: 'video/mp4',
+          name: 'face_register.mp4',
+        } as any);
+        formData.append('employee_id', employeeId);
+        return {
+          url: '/face-api/attendances/register-face',
+          method: 'PUT',
+          body: formData,
+        };
+      },
+    }),
+
+    // ── Job status polling ──────────────────────────────────────────
+    getRegisterFaceJobStatus: builder.query<ApiResponse<FaceRegisterJobStatusData>, string>({
+      query: (jobId) => `/face-api/attendances/register-face/status/${jobId}`,
+    }),
   }),
 });
 
@@ -137,4 +202,7 @@ export const {
   useCheckOutMutation,
   useFaceCheckinMutation,
   useFaceCheckoutMutation,
+  useGetFaceStatusQuery,
+  useRegisterFaceMutation,
+  useLazyGetRegisterFaceJobStatusQuery,
 } = attendanceApi;

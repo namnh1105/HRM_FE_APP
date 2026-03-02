@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSalary, formatVND } from '../hooks/useSalary';
+import { DetailRow } from '../components';
 
 const Salary: React.FC = () => {
   const {
@@ -97,19 +98,19 @@ const Salary: React.FC = () => {
             {/* Breakdown */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Thu nhập</Text>
-              <DetailRow label="Lương cơ bản" value={selected.baseSalary} color="#1E293B" />
-              <DetailRow label="Phụ cấp" value={selected.allowance} color="#10B981" />
-              <DetailRow label="Làm thêm giờ" value={selected.overtimePay} color="#3B82F6" />
-              <DetailRow label="Thưởng" value={selected.bonus} color="#8B5CF6" />
+              <DetailRow label="Lương cơ bản" value={selected.baseSalary} showSign formatNumber={formatVND} />
+              <DetailRow label="Phụ cấp" value={selected.allowance} variant="success" showSign formatNumber={formatVND} />
+              <DetailRow label="Làm thêm giờ" value={selected.overtimePay} variant="info" showSign formatNumber={formatVND} />
+              <DetailRow label="Thưởng" value={selected.bonus} valueColor="#8B5CF6" showSign formatNumber={formatVND} />
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Khấu trừ</Text>
-              <DetailRow label="BHXH" value={-selected.socialInsurance} color="#EF4444" />
-              <DetailRow label="BHYT" value={-selected.healthInsurance} color="#EF4444" />
-              <DetailRow label="BHTN" value={-selected.unemploymentInsurance} color="#EF4444" />
-              <DetailRow label="Thuế TNCN" value={-selected.personalIncomeTax} color="#EF4444" />
-              <DetailRow label="Khấu trừ khác" value={-(selected.totalDeductions - selected.socialInsurance - selected.healthInsurance - selected.unemploymentInsurance - selected.personalIncomeTax)} color="#EF4444" />
+              <DetailRow label="BHXH" value={-selected.socialInsurance} variant="danger" showSign formatNumber={formatVND} />
+              <DetailRow label="BHYT" value={-selected.healthInsurance} variant="danger" showSign formatNumber={formatVND} />
+              <DetailRow label="BHTN" value={-selected.unemploymentInsurance} variant="danger" showSign formatNumber={formatVND} />
+              <DetailRow label="Thuế TNCN" value={-selected.personalIncomeTax} variant="danger" showSign formatNumber={formatVND} />
+              <DetailRow label="Khấu trừ khác" value={-(selected.totalDeductions - selected.socialInsurance - selected.healthInsurance - selected.unemploymentInsurance - selected.personalIncomeTax)} variant="danger" showSign formatNumber={formatVND} />
             </View>
 
             {/* Total */}
@@ -133,42 +134,6 @@ const Salary: React.FC = () => {
   );
 };
 
-// Reusable row
-const DetailRow = ({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) => (
-  <View style={detailStyles.row}>
-    <Text style={detailStyles.label}>{label}</Text>
-    <Text style={[detailStyles.value, { color }]}>
-      {value >= 0 ? '+' : ''}{formatVND(Math.abs(value))}
-    </Text>
-  </View>
-);
-
-const detailStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  label: {
-    fontSize: 14,
-    color: '#64748B',
-  },
-  value: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
 
 const styles = StyleSheet.create({
   container: {

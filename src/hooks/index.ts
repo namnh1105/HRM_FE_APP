@@ -11,4 +11,5 @@ export { useWorkSchedule } from './useWorkSchedule';
 export { useNotifications } from './useNotifications';
 export { useDashboard } from './useDashboard';
 export { useForgotPassword } from './useForgotPassword';
+export { useRegisterFacePolling } from './useRegisterFacePolling';
 

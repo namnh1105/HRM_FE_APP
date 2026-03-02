@@ -14,3 +14,4 @@ export { default as Login } from './Login';
 export { default as Contracts } from './Contracts';
 export { default as ChangePassword } from './ChangePassword';
 export { default as Degrees } from './Degrees';
+export { default as FaceRegistration } from './FaceRegistration';

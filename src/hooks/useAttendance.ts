@@ -110,7 +110,7 @@ export const useAttendance = () => {
 
     // Filter assignments applicable today
     const todayAssignments = myAssignments.filter((a: EmployeeWorkShift) => {
-      if (todayStr !== a.date) return false;
+      if (a.date && todayStr !== a.date) return false;
       if (a.dayOfWeek !== null && a.dayOfWeek !== dayEnum) return false;
       return true;
     });

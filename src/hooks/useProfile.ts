@@ -63,6 +63,12 @@ export const useProfile = () => {
       onPress: () => navigation.navigate('Degrees'),
     },
     {
+      icon: 'scan',
+      label: 'Đăng ký khuôn mặt',
+      color: '#EC4899',
+      onPress: () => navigation.navigate('FaceRegistration'),
+    },
+    {
       icon: 'lock-closed',
       label: 'Đổi mật khẩu',
       color: '#64748B',

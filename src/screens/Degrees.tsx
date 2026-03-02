@@ -19,11 +19,13 @@ const Degrees: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [filteredDegrees, setFilteredDegrees] = useState<Degree[]>([]);
 
   const {
-    data: degrees = [],
+    data: degreesData,
     isLoading,
     error,
     refetch,
   } = useGetAllDegreesQuery(undefined);
+
+  const degrees = degreesData?.data ?? [];
 
   useEffect(() => {
     if (!degrees) return;
@@ -31,7 +33,7 @@ const Degrees: React.FC<{ navigation: any }> = ({ navigation }) => {
     const filtered = degrees.filter((degree) =>
       degree.degreeName.toLowerCase().includes(searchText.toLowerCase()) ||
       degree.institution.toLowerCase().includes(searchText.toLowerCase()) ||
-      degree.field.toLowerCase().includes(searchText.toLowerCase())
+      degree.major.toLowerCase().includes(searchText.toLowerCase())
     );
     setFilteredDegrees(filtered);
   }, [degrees, searchText]);
@@ -102,13 +104,13 @@ const Degrees: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.detailRow}>
             <Ionicons name="book-outline" size={16} color="#64748B" />
             <Text style={styles.detailLabel}>Chuyên ngành:</Text>
-            <Text style={styles.detailValue}>{item.field}</Text>
+            <Text style={styles.detailValue}>{item.major}</Text>
           </View>
 
           <View style={styles.detailRow}>
             <Ionicons name="calendar-outline" size={16} color="#64748B" />
             <Text style={styles.detailLabel}>Năm tốt nghiệp:</Text>
-            <Text style={styles.detailValue}>{item.graduationYear}</Text>
+            <Text style={styles.detailValue}>{item.graduationDate ? new Date(item.graduationDate).getFullYear() : 'N/A'}</Text>
           </View>
 
           {item.gpa && (
@@ -116,20 +118,6 @@ const Degrees: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Ionicons name="trending-up-outline" size={16} color="#64748B" />
               <Text style={styles.detailLabel}>GPA:</Text>
               <Text style={styles.detailValue}>{item.gpa}</Text>
-            </View>
-          )}
-
-          {item.honors && (
-            <View style={styles.detailRow}>
-              <Ionicons name="trophy-outline" size={16} color="#64748B" />
-              <Text style={styles.detailLabel}>Xếp loại:</Text>
-              <Text style={styles.detailValue}>{item.honors}</Text>
-            </View>
-          )}
-
-          {item.description && (
-            <View style={styles.descriptionContainer}>
-              <Text style={styles.descriptionText}>{item.description}</Text>
             </View>
           )}
         </View>
