@@ -8,6 +8,7 @@ import {
   useGetAttendanceHistoryQuery,
   useCheckInMutation,
   useCheckOutMutation,
+  useGetFaceStatusQuery,
 } from '../store/api/attendanceApi';
 import { useGetMyProfileQuery } from '../store/api/employeeApi';
 import { useGetMyShiftsTodayQuery } from '../store/api/workshiftApi';
@@ -45,6 +46,13 @@ export const useAttendance = () => {
   // Employee profile — needed for employee_id when calling face API
   const { data: profileData } = useGetMyProfileQuery();
   const employeeId = profileData?.data?.id;
+
+  // Face registration status
+  const { data: faceStatusData, isLoading: faceStatusLoading } = useGetFaceStatusQuery(undefined, {
+    skip: !employeeId,
+  });
+  const isFaceRegistered = faceStatusData?.data?.registered ?? false;
+  const shouldShowFaceRegistration = Boolean(employeeId) && !faceStatusLoading && !isFaceRegistered;
 
   // My shift assignments — for upcoming shift display
   const { data: myShiftsData } = useGetMyShiftsTodayQuery();
@@ -230,6 +238,7 @@ export const useAttendance = () => {
   };
 
   const navigateToHistory = () => navigation.navigate('AttendanceHistory');
+  const navigateToFaceRegistration = () => navigation.navigate('FaceRegistration');
 
   return {
     timeStr,
@@ -242,10 +251,12 @@ export const useAttendance = () => {
     canCheckOut,
     isCheckedOut,
     isAllDone,
+    shouldShowFaceRegistration,
     historyRecords,
     handleCheckIn,
     handleCheckOut,
     navigateToHistory,
+    navigateToFaceRegistration,
     upcomingShift,
   };
 };

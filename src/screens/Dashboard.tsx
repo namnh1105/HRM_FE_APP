@@ -277,11 +277,11 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 14,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
   actionCard: {
-    width: '46%',
-    marginHorizontal: '2%',
+    width: '48%',
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,

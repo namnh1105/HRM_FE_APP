@@ -24,10 +24,10 @@ export const userApi = createApi({
       providesTags: (result, error, userId) => [{ type: 'User', id: userId }],
     }),
 
-    /** PUT /users/profile/password */
+    /** PUT /users/change-password */
     changePassword: builder.mutation<ApiResponse<null>, ChangePasswordRequest>({
       query: (body) => ({
-        url: '/users/profile/password',
+        url: '/users/change-password',
         method: 'PUT',
         body,
       }),

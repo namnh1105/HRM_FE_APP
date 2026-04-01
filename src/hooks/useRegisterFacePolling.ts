@@ -141,7 +141,7 @@ export function useRegisterFacePolling() {
 
   /** Hàm chính: upload video → nhận jobId → bắt đầu polling */
   const submitRegistration = useCallback(
-    async (videoUri: string, employeeId: string) => {
+    async (videoUri: string) => {
       try {
         // Reset
         setState({
@@ -150,7 +150,7 @@ export function useRegisterFacePolling() {
         });
 
         // 1. Upload video → nhận jobId ngay
-        const res = await registerFace({ videoUri, employeeId }).unwrap();
+        const res = await registerFace({ videoUri }).unwrap();
 
         if (!res.success || !res.data?.jobId) {
           setState({

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useGetMyProfileQuery } from '../store/api/employeeApi';
 import { useGetContractsByEmployeeQuery } from '../store/api/contractApi';
 import { useAppSelector } from '../hooks';
@@ -17,6 +18,7 @@ import type { Contract } from '../types/contract';
 import { CONTRACT_TYPE_LABELS, CONTRACT_STATUS_LABELS, CONTRACT_STATUS_COLORS } from '../types/contract';
 
 const Contracts: React.FC = () => {
+  const navigation = useNavigation<any>();
   const { user } = useAppSelector((state) => state.auth);
   const { data: profileData } = useGetMyProfileQuery(undefined);
   
@@ -108,6 +110,15 @@ const Contracts: React.FC = () => {
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color="#1E293B" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>Hợp đồng lao động</Text>
+          </View>
+          <View style={styles.backBtnPlaceholder} />
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>Đang tải hợp đồng...</Text>
@@ -119,6 +130,15 @@ const Contracts: React.FC = () => {
   if (isError) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color="#1E293B" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.title}>Hợp đồng lao động</Text>
+          </View>
+          <View style={styles.backBtnPlaceholder} />
+        </View>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
           <Text style={styles.errorTitle}>Lỗi tải dữ liệu</Text>
@@ -134,10 +154,16 @@ const Contracts: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>Hợp đồng lao động</Text>
-        <Text style={styles.subtitle}>
-          {contracts.length} hợp đồng
-        </Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={22} color="#1E293B" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.title}>Hợp đồng lao động</Text>
+          <Text style={styles.subtitle}>
+            {contracts.length} hợp đồng
+          </Text>
+        </View>
+        <View style={styles.backBtnPlaceholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -163,13 +189,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   header: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backBtnPlaceholder: {
+    width: 36,
+    height: 36,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1E293B',
     marginBottom: 4,

@@ -4,11 +4,6 @@ import type { ApiResponse } from '../../types/common';
 import type { AttendanceRecord } from '../../types/attendance';
 
 // ── Face registration response types ─────────────────────────────────
-export interface FaceRegisterParams {
-  videoUri: string;
-  employeeId: string;
-}
-
 // Response khi enqueue job (PUT /register trả về ngay)  
 export interface FaceRegisterEnqueueData {
   jobId: string;
@@ -72,7 +67,7 @@ export const attendanceApi = createApi({
     checkIn: builder.mutation<ApiResponse<AttendanceRecord>, AttendanceWithFaceParams>({
       query: ({ photoUri, latitude, longitude, note }) => {
         const formData = new FormData();
-        formData.append('file', {
+        formData.append('photo', {
           uri: photoUri,
           type: 'image/jpeg',
           name: 'face.jpg',
@@ -93,7 +88,7 @@ export const attendanceApi = createApi({
     checkOut: builder.mutation<ApiResponse<AttendanceRecord>, AttendanceWithFaceParams>({
       query: ({ photoUri, latitude, longitude, note }) => {
         const formData = new FormData();
-        formData.append('file', {
+        formData.append('photo', {
           uri: photoUri,
           type: 'image/jpeg',
           name: 'face.jpg',
@@ -111,22 +106,21 @@ export const attendanceApi = createApi({
     }),
 
     // ── Face registration (Python internal API via reverse proxy) ────
-    getFaceStatus: builder.query<ApiResponse<FaceStatusData>, string>({
-      query: (employeeId) => `/face-api/face/status/${employeeId}`,
+    getFaceStatus: builder.query<ApiResponse<FaceStatusData>, void>({
+      query: () => `/face/status`,
       providesTags: ['FaceStatus'],
     }),
 
-    registerFace: builder.mutation<ApiResponse<FaceRegisterEnqueueData>, FaceRegisterParams>({
-      query: ({ videoUri, employeeId }) => {
+    registerFace: builder.mutation<ApiResponse<FaceRegisterEnqueueData>, { videoUri: string }>({
+      query: ({ videoUri }) => {
         const formData = new FormData();
         formData.append('video', {
           uri: videoUri,
           type: 'video/mp4',
           name: 'face_register.mp4',
         } as any);
-        formData.append('employee_id', employeeId);
         return {
-          url: '/face-api/face/register',
+          url: '/face/register',
           method: 'PUT',
           body: formData,
         };
@@ -135,7 +129,7 @@ export const attendanceApi = createApi({
 
     // ── Job status polling ───────────────────────────────────────────
     getRegisterFaceJobStatus: builder.query<ApiResponse<FaceRegisterJobStatusData>, string>({
-      query: (jobId) => `/face-api/face/register/status/${jobId}`,
+      query: (jobId) => `/face/register/status/${jobId}`,
     }),
   }),
 });

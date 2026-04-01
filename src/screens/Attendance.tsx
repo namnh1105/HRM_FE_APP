@@ -24,10 +24,12 @@ const Attendance: React.FC = () => {
     canCheckOut,
     isCheckedOut,
     isAllDone,
+    shouldShowFaceRegistration,
     historyRecords,
     handleCheckIn,
     handleCheckOut,
     navigateToHistory,
+    navigateToFaceRegistration,
     upcomingShift,
   } = useAttendance();
 
@@ -89,37 +91,54 @@ const Attendance: React.FC = () => {
         {/* Check-in / Check-out Button */}
         {!todayLoading && (
           <View style={styles.buttonSection}>
-            {canCheckIn && (
-              <TouchableOpacity
-                style={[styles.mainBtn, styles.checkInBtn]}
-                onPress={handleCheckIn}
-                activeOpacity={0.8}
-                disabled={isProcessing}
-              >
-                <Ionicons name="scan" size={40} color="#FFF" />
-                <Text style={styles.mainBtnText}>CHẤM CÔNG VÀO</Text>
-                <Text style={styles.mainBtnSubText}>Nhận diện khuôn mặt</Text>
-              </TouchableOpacity>
-            )}
+            {shouldShowFaceRegistration ? (
+              <>
+                <TouchableOpacity
+                  style={[styles.mainBtn, styles.faceRegisterCircleBtn]}
+                  onPress={navigateToFaceRegistration}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="scan" size={40} color="#FFF" />
+                  <Text style={styles.mainBtnText}>ĐĂNG KÝ</Text>
+                  <Text style={styles.mainBtnSubText}>Khuôn mặt</Text>
+                </TouchableOpacity>
+                <Text style={styles.faceRegisterHint}>Bạn cần đăng ký khuôn mặt trước khi chấm công</Text>
+              </>
+            ) : (
+              <>
+                {canCheckIn && (
+                  <TouchableOpacity
+                    style={[styles.mainBtn, styles.checkInBtn]}
+                    onPress={handleCheckIn}
+                    activeOpacity={0.8}
+                    disabled={isProcessing}
+                  >
+                    <Ionicons name="scan" size={40} color="#FFF" />
+                    <Text style={styles.mainBtnText}>CHẤM CÔNG VÀO</Text>
+                    <Text style={styles.mainBtnSubText}>Nhận diện khuôn mặt</Text>
+                  </TouchableOpacity>
+                )}
 
-            {canCheckOut && (
-              <TouchableOpacity
-                style={[styles.mainBtn, styles.checkOutBtn]}
-                onPress={handleCheckOut}
-                activeOpacity={0.8}
-                disabled={isProcessing}
-              >
-                <Ionicons name="scan" size={40} color="#FFF" />
-                <Text style={styles.mainBtnText}>CHẤM CÔNG RA</Text>
-                <Text style={styles.mainBtnSubText}>Nhận diện khuôn mặt</Text>
-              </TouchableOpacity>
-            )}
+                {canCheckOut && (
+                  <TouchableOpacity
+                    style={[styles.mainBtn, styles.checkOutBtn]}
+                    onPress={handleCheckOut}
+                    activeOpacity={0.8}
+                    disabled={isProcessing}
+                  >
+                    <Ionicons name="scan" size={40} color="#FFF" />
+                    <Text style={styles.mainBtnText}>CHẤM CÔNG RA</Text>
+                    <Text style={styles.mainBtnSubText}>Nhận diện khuôn mặt</Text>
+                  </TouchableOpacity>
+                )}
 
-            {isAllDone && (
-              <View style={[styles.mainBtn, styles.doneBtn]}>
-                <Ionicons name="checkmark-circle" size={40} color="#FFF" />
-                <Text style={styles.mainBtnText}>ĐÃ HOÀN THÀNH</Text>
-              </View>
+                {isAllDone && (
+                  <View style={[styles.mainBtn, styles.doneBtn]}>
+                    <Ionicons name="checkmark-circle" size={40} color="#FFF" />
+                    <Text style={styles.mainBtnText}>ĐÃ HOÀN THÀNH</Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
         )}
@@ -276,6 +295,16 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: 10,
     marginTop: 4,
+  },
+  faceRegisterCircleBtn: {
+    backgroundColor: '#EC4899',
+  },
+  faceRegisterHint: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
   // Upcoming Shift Card
   shiftCard: {

@@ -45,10 +45,7 @@ const FaceRegistration: React.FC = () => {
   const employeeId = profileData?.data?.id;
 
   // Check face registration status
-  const { data: faceStatusData, isLoading: statusLoading } = useGetFaceStatusQuery(
-    employeeId ?? '',
-    { skip: !employeeId },
-  );
+  const { data: faceStatusData, isLoading: statusLoading } = useGetFaceStatusQuery();
   const isRegistered = faceStatusData?.data?.registered ?? false;
 
   // Register face with Redis queue polling
@@ -118,7 +115,7 @@ const FaceRegistration: React.FC = () => {
 
       // Upload video → enqueue → start polling
       setStep('processing');
-      submitRegistration(video.uri, employeeId!);
+      submitRegistration(video.uri);
     } catch (error: any) {
       setIsRecording(false);
       pulseAnim.stopAnimation();
