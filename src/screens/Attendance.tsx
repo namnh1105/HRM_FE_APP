@@ -31,6 +31,7 @@ const Attendance: React.FC = () => {
     navigateToHistory,
     navigateToFaceRegistration,
     upcomingShift,
+    isManager,
   } = useAttendance();
 
   return (
@@ -189,12 +190,29 @@ const Attendance: React.FC = () => {
               <Text style={styles.historyDateText}>{record.workDate}</Text>
             </View>
             <View style={styles.historyInfo}>
-              <Text style={styles.historyTime}>
-                {formatTime(record.checkInTime)} → {formatTime(record.checkOutTime)}
-              </Text>
-              <Text style={styles.historyHours}>
-                {record.workingHours != null ? `${record.workingHours} giờ` : '--'}
-              </Text>
+              <View style={styles.historyTopRow}>
+                <Text style={styles.historyTime}>
+                  {formatTime(record.checkInTime)} → {formatTime(record.checkOutTime)}
+                </Text>
+                {isManager && (
+                  <Text style={styles.historyEmployeeName}>{record.employeeName}</Text>
+                )}
+              </View>
+              <View style={styles.historyBottomRow}>
+                <Text style={styles.historyHours}>
+                  {record.workingHours != null ? `${record.workingHours} giờ` : '--'}
+                </Text>
+                {record.lateMinutes > 0 && (
+                  <View style={[styles.miniBadge, styles.lateBadge]}>
+                    <Text style={styles.miniBadgeText}>Muộn {record.lateMinutes}p</Text>
+                  </View>
+                )}
+                {record.overtimeHours > 0 && (
+                  <View style={[styles.miniBadge, styles.otBadge]}>
+                    <Text style={styles.miniBadgeText}>OT {record.overtimeHours}h</Text>
+                  </View>
+                )}
+              </View>
             </View>
             <View
               style={[
@@ -470,6 +488,22 @@ const styles = StyleSheet.create({
   historyInfo: {
     flex: 1,
   },
+  historyTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  historyBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  historyEmployeeName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#3B82F6',
+  },
   historyTime: {
     fontSize: 14,
     fontWeight: '600',
@@ -478,7 +512,22 @@ const styles = StyleSheet.create({
   historyHours: {
     fontSize: 12,
     color: '#94A3B8',
-    marginTop: 2,
+  },
+  miniBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  lateBadge: {
+    backgroundColor: '#FEE2E2',
+  },
+  otBadge: {
+    backgroundColor: '#ECFDF5',
+  },
+  miniBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1E293B',
   },
   historyStatus: {
     width: 28,

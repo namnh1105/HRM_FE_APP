@@ -15,3 +15,5 @@ export { default as Contracts } from './Contracts';
 export { default as ChangePassword } from './ChangePassword';
 export { default as Degrees } from './Degrees';
 export { default as FaceRegistration } from './FaceRegistration';
+export { default as EmployeeList } from './EmployeeList';
+export { default as Reports } from './Reports';

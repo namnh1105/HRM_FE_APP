@@ -15,12 +15,15 @@ import {
   ChangePassword,
   Degrees,
   FaceRegistration,
+  EmployeeList,
+  Reports,
 } from '../screens';
 
 const Stack = createNativeStackNavigator();
 
 const RootNavigator: React.FC = () => {
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, roles } = useSelector((state: RootState) => state.auth);
+  const isManager = roles.includes('MANAGER');
   const [isInitializing, setIsInitializing] = React.useState(true);
 
   React.useEffect(() => {
@@ -53,6 +56,14 @@ const RootNavigator: React.FC = () => {
           <Stack.Screen name="ChangePassword" component={ChangePassword} />
           <Stack.Screen name="Degrees" component={Degrees} />
           <Stack.Screen name="FaceRegistration" component={FaceRegistration} />
+          
+          {/* Manager Screens */}
+          {isManager && (
+            <>
+              <Stack.Screen name="EmployeeList" component={EmployeeList} />
+              <Stack.Screen name="Reports" component={Reports} />
+            </>
+          )}
         </>
       ) : (
         <>

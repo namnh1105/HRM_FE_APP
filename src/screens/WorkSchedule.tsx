@@ -56,9 +56,19 @@ const WorkSchedule: React.FC = () => {
             <Text style={styles.sectionTitle}>Ca hôm nay</Text>
             <View style={styles.todayCard}>
               {todayShifts.map((s, idx) => (
-                <View key={idx} style={styles.todayShiftRow}>
                   <View style={[styles.shiftDot, { backgroundColor: s.color }]} />
-                  <Text style={styles.todayShiftName}>{s.name}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.todayShiftName}>{s.name}</Text>
+                    {s.employeeName && (
+                      <Text style={styles.employeeNameText}>{s.employeeName}</Text>
+                    )}
+                    {s.isUnderstaffed && (
+                      <View style={styles.warningRow}>
+                        <Ionicons name="alert-circle" size={12} color="#EF4444" />
+                        <Text style={styles.warningText}>Thiếu nhân sự</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.todayShiftTime}>{s.time}</Text>
                 </View>
               ))}
@@ -97,7 +107,15 @@ const WorkSchedule: React.FC = () => {
                       <View style={[styles.shiftIndicator, { backgroundColor: s.color }]} />
                       <View>
                         <Text style={styles.dayShiftName}>{s.name}</Text>
-                        <Text style={styles.dayShiftTime}>{s.time}</Text>
+                        {s.employeeName && (
+                          <Text style={styles.dayEmployeeName}>{s.employeeName}</Text>
+                        )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+                          {s.isUnderstaffed && (
+                            <Ionicons name="alert-circle" size={10} color="#EF4444" />
+                          )}
+                          <Text style={styles.dayShiftTime}>{s.time}</Text>
+                        </View>
                       </View>
                     </View>
                   ))}
@@ -208,16 +226,30 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   todayShiftName: {
-    flex: 1,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1E40AF',
-    marginLeft: 0,
+  },
+  employeeNameText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  warningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  warningText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#EF4444',
   },
   todayShiftTime: {
     fontSize: 13,
     color: '#3B82F6',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   // Week
   weekCard: {
@@ -282,6 +314,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#334155',
+    textAlign: 'right',
+  },
+  dayEmployeeName: {
+    fontSize: 11,
+    color: '#64748B',
     textAlign: 'right',
   },
   dayShiftTime: {

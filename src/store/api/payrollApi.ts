@@ -40,6 +40,12 @@ export const payrollApi = createApi({
       query: ({ month, year }) => `/payrolls/month/${month}/year/${year}`,
       providesTags: ['MyPayrolls'],
     }),
+
+    /** GET /payrolls/store/:storeId */
+    getPayrollsByStore: builder.query<ApiResponse<SalaryDetail[]>, string>({
+      query: (storeId) => `/payrolls/store/${storeId}`,
+      providesTags: ['MyPayrolls'],
+    }),
   }),
 });
 
@@ -49,4 +55,5 @@ export const {
   useGetAllPayrollsQuery,
   useGetPayrollsByEmployeeQuery,
   useGetPayrollsByMonthYearQuery,
+  useGetPayrollsByStoreQuery,
 } = payrollApi;

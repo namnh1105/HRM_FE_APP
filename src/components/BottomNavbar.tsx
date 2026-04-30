@@ -20,7 +20,7 @@ interface TabConfig {
   isCenter?: boolean;
 }
 
-const TABS: TabConfig[] = [
+const EMPLOYEE_TABS: TabConfig[] = [
   { name: 'Dashboard', label: 'Trang chủ', icon: 'home' },
   { name: 'LeaveRequest', label: 'Đơn từ', icon: 'document-text' },
   { name: 'Attendance', label: 'Chấm công', icon: 'happy', isCenter: true },
@@ -28,18 +28,29 @@ const TABS: TabConfig[] = [
   { name: 'Profile', label: 'Cá nhân', icon: 'person' },
 ];
 
+const MANAGER_TABS: TabConfig[] = [
+  { name: 'Dashboard', label: 'Dashboard', icon: 'stats-chart' },
+  { name: 'Employees', label: 'Nhân viên', icon: 'people' },
+  { name: 'Attendance', label: 'Chấm công', icon: 'happy', isCenter: true },
+  { name: 'Payroll', label: 'Lương bổng', icon: 'wallet' },
+  { name: 'Profile', label: 'Cá nhân', icon: 'person' },
+];
+
 const ACTIVE_COLOR = '#3B82F6';
 const INACTIVE_COLOR = '#94A3B8';
 
 const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
-  const { isAuthenticated } = useSelector((s: RootState) => s.auth);
+  const { isAuthenticated, roles } = useSelector((s: RootState) => s.auth);
+  const isManager = roles.includes('MANAGER');
+  const tabs = isManager ? MANAGER_TABS : EMPLOYEE_TABS;
+
   const { data: notifData } = useGetMyNotificationsQuery(undefined, { skip: !isAuthenticated });
   const unreadCount = (notifData?.data ?? []).filter((n) => !n.isRead).length;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.navbar}>
-        {TABS.map((tab, index) => {
+        {tabs.map((tab, index) => {
           const isFocused = state.index === index;
 
           const onPress = () => {

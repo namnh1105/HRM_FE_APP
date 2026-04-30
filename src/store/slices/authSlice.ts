@@ -11,6 +11,7 @@ export interface UserInfo {
   avatarUrl?: string;
   roles: string[];
   permissions: string[];
+  storeId?: string;
 }
 
 export interface AuthState {
@@ -19,6 +20,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   roles: string[];
   permissions: string[];
+  storeId: string | null;
 }
 
 const initialState: AuthState = {
@@ -27,6 +29,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   roles: [],
   permissions: [],
+  storeId: null,
 };
 
 /**
@@ -43,6 +46,7 @@ export const mapToUserInfo = (raw: any): UserInfo => ({
   avatarUrl: raw.avatarUrl || undefined,
   roles: raw.roles || [],
   permissions: raw.permissions || [],
+  storeId: raw.storeId,
 });
 
 const authSlice = createSlice({
@@ -58,6 +62,7 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.roles = action.payload.user.roles || [];
       state.permissions = action.payload.user.permissions || [];
+      state.storeId = action.payload.user.storeId || null;
       
       console.log('[authSlice] setCredentials - isAuthenticated:', true);
       console.log('[authSlice] User:', action.payload.user.username);
@@ -74,6 +79,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.roles = [];
       state.permissions = [];
+      state.storeId = null;
       // Token cleanup is handled by tokenStorage.clearTokens() (SecureStore)
     },
     restoreAuth: (
@@ -85,6 +91,7 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.roles = action.payload.user.roles || [];
       state.permissions = action.payload.user.permissions || [];
+      state.storeId = action.payload.user.storeId || null;
       
       console.log('[authSlice] restoreAuth - isAuthenticated:', true);
       console.log('[authSlice] Restored user:', action.payload.user.username);

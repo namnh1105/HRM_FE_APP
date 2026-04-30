@@ -30,6 +30,7 @@ export interface LoginResponse {
       isDeleted: boolean;
       deletedAt: string | null;
       deletedBy: string | null;
+      storeId?: string;
     };
   };
   timestamp: string;

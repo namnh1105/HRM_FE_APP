@@ -22,6 +22,8 @@ const Salary: React.FC = () => {
     selected,
     monthLabel,
     goBack,
+    isManager,
+    totalPayroll,
   } = useSalary();
 
   return (
@@ -82,11 +84,23 @@ const Salary: React.FC = () => {
           ))}
         </ScrollView>
 
+        {isManager && (
+          <View style={styles.totalPayrollCard}>
+            <Text style={styles.totalPayrollLabel}>Tổng quỹ lương tháng này</Text>
+            <Text style={styles.totalPayrollValue}>{formatVND(totalPayroll)}</Text>
+          </View>
+        )}
+
         {selected && (
           <>
             {/* Net Salary Card */}
             <View style={styles.netCard}>
-              <Text style={styles.netLabel}>Lương thực nhận</Text>
+              {isManager && (
+                <Text style={styles.employeeNameLabel}>{selected.employeeName}</Text>
+              )}
+              <Text style={styles.netLabel}>
+                {isManager ? 'Lương nhân viên' : 'Lương thực nhận'}
+              </Text>
               <Text style={styles.netValue}>{formatVND(selected.netSalary)}</Text>
               {selected.paymentDate && (
                 <Text style={styles.paidDate}>
@@ -183,6 +197,28 @@ const styles = StyleSheet.create({
   monthTextActive: {
     color: '#FFF',
   },
+  // Total Payroll
+  totalPayrollCard: {
+    marginHorizontal: 20,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+  },
+  totalPayrollLabel: {
+    fontSize: 13,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  totalPayrollValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1E40AF',
+    marginTop: 4,
+  },
   // Net Card
   netCard: {
     marginHorizontal: 20,
@@ -191,6 +227,12 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     marginBottom: 20,
+  },
+  employeeNameLabel: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 4,
   },
   netLabel: {
     fontSize: 14,

@@ -131,6 +131,12 @@ export const attendanceApi = createApi({
     getRegisterFaceJobStatus: builder.query<ApiResponse<FaceRegisterJobStatusData>, string>({
       query: (jobId) => `/face/register/status/${jobId}`,
     }),
+
+    /** GET /attendances/store/:storeId/today */
+    getStoreAttendanceToday: builder.query<ApiResponse<AttendanceRecord[]>, string>({
+      query: (storeId) => `/attendances/store/${storeId}/today`,
+      providesTags: ['AttendanceHistory'],
+    }),
   }),
 });
 
@@ -142,4 +148,5 @@ export const {
   useGetFaceStatusQuery,
   useRegisterFaceMutation,
   useLazyGetRegisterFaceJobStatusQuery,
+  useGetStoreAttendanceTodayQuery,
 } = attendanceApi;

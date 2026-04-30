@@ -3,7 +3,9 @@ import { useNavigation } from '@react-navigation/native';
 import {
   useGetActiveWorkShiftsQuery,
   useGetMyAllShiftsQuery,
+  useGetStoreWorkShiftsQuery,
 } from '../store/api/workshiftApi';
+import { useRole } from './useRole';
 import { formatShiftTime } from '../utils';
 import type { WorkShift, EmployeeWorkShift } from '../types/workshift';
 
@@ -34,7 +36,7 @@ export interface WeekDay {
   fullDate: string;
   isWeekend: boolean;
   isToday: boolean;
-  shifts: { name: string; time: string; color: string }[];
+  shifts: { name: string; time: string; color: string; employeeName?: string; isUnderstaffed?: boolean }[];
 }
 
 const buildWeekSchedule = (
@@ -64,11 +66,16 @@ const buildWeekSchedule = (
       return assignmentDate === dateStr;
     });
 
-    const shifts = dayShifts.map((a) => ({
-      name: a.workShiftName,
-      time: `${formatShiftTime(a.shiftStartTime)} - ${formatShiftTime(a.shiftEndTime)}`,
-      color: getShiftColorByName(a.workShiftId, allShifts),
-    }));
+    const shifts = dayShifts.map((a) => {
+      const staffInShift = dayShifts.filter(ds => ds.workShiftId === a.workShiftId).length;
+      return {
+        name: a.workShiftName,
+        employeeName: a.employeeName,
+        time: `${formatShiftTime(a.shiftStartTime)} - ${formatShiftTime(a.shiftEndTime)}`,
+        color: getShiftColorByName(a.workShiftId, allShifts),
+        isUnderstaffed: staffInShift < 2, 
+      };
+    });
 
     days.push({
       dayName: DAY_NAMES[i],
@@ -91,23 +98,33 @@ export const HOLIDAYS = [
 
 export const useWorkSchedule = () => {
   const navigation = useNavigation<any>();
+  const { isManager, storeId } = useRole();
+  
   const {
     data: shiftsData,
     isLoading: isLoadingShifts,
     error: shiftsError,
     refetch: refetchShifts,
   } = useGetActiveWorkShiftsQuery();
+
   const {
     data: myShiftsData,
     isLoading: isLoadingMyShifts,
     error: myShiftsError,
     refetch: refetchMyShifts,
-  } = useGetMyAllShiftsQuery();
+  } = useGetMyAllShiftsQuery(undefined, { skip: isManager });
+
+  const {
+    data: storeShiftsData,
+    isLoading: isLoadingStoreShifts,
+    error: storeShiftsError,
+    refetch: refetchStoreShifts,
+  } = useGetStoreWorkShiftsQuery(storeId || '', { skip: !isManager || !storeId });
 
   const shifts = shiftsData?.data ?? [];
-  const allAssignments = myShiftsData?.data ?? [];
-  const isLoading = isLoadingShifts || isLoadingMyShifts;
-  const error = shiftsError || myShiftsError;
+  const allAssignments = isManager ? (storeShiftsData?.data ?? []) : (myShiftsData?.data ?? []);
+  const isLoading = isLoadingShifts || (isManager ? isLoadingStoreShifts : isLoadingMyShifts);
+  const error = shiftsError || (isManager ? storeShiftsError : myShiftsError);
 
   const weekSchedule = useMemo(
     () => buildWeekSchedule(shifts, allAssignments),

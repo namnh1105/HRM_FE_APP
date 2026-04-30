@@ -55,6 +55,12 @@ export const workshiftApi = createApi({
         `/employee-work-shifts/employee/${employeeId}/date?date=${date}`,
       providesTags: ['EmployeeWorkShift'],
     }),
+    
+    /** GET /employee-work-shifts/store/:storeId - all shifts in a store */
+    getStoreWorkShifts: builder.query<ApiResponse<EmployeeWorkShift[]>, string>({
+      query: (storeId) => `/employee-work-shifts/store/${storeId}`,
+      providesTags: ['EmployeeWorkShift'],
+    }),
   }),
 });
 
@@ -66,4 +72,5 @@ export const {
   useGetMyAllShiftsQuery,
   useGetEmployeeWorkShiftsQuery,
   useGetEmployeeShiftsByDateQuery,
+  useGetStoreWorkShiftsQuery,
 } = workshiftApi;

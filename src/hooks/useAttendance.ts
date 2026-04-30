@@ -9,7 +9,9 @@ import {
   useCheckInMutation,
   useCheckOutMutation,
   useGetFaceStatusQuery,
+  useGetStoreAttendanceTodayQuery,
 } from '../store/api/attendanceApi';
+import { useRole } from './useRole';
 import { useGetMyProfileQuery } from '../store/api/employeeApi';
 import { useGetMyShiftsTodayQuery } from '../store/api/workshiftApi';
 import { formatShiftTime } from '../utils';
@@ -26,12 +28,16 @@ export interface UpcomingShiftInfo {
 
 export const useAttendance = () => {
   const navigation = useNavigation<any>();
+  const { isManager, storeId } = useRole();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isProcessing, setIsProcessing] = useState(false);
 
   // RTK Query hooks
   const { data: todayData, isLoading: todayLoading } =
-    useGetAttendanceTodayQuery(undefined);
+    useGetAttendanceTodayQuery(undefined, { skip: isManager });
+
+  const { data: storeTodayData, isLoading: storeTodayLoading } =
+    useGetStoreAttendanceTodayQuery(storeId || '', { skip: !isManager || !storeId });
 
   // History: last 30 days
   const thirtyDaysAgo = new Date();
@@ -41,6 +47,7 @@ export const useAttendance = () => {
 
   const { data: historyData, isLoading: historyLoading } = useGetAttendanceHistoryQuery(
     { startDate: startDate, endDate: today },
+    { skip: isManager }
   );
 
   // Employee profile — needed for employee_id when calling face API
@@ -147,7 +154,9 @@ export const useAttendance = () => {
   const canCheckOut = isCheckedIn;
   const isAllDone = isCheckedOut && upcomingShift == null;
 
-  const historyRecords = (historyData?.data || []).slice(0, 5);
+  const historyRecords = isManager 
+    ? (storeTodayData?.data || [])
+    : (historyData?.data || []).slice(0, 5);
 
   // ── Camera + GPS + Face API flow ──────────────────────────────────
   const captureAndSend = async (mode: 'checkin' | 'checkout') => {
@@ -244,7 +253,7 @@ export const useAttendance = () => {
     timeStr,
     dateStr,
     todayRecord,
-    todayLoading,
+    todayLoading: isManager ? storeTodayLoading : todayLoading,
     historyLoading,
     isProcessing,
     canCheckIn,
@@ -258,5 +267,7 @@ export const useAttendance = () => {
     navigateToHistory,
     navigateToFaceRegistration,
     upcomingShift,
+    isManager,
+    storeAttendance: storeTodayData?.data || [],
   };
 };
