@@ -17,6 +17,8 @@ export interface EmployeeProfile {
   avatarUrl: string | null;
   departmentId: string | null;
   departmentName: string | null;
+  storeId: string | null;
+  storeName: string | null;
   position: string | null;
   joinDate: string | null;
   leaveDate: string | null;

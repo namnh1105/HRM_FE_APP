@@ -5,14 +5,20 @@ import { useCreateLeaveRequestMutation } from '../store/api/leaveApi';
 import type { LeaveType, CreateLeaveRequestPayload } from '../types/leave';
 
 /**
- * Parse date string from DD/MM/YYYY → YYYY-MM-DD (ISO format for backend).
+ * Format date to DD/MM/YYYY for display.
  */
-const parseDate = (str: string): string => {
-  const parts = str.split('/');
-  if (parts.length === 3) {
-    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-  }
-  return str;
+export const formatDateDisplay = (date: Date): string => {
+  const d = date.getDate().toString().padStart(2, '0');
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+};
+
+/**
+ * Format date to YYYY-MM-DD for API.
+ */
+const formatDateApi = (date: Date): string => {
+  return date.toISOString().split('T')[0];
 };
 
 export const useCreateLeaveRequest = () => {
@@ -20,13 +26,17 @@ export const useCreateLeaveRequest = () => {
   const [createLeaveRequest, { isLoading }] = useCreateLeaveRequestMutation();
 
   const [selectedType, setSelectedType] = useState<LeaveType>('ANNUAL_LEAVE');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date>(new Date());
   const [reason, setReason] = useState('');
 
   const validate = (): boolean => {
-    if (!startDate.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập ngày bắt đầu (DD/MM/YYYY)');
+    if (!startDate) {
+      Alert.alert('Lỗi', 'Vui lòng chọn ngày bắt đầu');
+      return false;
+    }
+    if (endDate < startDate) {
+      Alert.alert('Lỗi', 'Ngày kết thúc không thể trước ngày bắt đầu');
       return false;
     }
     if (!reason.trim()) {
@@ -41,8 +51,8 @@ export const useCreateLeaveRequest = () => {
 
     const payload: CreateLeaveRequestPayload = {
       leaveType: selectedType,
-      startDate: parseDate(startDate),
-      endDate: endDate.trim() ? parseDate(endDate) : parseDate(startDate),
+      startDate: formatDateApi(startDate),
+      endDate: formatDateApi(endDate),
       reason: reason.trim(),
     };
 
@@ -72,5 +82,6 @@ export const useCreateLeaveRequest = () => {
     isLoading,
     handleSubmit,
     goBack,
+    formatDateDisplay,
   };
 };

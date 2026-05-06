@@ -1,8 +1,26 @@
-// Auth types (matching backend DTOs)
+import { EmployeeProfile } from './employee';
 
 export interface LoginRequest {
   email: string;
   password: string;
+}
+
+export interface UserInfo {
+  id: string;
+  email: string;
+  roles: string[];
+  permissions: string[];
+  employee: EmployeeProfile | null;
+  avatarUrl: string | null;
+  isActive: boolean;
+  createdAt: string | null;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string | null;
+  isDeleted: boolean;
+  deletedAt: string | null;
+  deletedBy: string | null;
+  storeId?: string;
 }
 
 export interface LoginResponse {
@@ -13,25 +31,7 @@ export interface LoginResponse {
     refreshToken: string;
     tokenType: string;
     expiresIn: number;
-    user: {
-      id: string;
-      email: string;
-      name: string | null;
-      roles: string[];
-      permissions: string[];
-      givenName: string;
-      familyName: string;
-      avatarUrl: string | null;
-      isActive: boolean;
-      createdAt: string | null;
-      updatedAt: string;
-      createdBy: string;
-      updatedBy: string | null;
-      isDeleted: boolean;
-      deletedAt: string | null;
-      deletedBy: string | null;
-      storeId?: string;
-    };
+    user: UserInfo;
   };
   timestamp: string;
 }
@@ -50,26 +50,22 @@ export interface RegisterResponse {
   data?: {
     user: {
       id: string;
-      username: string;
+      email: string;
       givenName: string;
       familyName: string;
     };
   };
 }
 
-
-
 export interface UserProfileResponse {
   success: boolean;
   message: string;
   data: {
     id: string;
-    username: string;
-    givenName: string;
-    familyName: string;
+    email: string;
+    roles: string[];
+    permissions: string[];
     avatarUrl: string;
-    followersCount: number;
-    followingCount: number;
-    isFollowing: boolean;
+    employee: EmployeeProfile | null;
   };
 }

@@ -1,6 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from './baseQuery';
-import type { ApiResponse } from '../../types/common';
+import type { ApiResponse, Page } from '../../types/common';
 import type { HrmNotification } from '../../types/notification';
 
 export const notificationApi = createApi({
@@ -8,9 +8,24 @@ export const notificationApi = createApi({
   baseQuery,
   tagTypes: ['Notification'],
   endpoints: (builder) => ({
-    /** GET /notifications/me */
-    getMyNotifications: builder.query<ApiResponse<HrmNotification[]>, void>({
-      query: () => '/notifications/me',
+    /** GET /notifications */
+    getMyNotifications: builder.query<ApiResponse<Page<HrmNotification>>, { page?: number; size?: number } | void>({
+      query: (params) => {
+        let url = '/notifications';
+        if (params && (params.page !== undefined || params.size !== undefined)) {
+          const qs = new URLSearchParams();
+          if (params.page !== undefined) qs.append('page', params.page.toString());
+          if (params.size !== undefined) qs.append('size', params.size.toString());
+          url += `?${qs.toString()}`;
+        }
+        return url;
+      },
+      providesTags: ['Notification'],
+    }),
+
+    /** GET /notifications/unread-count */
+    getUnreadCount: builder.query<ApiResponse<number>, void>({
+      query: () => '/notifications/unread-count',
       providesTags: ['Notification'],
     }),
 
@@ -24,7 +39,7 @@ export const notificationApi = createApi({
       async onQueryStarted(id, { dispatch, queryFulfilled }) {
         const patch = dispatch(
           notificationApi.util.updateQueryData('getMyNotifications', undefined, (draft) => {
-            const notif = draft.data?.find((n) => n.id === id);
+            const notif = draft.data?.content?.find((n) => n.id === id);
             if (notif) notif.isRead = true;
           }),
         );
@@ -47,7 +62,7 @@ export const notificationApi = createApi({
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         const patch = dispatch(
           notificationApi.util.updateQueryData('getMyNotifications', undefined, (draft) => {
-            draft.data?.forEach((n) => {
+            draft.data?.content?.forEach((n) => {
               n.isRead = true;
             });
           }),
@@ -65,6 +80,7 @@ export const notificationApi = createApi({
 
 export const {
   useGetMyNotificationsQuery,
+  useGetUnreadCountQuery,
   useMarkAsReadMutation,
   useMarkAllAsReadMutation,
 } = notificationApi;

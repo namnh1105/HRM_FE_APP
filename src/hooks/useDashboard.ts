@@ -4,16 +4,18 @@ import { RootState } from '../store';
 import { useGetAttendanceTodayQuery } from '../store/api/attendanceApi';
 import { useGetMyLeaveRequestsQuery } from '../store/api/leaveApi';
 import { useGetMyPayrollsQuery } from '../store/api/payrollApi';
-import { useGetMyNotificationsQuery } from '../store/api/notificationApi';
+import { useGetMyNotificationsQuery, useGetUnreadCountQuery } from '../store/api/notificationApi';
 
 export const useDashboard = () => {
   const navigation = useNavigation<any>();
   const { user } = useSelector((state: RootState) => state.auth);
 
-  const { data: notificationRes } = useGetMyNotificationsQuery(undefined);
-  const allNotifications = notificationRes?.data ?? [];
-  const unreadCount = allNotifications.filter((n) => !n.isRead).length;
-  const notifications = allNotifications.slice(0, 5);
+  const { data: notificationRes } = useGetMyNotificationsQuery({ page: 0, size: 5 });
+  const { data: unreadCountRes } = useGetUnreadCountQuery();
+  
+  const allNotifications = notificationRes?.data?.content ?? [];
+  const unreadCount = unreadCountRes?.data ?? 0;
+  const notifications = allNotifications;
 
   const { data: attendanceRes, isLoading: isAttendanceLoading } =
     useGetAttendanceTodayQuery(undefined);
@@ -58,7 +60,9 @@ export const useDashboard = () => {
 
   const recentNotifications = notifications.filter((n) => !n.isRead).slice(0, 3);
 
-  const quickActions = [
+  const isManager = user?.roles?.includes('MANAGER');
+
+  const allActions = [
     {
       icon: 'finger-print' as const,
       label: 'Chấm công',
@@ -74,6 +78,7 @@ export const useDashboard = () => {
       onPress: () => navigation.navigate('CreateLeaveRequest'),
     },
     {
+      id: 'salary',
       icon: 'wallet' as const,
       label: 'Xem lương',
       color: '#10B981',
@@ -88,6 +93,11 @@ export const useDashboard = () => {
       onPress: () => navigation.navigate('WorkSchedule'),
     },
   ];
+
+  const quickActions = allActions.filter(action => {
+    if (isManager && action.id === 'salary') return false;
+    return true;
+  });
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -104,6 +114,7 @@ export const useDashboard = () => {
     }
   };
 
+  const storeName = user?.employee?.storeName || 'Hệ thống';
   const navigateToNotifications = () => navigation.navigate('Notifications');
 
   return {
@@ -113,6 +124,7 @@ export const useDashboard = () => {
     unreadCount,
     recentNotifications,
     quickActions,
+    storeName,
     getStatusLabel,
     getStatusColor,
     getNotificationIcon,

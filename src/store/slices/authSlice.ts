@@ -1,18 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { AppDispatch } from '../index';
-
-export interface UserInfo {
-  id: string;
-  username: string;
-  name?: string;
-  email?: string;
-  givenName?: string;
-  familyName?: string;
-  avatarUrl?: string;
-  roles: string[];
-  permissions: string[];
-  storeId?: string;
-}
+import { UserInfo } from '../../types/auth';
 
 export interface AuthState {
   accessToken: string | null;
@@ -34,19 +21,23 @@ const initialState: AuthState = {
 
 /**
  * Map raw backend user → UserInfo.
- * Backend now returns camelCase fields directly.
  */
 export const mapToUserInfo = (raw: any): UserInfo => ({
   id: raw.id,
-  username: raw.username || raw.email,
-  name: raw.name,
   email: raw.email,
-  givenName: raw.givenName,
-  familyName: raw.familyName,
   avatarUrl: raw.avatarUrl || undefined,
   roles: raw.roles || [],
   permissions: raw.permissions || [],
-  storeId: raw.storeId,
+  employee: raw.employee || null,
+  isActive: raw.isActive,
+  createdAt: raw.createdAt,
+  updatedAt: raw.updatedAt,
+  createdBy: raw.createdBy,
+  updatedBy: raw.updatedBy,
+  isDeleted: raw.isDeleted,
+  deletedAt: raw.deletedAt,
+  deletedBy: raw.deletedBy,
+  storeId: raw.storeId || raw.employee?.storeId,
 });
 
 const authSlice = createSlice({
@@ -62,13 +53,12 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.roles = action.payload.user.roles || [];
       state.permissions = action.payload.user.permissions || [];
-      state.storeId = action.payload.user.storeId || null;
+      state.storeId = action.payload.user.storeId || action.payload.user.employee?.storeId || null;
       
       console.log('[authSlice] setCredentials - isAuthenticated:', true);
-      console.log('[authSlice] User:', action.payload.user.username);
+      console.log('[authSlice] User:', action.payload.user.email);
       console.log('[authSlice] Roles:', state.roles);
       console.log('[authSlice] Permissions:', state.permissions);
-      // Token persistence is now handled by tokenStorage service (SecureStore)
     },
     setAccessTokenInStore: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload;
@@ -80,7 +70,6 @@ const authSlice = createSlice({
       state.roles = [];
       state.permissions = [];
       state.storeId = null;
-      // Token cleanup is handled by tokenStorage.clearTokens() (SecureStore)
     },
     restoreAuth: (
       state,
@@ -91,10 +80,10 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.roles = action.payload.user.roles || [];
       state.permissions = action.payload.user.permissions || [];
-      state.storeId = action.payload.user.storeId || null;
+      state.storeId = action.payload.user.storeId || action.payload.user.employee?.storeId || null;
       
       console.log('[authSlice] restoreAuth - isAuthenticated:', true);
-      console.log('[authSlice] Restored user:', action.payload.user.username);
+      console.log('[authSlice] Restored user:', action.payload.user.email);
       console.log('[authSlice] Restored roles:', state.roles);
       console.log('[authSlice] Restored permissions:', state.permissions);
     },
@@ -105,27 +94,15 @@ export const { setCredentials, setAccessTokenInStore, logout, restoreAuth } = au
 
 export default authSlice.reducer;
 
-// ─── RBAC Selectors (for future use) ───────────────────────────────────
 import type { RootState } from '../index';
 
-/** Select the current user's roles */
 export const selectRoles = (state: RootState) => state.auth.roles;
-
-/** Select the current user's permissions */
 export const selectPermissions = (state: RootState) => state.auth.permissions;
-
-/** Check if the user has a specific role */
 export const selectHasRole = (role: string) => (state: RootState) =>
   state.auth.roles.includes(role);
-
-/** Check if the user has a specific permission */
 export const selectHasPermission = (permission: string) => (state: RootState) =>
   state.auth.permissions.includes(permission);
-
-/** Check if the user has any of the given roles */
 export const selectHasAnyRole = (roles: string[]) => (state: RootState) =>
   roles.some((role) => state.auth.roles.includes(role));
-
-/** Check if the user has all of the given permissions */
 export const selectHasAllPermissions = (permissions: string[]) => (state: RootState) =>
   permissions.every((perm) => state.auth.permissions.includes(perm));

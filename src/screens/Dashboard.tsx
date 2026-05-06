@@ -20,6 +20,7 @@ const Dashboard: React.FC = () => {
     unreadCount,
     recentNotifications,
     quickActions,
+    storeName,
     getStatusLabel,
     getStatusColor,
     getNotificationIcon,
@@ -33,7 +34,11 @@ const Dashboard: React.FC = () => {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>Xin chào,</Text>
-            <Text style={styles.userName}>{user?.givenName} {user?.familyName}</Text>
+            <Text style={styles.userName}>{user?.employee?.fullName || 'Người dùng'}</Text>
+            <View style={styles.storeBadge}>
+              <Ionicons name="location-outline" size={12} color="#64748B" />
+              <Text style={styles.storeName}>{storeName}</Text>
+            </View>
           </View>
           <TouchableOpacity
             style={styles.notifBtn}
@@ -181,6 +186,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     marginTop: 2,
+  },
+  storeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  storeName: {
+    fontSize: 12,
+    color: '#64748B',
+    marginLeft: 4,
+    fontWeight: '500',
   },
   notifBtn: {
     width: 44,

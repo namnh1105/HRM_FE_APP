@@ -16,6 +16,7 @@ import {
   Degrees,
   FaceRegistration,
   EmployeeList,
+  EmployeeDetail,
   Reports,
 } from '../screens';
 
@@ -61,6 +62,7 @@ const RootNavigator: React.FC = () => {
           {isManager && (
             <>
               <Stack.Screen name="EmployeeList" component={EmployeeList} />
+              <Stack.Screen name="EmployeeDetail" component={EmployeeDetail} />
               <Stack.Screen name="Reports" component={Reports} />
             </>
           )}

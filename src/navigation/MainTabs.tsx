@@ -6,6 +6,7 @@ import {
   Attendance,
   Notifications,
   Profile,
+  Salary,
   EmployeeList,
   Reports,
 } from '../screens';
@@ -38,15 +39,7 @@ const MainTabs: React.FC = () => {
       )}
 
       <Tab.Screen name="Attendance" component={Attendance} />
-
-      {isManager ? (
-        <Tab.Screen name="Payroll" component={Salary} />
-      ) : (
-        <Tab.Screen name="Notifications" component={Notifications} />
-      )}
-
-      {isManager && <Tab.Screen name="Reports" component={Reports} />}
-      
+      <Tab.Screen name="Notifications" component={Notifications} />
       <Tab.Screen name="Profile" component={Profile} />
     </Tab.Navigator>
   );

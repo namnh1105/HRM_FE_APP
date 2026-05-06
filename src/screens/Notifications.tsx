@@ -17,8 +17,10 @@ const Notifications: React.FC = () => {
     notifications,
     unreadCount,
     isLoading,
+    isFetchingMore,
     isError,
     refetch,
+    loadMore,
     getIcon,
     formatTime,
     markAsRead,
@@ -36,7 +38,7 @@ const Notifications: React.FC = () => {
     );
   }
 
-  if (isError) {
+  if (isError && notifications.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.loadingContainer}>
@@ -78,6 +80,15 @@ const Notifications: React.FC = () => {
     );
   };
 
+  const renderFooter = () => {
+    if (!isFetchingMore) return null;
+    return (
+      <View style={{ paddingVertical: 16 }}>
+        <ActivityIndicator size="small" color="#3B82F6" />
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -106,6 +117,9 @@ const Notifications: React.FC = () => {
         renderItem={renderItem}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="notifications-off-outline" size={48} color="#CBD5E1" />

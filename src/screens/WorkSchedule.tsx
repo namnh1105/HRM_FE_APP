@@ -56,6 +56,7 @@ const WorkSchedule: React.FC = () => {
             <Text style={styles.sectionTitle}>Ca hôm nay</Text>
             <View style={styles.todayCard}>
               {todayShifts.map((s, idx) => (
+                <View key={idx} style={styles.todayShiftRow}>
                   <View style={[styles.shiftDot, { backgroundColor: s.color }]} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.todayShiftName}>{s.name}</Text>
@@ -224,6 +225,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
+  },
+  shiftDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
   },
   todayShiftName: {
     fontSize: 14,

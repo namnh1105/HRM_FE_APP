@@ -71,14 +71,7 @@ const Login = ({ navigation }: any) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        {/* Back button */}
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={28} color="#333" />
-        </TouchableOpacity>
+        {/* Login content */}
 
         <Animated.View 
           style={[
@@ -166,15 +159,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     width: '100%',
   },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 10,
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
+
   title: { 
     fontSize: 24, 
     marginBottom: 30, 

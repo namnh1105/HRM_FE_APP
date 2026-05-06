@@ -71,9 +71,8 @@ export const useProfile = () => {
   ];
 
   const displayName = profile?.fullName
-    || user?.name
-    || (user?.givenName ? `${user?.givenName || ''} ${user?.familyName || ''}`.trim() : null)
-    || user?.username
+    || user?.employee?.fullName
+    || user?.email
     || 'Nhân viên';
 
   return {

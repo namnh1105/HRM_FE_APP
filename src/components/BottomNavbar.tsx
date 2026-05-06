@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { useGetMyNotificationsQuery } from '../store/api/notificationApi';
+import { useGetUnreadCountQuery } from '../store/api/notificationApi';
 
 interface TabConfig {
   name: string;
@@ -32,7 +32,7 @@ const MANAGER_TABS: TabConfig[] = [
   { name: 'Dashboard', label: 'Dashboard', icon: 'stats-chart' },
   { name: 'Employees', label: 'Nhân viên', icon: 'people' },
   { name: 'Attendance', label: 'Chấm công', icon: 'happy', isCenter: true },
-  { name: 'Payroll', label: 'Lương bổng', icon: 'wallet' },
+  { name: 'Notifications', label: 'Thông báo', icon: 'notifications' },
   { name: 'Profile', label: 'Cá nhân', icon: 'person' },
 ];
 
@@ -44,8 +44,8 @@ const BottomNavbar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
   const isManager = roles.includes('MANAGER');
   const tabs = isManager ? MANAGER_TABS : EMPLOYEE_TABS;
 
-  const { data: notifData } = useGetMyNotificationsQuery(undefined, { skip: !isAuthenticated });
-  const unreadCount = (notifData?.data ?? []).filter((n) => !n.isRead).length;
+  const { data: unreadCountData } = useGetUnreadCountQuery(undefined, { skip: !isAuthenticated });
+  const unreadCount = unreadCountData?.data ?? 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>

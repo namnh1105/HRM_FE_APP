@@ -6,9 +6,12 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
+  Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useCreateLeaveRequest } from '../hooks/useCreateLeaveRequest';
 import type { LeaveType } from '../types/leave';
 import { LEAVE_TYPE_LABELS } from '../types/leave';
@@ -34,7 +37,34 @@ const CreateLeaveRequest: React.FC = () => {
     isLoading,
     handleSubmit,
     goBack,
+    formatDateDisplay,
   } = useCreateLeaveRequest();
+
+  const [showPicker, setShowPicker] = React.useState(false);
+  const [pickingFor, setPickingFor] = React.useState<'start' | 'end'>('start');
+
+  const openPicker = (type: 'start' | 'end') => {
+    setPickingFor(type);
+    setShowPicker(true);
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowPicker(Platform.OS === 'ios'); // On iOS inline mode, we might want to keep it visible or handle differently
+    if (event.type === 'set' && selectedDate) {
+      if (pickingFor === 'start') {
+        setStartDate(selectedDate);
+        // Automatically set end date to start date if it's currently before or same
+        if (endDate < selectedDate) {
+          setEndDate(selectedDate);
+        }
+      } else {
+        setEndDate(selectedDate);
+      }
+      if (Platform.OS === 'android') setShowPicker(false);
+    } else {
+      setShowPicker(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -83,31 +113,73 @@ const CreateLeaveRequest: React.FC = () => {
 
         {/* Start Date */}
         <Text style={styles.label}>Ngày bắt đầu</Text>
-        <View style={styles.inputRow}>
-          <Ionicons name="calendar-outline" size={20} color="#94A3B8" style={{ marginRight: 10 }} />
-          <TextInput
-            style={styles.input}
-            placeholder="DD/MM/YYYY"
-            placeholderTextColor="#CBD5E1"
-            value={startDate}
-            onChangeText={setStartDate}
-            keyboardType="default"
-          />
-        </View>
+        <TouchableOpacity 
+          style={styles.inputRow} 
+          onPress={() => openPicker('start')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="calendar-outline" size={20} color="#3B82F6" style={{ marginRight: 10 }} />
+          <Text style={styles.inputText}>
+            {formatDateDisplay(startDate)}
+          </Text>
+        </TouchableOpacity>
 
         {/* End Date */}
-        <Text style={styles.label}>Ngày kết thúc (nếu khác)</Text>
-        <View style={styles.inputRow}>
-          <Ionicons name="calendar-outline" size={20} color="#94A3B8" style={{ marginRight: 10 }} />
-          <TextInput
-            style={styles.input}
-            placeholder="DD/MM/YYYY (tùy chọn)"
-            placeholderTextColor="#CBD5E1"
-            value={endDate}
-            onChangeText={setEndDate}
-            keyboardType="default"
-          />
-        </View>
+        <Text style={styles.label}>Ngày kết thúc</Text>
+        <TouchableOpacity 
+          style={styles.inputRow} 
+          onPress={() => openPicker('end')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="calendar-outline" size={20} color="#3B82F6" style={{ marginRight: 10 }} />
+          <Text style={styles.inputText}>
+            {formatDateDisplay(endDate)}
+          </Text>
+        </TouchableOpacity>
+
+        {showPicker && (
+          <Modal
+            transparent
+            animationType="fade"
+            visible={showPicker}
+            onRequestClose={() => setShowPicker(false)}
+          >
+            <TouchableOpacity 
+              style={styles.modalOverlay} 
+              activeOpacity={1} 
+              onPress={() => setShowPicker(false)}
+            >
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>
+                    Chọn ngày {pickingFor === 'start' ? 'bắt đầu' : 'kết thúc'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowPicker(false)}>
+                    <Ionicons name="close" size={24} color="#64748B" />
+                  </TouchableOpacity>
+                </View>
+                
+                <DateTimePicker
+                  value={pickingFor === 'start' ? startDate : endDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                  onChange={onDateChange}
+                  minimumDate={pickingFor === 'end' ? startDate : new Date()}
+                  themeVariant="light"
+                />
+
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity 
+                    style={styles.modalDoneBtn}
+                    onPress={() => setShowPicker(false)}
+                  >
+                    <Text style={styles.modalDoneText}>Xác nhận</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        )}
 
         {/* Reason */}
         <Text style={styles.label}>Lý do</Text>
@@ -208,9 +280,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  input: {
+  inputText: {
     flex: 1,
     height: 48,
+    lineHeight: 48,
     fontSize: 15,
     color: '#1E293B',
   },
@@ -243,6 +316,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginLeft: 8,
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  modalDoneBtn: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  modalDoneText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 

@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 import { Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -50,9 +52,10 @@ export const useAttendance = () => {
     { skip: isManager }
   );
 
-  // Employee profile — needed for employee_id when calling face API
+  const { user } = useSelector((state: RootState) => state.auth);
+  // Employee profile — needed for more details, but we can get ID from user object
   const { data: profileData } = useGetMyProfileQuery();
-  const employeeId = profileData?.data?.id;
+  const employeeId = user?.employee?.id || profileData?.data?.id;
 
   // Face registration status
   const { data: faceStatusData, isLoading: faceStatusLoading } = useGetFaceStatusQuery(undefined, {

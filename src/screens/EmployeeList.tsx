@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useGetAllEmployeesQuery } from '../store/api/employeeApi';
 import { useRole } from '../hooks/useRole';
 
 const EmployeeList: React.FC = () => {
+  const navigation = useNavigation<any>();
   const { storeId } = useRole();
   const { data, isLoading, error, refetch } = useGetAllEmployeesQuery();
   
@@ -23,7 +25,11 @@ const EmployeeList: React.FC = () => {
   );
 
   const renderEmployee = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+    <TouchableOpacity 
+      style={styles.card} 
+      activeOpacity={0.7}
+      onPress={() => navigation.navigate('EmployeeDetail', { employee: item })}
+    >
       <View style={styles.avatar}>
         {item.avatarUrl ? (
           <Image source={{ uri: item.avatarUrl }} style={styles.avatarImg} />
