@@ -25,19 +25,19 @@ const initialState: AuthState = {
 export const mapToUserInfo = (raw: any): UserInfo => ({
   id: raw.id,
   email: raw.email,
-  avatarUrl: raw.avatarUrl || undefined,
-  roles: raw.roles || [],
-  permissions: raw.permissions || [],
+  avatarUrl: raw.avatarUrl || raw.avatar_url || undefined,
+  roles: raw.roles || raw.role_codes || [],
+  permissions: raw.permissions || raw.permission_codes || [],
   employee: raw.employee || null,
-  isActive: raw.isActive,
-  createdAt: raw.createdAt,
-  updatedAt: raw.updatedAt,
-  createdBy: raw.createdBy,
-  updatedBy: raw.updatedBy,
-  isDeleted: raw.isDeleted,
-  deletedAt: raw.deletedAt,
-  deletedBy: raw.deletedBy,
-  storeId: raw.storeId || raw.employee?.storeId,
+  isActive: raw.isActive !== undefined ? raw.isActive : raw.is_active,
+  createdAt: raw.createdAt || raw.created_at,
+  updatedAt: raw.updatedAt || raw.updated_at,
+  createdBy: raw.createdBy || raw.created_by,
+  updatedBy: raw.updatedBy || raw.updated_by,
+  isDeleted: raw.isDeleted !== undefined ? raw.isDeleted : raw.is_deleted,
+  deletedAt: raw.deletedAt || raw.deleted_at,
+  deletedBy: raw.deletedBy || raw.deleted_by,
+  storeId: raw.storeId || raw.store_id || raw.employee?.storeId || raw.employee?.store_id,
 });
 
 const authSlice = createSlice({
@@ -58,6 +58,7 @@ const authSlice = createSlice({
       console.log('[authSlice] setCredentials - isAuthenticated:', true);
       console.log('[authSlice] User:', action.payload.user.email);
       console.log('[authSlice] Roles:', state.roles);
+      console.log('[authSlice] StoreID:', state.storeId);
       console.log('[authSlice] Permissions:', state.permissions);
     },
     setAccessTokenInStore: (state, action: PayloadAction<string>) => {
@@ -85,6 +86,7 @@ const authSlice = createSlice({
       console.log('[authSlice] restoreAuth - isAuthenticated:', true);
       console.log('[authSlice] Restored user:', action.payload.user.email);
       console.log('[authSlice] Restored roles:', state.roles);
+      console.log('[authSlice] Restored StoreID:', state.storeId);
       console.log('[authSlice] Restored permissions:', state.permissions);
     },
   },

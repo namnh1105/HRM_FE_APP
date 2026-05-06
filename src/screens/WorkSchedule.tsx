@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,16 +15,51 @@ import {
   useWorkSchedule,
   HOLIDAYS,
 } from '../hooks/useWorkSchedule';
+import { useGetAllEmployeesQuery } from '../store/api/employeeApi';
 
 const WorkSchedule: React.FC = () => {
   const {
+    shifts,
     todayShifts,
     isLoading,
+    isAssigning,
     error,
     refetch,
     weekSchedule,
+    assignWorkShift,
+    isManager,
     goBack,
   } = useWorkSchedule();
+
+  const { data: employeeRes } = useGetAllEmployeesQuery();
+  const allEmployees = employeeRes?.data ?? [];
+
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [selectedShiftId, setSelectedShiftId] = useState('');
+
+  const handleAssign = async () => {
+    if (!selectedDay || !selectedEmployeeId || !selectedShiftId) {
+      Alert.alert('Thông báo', 'Vui lòng chọn đầy đủ thông tin');
+      return;
+    }
+
+    try {
+      await assignWorkShift(selectedEmployeeId, selectedShiftId, selectedDay);
+      Alert.alert('Thành công', 'Đã gán ca làm việc cho nhân viên');
+      setAssignModalVisible(false);
+      setSelectedEmployeeId('');
+      setSelectedShiftId('');
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.data?.message || 'Không thể gán ca làm việc');
+    }
+  };
+
+  const openAssignModal = (date: string) => {
+    setSelectedDay(date);
+    setAssignModalVisible(true);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -32,7 +69,9 @@ const WorkSchedule: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Lịch làm việc</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={refetch} disabled={isLoading}>
+          <Ionicons name="refresh" size={22} color="#1E293B" />
+        </TouchableOpacity>
       </View>
 
       {isLoading ? (
@@ -60,9 +99,7 @@ const WorkSchedule: React.FC = () => {
                   <View style={[styles.shiftDot, { backgroundColor: s.color }]} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.todayShiftName}>{s.name}</Text>
-                    {s.employeeName && (
-                      <Text style={styles.employeeNameText}>{s.employeeName}</Text>
-                    )}
+                    <Text style={styles.employeeNameText}>{s.employees.join(', ')}</Text>
                     {s.isUnderstaffed && (
                       <View style={styles.warningRow}>
                         <Ionicons name="alert-circle" size={12} color="#EF4444" />
@@ -100,6 +137,15 @@ const WorkSchedule: React.FC = () => {
                   {day.dayName}
                 </Text>
                 <Text style={styles.dayDate}>{day.date}</Text>
+                {isManager && (
+                  <TouchableOpacity 
+                    style={styles.addBtn}
+                    onPress={() => openAssignModal(day.fullDate)}
+                  >
+                    <Ionicons name="add-circle-outline" size={16} color="#3B82F6" />
+                    <Text style={styles.addText}>Gán ca</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               {day.shifts.length > 0 ? (
                 <View style={styles.dayShifts}>
@@ -108,9 +154,7 @@ const WorkSchedule: React.FC = () => {
                       <View style={[styles.shiftIndicator, { backgroundColor: s.color }]} />
                       <View>
                         <Text style={styles.dayShiftName}>{s.name}</Text>
-                        {s.employeeName && (
-                          <Text style={styles.dayEmployeeName}>{s.employeeName}</Text>
-                        )}
+                        <Text style={styles.dayEmployeeName}>{s.employees.join(', ')}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                           {s.isUnderstaffed && (
                             <Ionicons name="alert-circle" size={10} color="#EF4444" />
@@ -127,6 +171,73 @@ const WorkSchedule: React.FC = () => {
             </View>
           ))}
         </View>
+
+        {/* Modal for Assigning Shift */}
+        <Modal
+          visible={assignModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAssignModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Gán ca làm việc</Text>
+              <Text style={styles.modalSub}>Ngày: {selectedDay}</Text>
+
+              <Text style={styles.inputLabel}>Nhân viên</Text>
+              <View style={styles.pickerContainer}>
+                <ScrollView style={{ maxHeight: 150 }}>
+                  {allEmployees.map((emp) => (
+                    <TouchableOpacity
+                      key={emp.id}
+                      style={[styles.pickerItem, selectedEmployeeId === emp.id && styles.pickerItemActive]}
+                      onPress={() => setSelectedEmployeeId(emp.id)}
+                    >
+                      <Text style={[styles.pickerItemText, selectedEmployeeId === emp.id && styles.pickerItemTextActive]}>
+                        {emp.fullName}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <Text style={styles.inputLabel}>Ca làm việc</Text>
+              <View style={styles.pickerContainer}>
+                {shifts.map((s) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={[styles.pickerItem, selectedShiftId === s.id && styles.pickerItemActive]}
+                    onPress={() => setSelectedShiftId(s.id)}
+                  >
+                    <Text style={[styles.pickerItemText, selectedShiftId === s.id && styles.pickerItemTextActive]}>
+                      {s.name} ({s.startTime.slice(0, 5)} - {s.endTime.slice(0, 5)})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setAssignModalVisible(false)}
+                >
+                  <Text style={styles.cancelText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.confirmBtn, isAssigning && { opacity: 0.7 }]}
+                  onPress={handleAssign}
+                  disabled={isAssigning}
+                >
+                  {isAssigning ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.confirmText}>Xác nhận</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Holidays */}
         <Text style={styles.sectionTitle}>Ngày nghỉ lễ sắp tới</Text>
@@ -374,6 +485,103 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
     marginTop: 2,
+  },
+  // Add & Modal
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  addText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginLeft: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  modalSub: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 8,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  pickerItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  pickerItemActive: {
+    backgroundColor: '#3B82F6',
+  },
+  pickerItemText: {
+    fontSize: 14,
+    color: '#334155',
+  },
+  pickerItemTextActive: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  confirmBtn: {
+    flex: 2,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#3B82F6',
+  },
+  confirmText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFF',
   },
 });
 

@@ -69,7 +69,8 @@ export const initializeAuth = async () => {
         // Map backend format (snake_case) → UserInfo (camelCase)
         const user = mapToUserInfo(rawUser);
         store.dispatch(restoreAuth({ accessToken: authToken, user }));
-        console.log('[Store] Auth restored from SecureStore for user:', user.username);
+        console.log('[Store] Auth restored from storage for user:', user.email);
+        console.log('[Store] Restored roles/perms:', { roles: user.roles, perms: user.permissions });
 
         // Proactively validate token & refresh user data in background.
         // If access token expired, baseQuery will auto-refresh via refresh token.
@@ -77,14 +78,20 @@ export const initializeAuth = async () => {
           authApi.endpoints.getUserProfile.initiate(undefined, { forceRefetch: true })
         )
           .unwrap()
-          .then((result: any) => {
+          .then(async (result: any) => {
             if (result?.success && result?.data) {
               const freshUser = mapToUserInfo(result.data);
               const currentToken = getAccessToken() || authToken;
+              
               store.dispatch(restoreAuth({ accessToken: currentToken, user: freshUser }));
+              
               // Persist the correctly-mapped user info
-              AsyncStorage.setItem('userInfo', JSON.stringify(freshUser));
-              console.log('[Store] User profile validated & refreshed for:', freshUser.username);
+              await AsyncStorage.setItem('userInfo', JSON.stringify(freshUser));
+              
+              console.log('[Store] User profile validated & refreshed for:', freshUser.email);
+              console.log('[Store] Fresh roles/perms:', { roles: freshUser.roles, perms: freshUser.permissions });
+            } else {
+              console.warn('[Store] Profile refresh returned unsuccessful or empty data:', result);
             }
           })
           .catch((err: any) => {

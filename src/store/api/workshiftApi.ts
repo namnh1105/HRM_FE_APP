@@ -61,6 +61,19 @@ export const workshiftApi = createApi({
       query: (storeId) => `/employee-work-shifts/store/${storeId}`,
       providesTags: ['EmployeeWorkShift'],
     }),
+
+    /** POST /employee-work-shifts - Assign shift */
+    assignWorkShift: builder.mutation<
+      ApiResponse<EmployeeWorkShift>,
+      { employeeId: string; workShiftId: string; date: string }
+    >({
+      query: (body) => ({
+        url: '/employee-work-shifts',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['EmployeeWorkShift'],
+    }),
   }),
 });
 
@@ -73,4 +86,5 @@ export const {
   useGetEmployeeWorkShiftsQuery,
   useGetEmployeeShiftsByDateQuery,
   useGetStoreWorkShiftsQuery,
+  useAssignWorkShiftMutation,
 } = workshiftApi;

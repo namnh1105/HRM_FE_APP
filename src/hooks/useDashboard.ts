@@ -94,10 +94,7 @@ export const useDashboard = () => {
     },
   ];
 
-  const quickActions = allActions.filter(action => {
-    if (isManager && action.id === 'salary') return false;
-    return true;
-  });
+  const quickActions = allActions;
 
   const getNotificationIcon = (type: string) => {
     switch (type) {

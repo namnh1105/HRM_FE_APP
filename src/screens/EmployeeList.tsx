@@ -21,7 +21,7 @@ const EmployeeList: React.FC = () => {
   
   // Filter by storeId if available
   const employees = (data?.data ?? []).filter(
-    (emp) => !storeId || emp.departmentId === storeId || emp.departmentName?.includes(storeId)
+    (emp) => !storeId || emp.storeId === storeId
   );
 
   const renderEmployee = ({ item }: { item: any }) => (

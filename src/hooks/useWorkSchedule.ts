@@ -4,6 +4,7 @@ import {
   useGetActiveWorkShiftsQuery,
   useGetMyAllShiftsQuery,
   useGetStoreWorkShiftsQuery,
+  useAssignWorkShiftMutation,
 } from '../store/api/workshiftApi';
 import { useRole } from './useRole';
 import { formatShiftTime } from '../utils';
@@ -30,13 +31,22 @@ const normaliseDate = (s: string | null): string | null => {
   return s.split('T')[0];
 };
 
+export interface WeekDayShift {
+  id: string;
+  name: string;
+  time: string;
+  color: string;
+  employees: string[];
+  isUnderstaffed: boolean;
+}
+
 export interface WeekDay {
   dayName: string;
   date: string;
   fullDate: string;
   isWeekend: boolean;
   isToday: boolean;
-  shifts: { name: string; time: string; color: string; employeeName?: string; isUnderstaffed?: boolean }[];
+  shifts: WeekDayShift[];
 }
 
 const buildWeekSchedule = (
@@ -61,20 +71,31 @@ const buildWeekSchedule = (
     const isToday = dateStr === todayStr;
 
     // Find assignments that apply to this day (match by date)
-    const dayShifts = allAssignments.filter((a) => {
+    const dayAssignments = allAssignments.filter((a) => {
       const assignmentDate = normaliseDate(a.date);
       return assignmentDate === dateStr;
     });
 
-    const shifts = dayShifts.map((a) => {
-      const staffInShift = dayShifts.filter(ds => ds.workShiftId === a.workShiftId).length;
-      return {
-        name: a.workShiftName,
-        employeeName: a.employeeName,
-        time: `${formatShiftTime(a.shiftStartTime)} - ${formatShiftTime(a.shiftEndTime)}`,
-        color: getShiftColorByName(a.workShiftId, allShifts),
-        isUnderstaffed: staffInShift < 2, 
-      };
+    // Group by shiftId
+    const shiftGroups: Record<string, WeekDayShift> = {};
+    
+    dayAssignments.forEach((a) => {
+      if (!shiftGroups[a.workShiftId]) {
+        shiftGroups[a.workShiftId] = {
+          id: a.workShiftId,
+          name: a.workShiftName,
+          time: `${formatShiftTime(a.shiftStartTime)} - ${formatShiftTime(a.shiftEndTime)}`,
+          color: getShiftColorByName(a.workShiftId, allShifts),
+          employees: [],
+          isUnderstaffed: false,
+        };
+      }
+      shiftGroups[a.workShiftId].employees.push(a.employeeName);
+    });
+
+    // Mark understaffed (example logic: < 2 people)
+    Object.values(shiftGroups).forEach(s => {
+      s.isUnderstaffed = s.employees.length < 2;
     });
 
     days.push({
@@ -83,7 +104,7 @@ const buildWeekSchedule = (
       fullDate: dateStr,
       isWeekend,
       isToday,
-      shifts,
+      shifts: Object.values(shiftGroups),
     });
   }
   return days;
@@ -121,6 +142,8 @@ export const useWorkSchedule = () => {
     refetch: refetchStoreShifts,
   } = useGetStoreWorkShiftsQuery(storeId || '', { skip: !isManager || !storeId });
 
+  const [assignShift, { isLoading: isAssigning }] = useAssignWorkShiftMutation();
+
   const shifts = shiftsData?.data ?? [];
   const allAssignments = isManager ? (storeShiftsData?.data ?? []) : (myShiftsData?.data ?? []);
   const isLoading = isLoadingShifts || (isManager ? isLoadingStoreShifts : isLoadingMyShifts);
@@ -138,18 +161,29 @@ export const useWorkSchedule = () => {
 
   const refetch = () => {
     refetchShifts();
-    refetchMyShifts();
+    if (isManager && storeId) {
+      refetchStoreShifts();
+    } else if (!isManager) {
+      refetchMyShifts();
+    }
   };
 
   const goBack = () => navigation.goBack();
+
+  const assignWorkShift = async (employeeId: string, workShiftId: string, date: string) => {
+    return assignShift({ employeeId, workShiftId, date }).unwrap();
+  };
 
   return {
     shifts,
     todayShifts,
     isLoading,
+    isAssigning,
     error,
     refetch,
     weekSchedule,
+    assignWorkShift,
+    isManager,
     goBack,
   };
 };

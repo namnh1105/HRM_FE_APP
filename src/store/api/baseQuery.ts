@@ -69,6 +69,7 @@ export const baseQuery: BaseQueryFn<
                 accessToken: string;
                 tokenType: string;
                 expiresIn: number;
+                user?: any;
               };
             };
 
@@ -78,8 +79,21 @@ export const baseQuery: BaseQueryFn<
               await saveTokens(data.data.accessToken, refreshToken);
 
               // Update Redux in-memory state
-              const { setAccessTokenInStore } = await import('../slices/authSlice');
+              const { setAccessTokenInStore, setCredentials, mapToUserInfo } = await import('../slices/authSlice');
               api.dispatch(setAccessTokenInStore(data.data.accessToken));
+              
+              // If backend returned user data during refresh, update it too
+              if (data.data.user) {
+                const freshUser = mapToUserInfo(data.data.user);
+                api.dispatch(setCredentials({ 
+                  accessToken: data.data.accessToken, 
+                  user: freshUser 
+                }));
+                // Keep storage in sync
+                const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+                await AsyncStorage.setItem('userInfo', JSON.stringify(freshUser));
+                console.log('[baseQuery] User profile updated during silent refresh');
+              }
 
               console.log('[baseQuery] Silent refresh OK — retrying original request');
 

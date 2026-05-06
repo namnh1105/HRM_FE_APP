@@ -84,23 +84,13 @@ const Salary: React.FC = () => {
           ))}
         </ScrollView>
 
-        {isManager && (
-          <View style={styles.totalPayrollCard}>
-            <Text style={styles.totalPayrollLabel}>Tổng quỹ lương tháng này</Text>
-            <Text style={styles.totalPayrollValue}>{formatVND(totalPayroll)}</Text>
-          </View>
-        )}
+
 
         {selected && (
           <>
             {/* Net Salary Card */}
             <View style={styles.netCard}>
-              {isManager && (
-                <Text style={styles.employeeNameLabel}>{selected.employeeName}</Text>
-              )}
-              <Text style={styles.netLabel}>
-                {isManager ? 'Lương nhân viên' : 'Lương thực nhận'}
-              </Text>
+              <Text style={styles.netLabel}>Lương thực nhận</Text>
               <Text style={styles.netValue}>{formatVND(selected.netSalary)}</Text>
               {selected.paymentDate && (
                 <Text style={styles.paidDate}>

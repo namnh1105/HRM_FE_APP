@@ -12,22 +12,11 @@ export const useSalary = () => {
 
   const {
     data: myPayrollsData,
-    isLoading: isLoadingMyPayrolls,
-    isError: isErrorMyPayrolls,
-  } = useGetMyPayrollsQuery(undefined, { skip: isManager });
+    isLoading,
+    isError,
+  } = useGetMyPayrollsQuery(undefined);
 
-  const {
-    data: storePayrollsData,
-    isLoading: isLoadingStorePayrolls,
-    isError: isErrorStorePayrolls,
-  } = useGetPayrollsByStoreQuery(storeId || '', { skip: !isManager || !storeId });
-
-  const salaryHistory: SalaryDetail[] = isManager
-    ? (storePayrollsData?.data ?? [])
-    : (myPayrollsData?.data ?? []);
-
-  const isLoading = isManager ? isLoadingStorePayrolls : isLoadingMyPayrolls;
-  const isError = isManager ? isErrorStorePayrolls : isErrorMyPayrolls;
+  const salaryHistory: SalaryDetail[] = myPayrollsData?.data ?? [];
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const selected: SalaryDetail | undefined = salaryHistory[selectedIndex];
