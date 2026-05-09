@@ -142,6 +142,8 @@ export const useWorkSchedule = () => {
     refetch: refetchStoreShifts,
   } = useGetStoreWorkShiftsQuery(storeId || '', { skip: !isManager || !storeId });
 
+  console.log('[useWorkSchedule] isManager:', isManager, 'storeId:', storeId);
+
   const [assignShift, { isLoading: isAssigning }] = useAssignWorkShiftMutation();
 
   const shifts = shiftsData?.data ?? [];

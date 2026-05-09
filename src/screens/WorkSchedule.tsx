@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,28 +37,76 @@ const WorkSchedule: React.FC = () => {
 
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [selectedShiftId, setSelectedShiftId] = useState('');
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
+  const [employeeQuery, setEmployeeQuery] = useState('');
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [shiftQuery, setShiftQuery] = useState('');
+  const [showShiftDropdown, setShowShiftDropdown] = useState(false);
+
+  const toLocalDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const todayStr = toLocalDateStr(new Date());
+  const isPastDate = (dateStr: string) => dateStr < todayStr;
+
+  const filteredEmployees = allEmployees.filter((emp) => {
+    const query = employeeQuery.trim().toLowerCase();
+    if (!query) return true;
+    const name = (emp.fullName || '').toLowerCase();
+    const code = (emp.employeeCode || '').toLowerCase();
+    return name.includes(query) || code.includes(query);
+  });
+
+  const filteredShifts = shifts.filter((s) => {
+    const query = shiftQuery.trim().toLowerCase();
+    if (!query) return true;
+    return s.name.toLowerCase().includes(query) || s.code?.toLowerCase()?.includes(query);
+  });
 
   const handleAssign = async () => {
-    if (!selectedDay || !selectedEmployeeId || !selectedShiftId) {
+    if (!selectedDay || selectedEmployeeIds.length === 0 || selectedShiftIds.length === 0) {
       Alert.alert('Thông báo', 'Vui lòng chọn đầy đủ thông tin');
       return;
     }
 
+    if (isPastDate(selectedDay)) {
+      Alert.alert('Thông báo', 'Không thể gán ca cho ngày đã qua');
+      return;
+    }
+
     try {
-      await assignWorkShift(selectedEmployeeId, selectedShiftId, selectedDay);
+      const tasks: Promise<any>[] = [];
+      selectedEmployeeIds.forEach((employeeId) => {
+        selectedShiftIds.forEach((workShiftId) => {
+          tasks.push(assignWorkShift(employeeId, workShiftId, selectedDay));
+        });
+      });
+      await Promise.all(tasks);
       Alert.alert('Thành công', 'Đã gán ca làm việc cho nhân viên');
       setAssignModalVisible(false);
-      setSelectedEmployeeId('');
-      setSelectedShiftId('');
+      setSelectedEmployeeIds([]);
+      setSelectedShiftIds([]);
+      setEmployeeQuery('');
+      setShowEmployeeDropdown(false);
+      setShiftQuery('');
+      setShowShiftDropdown(false);
     } catch (err: any) {
       Alert.alert('Lỗi', err.data?.message || 'Không thể gán ca làm việc');
     }
   };
 
   const openAssignModal = (date: string) => {
+    if (isPastDate(date)) {
+      Alert.alert('Thông báo', 'Không thể gán ca cho ngày đã qua');
+      return;
+    }
     setSelectedDay(date);
+    setSelectedEmployeeIds([]);
+    setSelectedShiftIds([]);
+    setEmployeeQuery('');
+    setShowEmployeeDropdown(false);
+    setShiftQuery('');
+    setShowShiftDropdown(false);
     setAssignModalVisible(true);
   };
 
@@ -140,10 +189,11 @@ const WorkSchedule: React.FC = () => {
                 {isManager && (
                   <TouchableOpacity 
                     style={styles.addBtn}
+                    disabled={isPastDate(day.fullDate)}
                     onPress={() => openAssignModal(day.fullDate)}
                   >
-                    <Ionicons name="add-circle-outline" size={16} color="#3B82F6" />
-                    <Text style={styles.addText}>Gán ca</Text>
+                    <Ionicons name="add-circle-outline" size={16} color={isPastDate(day.fullDate) ? '#94A3B8' : '#3B82F6'} />
+                    <Text style={[styles.addText, isPastDate(day.fullDate) && styles.addTextDisabled]}>Gán ca</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -177,7 +227,11 @@ const WorkSchedule: React.FC = () => {
           visible={assignModalVisible}
           transparent
           animationType="fade"
-          onRequestClose={() => setAssignModalVisible(false)}
+          onRequestClose={() => {
+            setAssignModalVisible(false);
+            setShowEmployeeDropdown(false);
+            setShowShiftDropdown(false);
+          }}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -185,41 +239,173 @@ const WorkSchedule: React.FC = () => {
               <Text style={styles.modalSub}>Ngày: {selectedDay}</Text>
 
               <Text style={styles.inputLabel}>Nhân viên</Text>
-              <View style={styles.pickerContainer}>
-                <ScrollView style={{ maxHeight: 150 }}>
-                  {allEmployees.map((emp) => (
-                    <TouchableOpacity
-                      key={emp.id}
-                      style={[styles.pickerItem, selectedEmployeeId === emp.id && styles.pickerItemActive]}
-                      onPress={() => setSelectedEmployeeId(emp.id)}
-                    >
-                      <Text style={[styles.pickerItemText, selectedEmployeeId === emp.id && styles.pickerItemTextActive]}>
-                        {emp.fullName}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+              <View style={[styles.dropdownContainer, { zIndex: 20 }]}>
+                <TouchableOpacity
+                  style={styles.dropdownTrigger}
+                  onPress={() => {
+                    setShowEmployeeDropdown((prev) => !prev);
+                    setShowShiftDropdown(false);
+                  }}
+                >
+                  <Text style={styles.dropdownTriggerText}>
+                    {selectedEmployeeIds.length > 0
+                      ? `Đã chọn ${selectedEmployeeIds.length} nhân viên`
+                      : 'Chọn nhân viên'}
+                  </Text>
+                  <Ionicons
+                    name={showEmployeeDropdown ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
+                {showEmployeeDropdown && (
+                  <View style={styles.dropdownPanel}>
+                    <TextInput
+                      placeholder="Tìm nhân viên..."
+                      value={employeeQuery}
+                      onChangeText={(text) => {
+                        setEmployeeQuery(text);
+                      }}
+                      style={styles.searchInput}
+                    />
+                    {selectedEmployeeIds.length > 0 && (
+                      <View style={styles.selectedChips}>
+                        {selectedEmployeeIds.map((id) => {
+                          const emp = allEmployees.find((e) => e.id === id);
+                          if (!emp) return null;
+                          return (
+                            <TouchableOpacity
+                              key={id}
+                              style={styles.chip}
+                              onPress={() =>
+                                setSelectedEmployeeIds((prev) => prev.filter((x) => x !== id))
+                              }
+                            >
+                              <Text style={styles.chipText}>{emp.fullName}</Text>
+                              <Ionicons name="close" size={14} color="#64748B" />
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                    <View style={styles.dropdownList}>
+                      <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
+                        {filteredEmployees.length === 0 ? (
+                          <Text style={styles.emptyText}>Không tìm thấy nhân viên</Text>
+                        ) : (
+                          filteredEmployees.map((emp) => (
+                            <TouchableOpacity
+                              key={emp.id}
+                              style={[styles.dropdownItem, selectedEmployeeIds.includes(emp.id) && styles.dropdownItemActive]}
+                              onPress={() => {
+                                setSelectedEmployeeIds((prev) =>
+                                  prev.includes(emp.id)
+                                    ? prev.filter((x) => x !== emp.id)
+                                    : [...prev, emp.id]
+                                );
+                              }}
+                            >
+                              <Text style={[styles.dropdownItemText, selectedEmployeeIds.includes(emp.id) && styles.dropdownItemTextActive]}>
+                                {emp.fullName}
+                              </Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    </View>
+                  </View>
+                )}
               </View>
 
               <Text style={styles.inputLabel}>Ca làm việc</Text>
-              <View style={styles.pickerContainer}>
-                {shifts.map((s) => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={[styles.pickerItem, selectedShiftId === s.id && styles.pickerItemActive]}
-                    onPress={() => setSelectedShiftId(s.id)}
-                  >
-                    <Text style={[styles.pickerItemText, selectedShiftId === s.id && styles.pickerItemTextActive]}>
-                      {s.name} ({s.startTime.slice(0, 5)} - {s.endTime.slice(0, 5)})
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={[styles.dropdownContainer, { zIndex: 10 }]}>
+                <TouchableOpacity
+                  style={styles.dropdownTrigger}
+                  onPress={() => {
+                    setShowShiftDropdown((prev) => !prev);
+                    setShowEmployeeDropdown(false);
+                  }}
+                >
+                  <Text style={styles.dropdownTriggerText}>
+                    {selectedShiftIds.length > 0
+                      ? `Đã chọn ${selectedShiftIds.length} ca`
+                      : 'Chọn ca làm việc'}
+                  </Text>
+                  <Ionicons
+                    name={showShiftDropdown ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color="#64748B"
+                  />
+                </TouchableOpacity>
+                {showShiftDropdown && (
+                  <View style={styles.dropdownPanel}>
+                    <TextInput
+                      placeholder="Tìm ca làm việc..."
+                      value={shiftQuery}
+                      onChangeText={(text) => {
+                        setShiftQuery(text);
+                      }}
+                      style={styles.searchInput}
+                    />
+                    {selectedShiftIds.length > 0 && (
+                      <View style={styles.selectedChips}>
+                        {selectedShiftIds.map((id) => {
+                          const shift = shifts.find((s) => s.id === id);
+                          if (!shift) return null;
+                          return (
+                            <TouchableOpacity
+                              key={id}
+                              style={styles.chip}
+                              onPress={() =>
+                                setSelectedShiftIds((prev) => prev.filter((x) => x !== id))
+                              }
+                            >
+                              <Text style={styles.chipText}>
+                                {shift.name} ({shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)})
+                              </Text>
+                              <Ionicons name="close" size={14} color="#64748B" />
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                    <View style={styles.dropdownList}>
+                      <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
+                        {filteredShifts.length === 0 ? (
+                          <Text style={styles.emptyText}>Không có ca làm việc</Text>
+                        ) : (
+                          filteredShifts.map((s) => (
+                            <TouchableOpacity
+                              key={s.id}
+                              style={[styles.dropdownItem, selectedShiftIds.includes(s.id) && styles.dropdownItemActive]}
+                              onPress={() => {
+                                setSelectedShiftIds((prev) =>
+                                  prev.includes(s.id)
+                                    ? prev.filter((x) => x !== s.id)
+                                    : [...prev, s.id]
+                                );
+                              }}
+                            >
+                              <Text style={[styles.dropdownItemText, selectedShiftIds.includes(s.id) && styles.dropdownItemTextActive]}>
+                                {s.name} ({s.startTime.slice(0, 5)} - {s.endTime.slice(0, 5)})
+                              </Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    </View>
+                  </View>
+                )}
               </View>
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={styles.cancelBtn}
-                  onPress={() => setAssignModalVisible(false)}
+                  onPress={() => {
+                    setAssignModalVisible(false);
+                    setShowEmployeeDropdown(false);
+                    setShowShiftDropdown(false);
+                  }}
                 >
                   <Text style={styles.cancelText}>Hủy</Text>
                 </TouchableOpacity>
@@ -503,6 +689,9 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
     marginLeft: 4,
   },
+  addTextDisabled: {
+    color: '#94A3B8',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -531,6 +720,96 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginBottom: 8,
   },
+  dropdownContainer: {
+    marginBottom: 16,
+    position: 'relative',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FFF',
+  },
+  dropdownTriggerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  dropdownPanel: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+    padding: 10,
+    zIndex: 50,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#334155',
+    backgroundColor: '#FFF',
+  },
+  dropdownList: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#FFF',
+  },
+  selectedChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+  },
+  chipText: {
+    fontSize: 12,
+    color: '#334155',
+  },
+  dropdownItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  dropdownItemActive: {
+    backgroundColor: '#3B82F6',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#334155',
+  },
+  dropdownItemTextActive: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
   pickerContainer: {
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -553,6 +832,11 @@ const styles = StyleSheet.create({
   pickerItemTextActive: {
     color: '#FFF',
     fontWeight: '600',
+  },
+  emptyText: {
+    padding: 12,
+    fontSize: 13,
+    color: '#94A3B8',
   },
   modalButtons: {
     flexDirection: 'row',

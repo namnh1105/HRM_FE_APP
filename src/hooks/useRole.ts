@@ -11,7 +11,7 @@ export const useRole = () => {
   const isEmployee = roles.includes('EMPLOYEE');
   
   // For managers, we often need to filter data by their assigned store
-  const currentStoreId = storeId || user?.storeId;
+  const currentStoreId = storeId || user?.storeId || user?.employee?.storeId;
 
   return {
     isManager,
