@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { useGetMyProfileQuery } from '../store/api/employeeApi';
 import {
   useGetFaceStatusQuery,
@@ -37,15 +37,21 @@ const FaceRegistration: React.FC = () => {
   const [step, setStep] = useState<Step>('intro');
   const [isRecording, setIsRecording] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [facing, setFacing] = useState<'front' | 'back'>('front');
+
+  const toggleCameraFacing = () => {
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
+  };
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
 
   // Fetch employee profile
   const { data: profileData } = useGetMyProfileQuery();
   const employeeId = profileData?.data?.id;
 
   // Check face registration status
-  const { data: faceStatusData, isLoading: statusLoading } = useGetFaceStatusQuery();
+  const { data: faceStatusData, isLoading: statusLoading, refetch: refetchFaceStatus, isFetching: statusFetching } = useGetFaceStatusQuery();
   const isRegistered = faceStatusData?.data?.registered ?? false;
 
   // Register face with Redis queue polling
@@ -55,6 +61,7 @@ const FaceRegistration: React.FC = () => {
     error: registerError,
     progress: registerProgress,
     submitRegistration,
+    checkJobStatus,
     reset: resetRegistration,
     isProcessing,
   } = useRegisterFacePolling();
@@ -85,6 +92,15 @@ const FaceRegistration: React.FC = () => {
       const result = await requestCameraPermission();
       if (!result.granted) {
         Alert.alert('Quyền truy cập', 'Cần quyền truy cập camera để đăng ký khuôn mặt.');
+        return;
+      }
+    }
+
+    // Request microphone permission for video
+    if (!micPermission?.granted) {
+      const result = await requestMicPermission();
+      if (!result.granted) {
+        Alert.alert('Quyền truy cập', 'Cần quyền truy cập micro để quay video.');
         return;
       }
     }
@@ -260,6 +276,23 @@ const FaceRegistration: React.FC = () => {
               </Text>
             </View>
           )}
+
+          <View style={{ flexDirection: 'row', marginTop: 24, gap: 12 }}>
+            <TouchableOpacity
+              style={[styles.primaryBtn, { backgroundColor: '#F1F5F9' }]}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={[styles.primaryBtnText, { color: '#1E293B' }]}>Thoát ra</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={checkJobStatus}
+            >
+              <Ionicons name="reload" size={18} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.primaryBtnText}>Làm mới</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -272,76 +305,97 @@ const FaceRegistration: React.FC = () => {
         <View style={styles.cameraContainer}>
           <CameraView
             ref={cameraRef}
-            style={styles.camera}
-            facing="front"
+            style={StyleSheet.absoluteFillObject}
+            facing={facing}
             mode="video"
-          >
-            {/* Overlay */}
-            <View style={styles.cameraOverlay}>
-              {/* Top bar */}
-              <View style={styles.cameraTopBar}>
-                <TouchableOpacity
-                  onPress={() => {
-                    handleStopRecording();
-                    setStep('intro');
-                  }}
-                  style={styles.cameraCloseBtn}
-                >
-                  <Ionicons name="close" size={28} color="#FFF" />
-                </TouchableOpacity>
-                {isRecording && (
-                  <View style={styles.recordingBadge}>
-                    <Animated.View
-                      style={[styles.recordingDot, { transform: [{ scale: pulseAnim }] }]}
-                    />
-                    <Text style={styles.recordingText}>Đang quay</Text>
-                  </View>
-                )}
-              </View>
+          />
+          {/* Overlay */}
+          <View style={styles.cameraOverlay}>
+            {/* Top bar */}
+            <View style={styles.cameraTopBar}>
+              <TouchableOpacity
+                onPress={() => {
+                  handleStopRecording();
+                  setStep('intro');
+                }}
+                style={styles.cameraCloseBtn}
+              >
+                <Ionicons name="close" size={28} color="#FFF" />
+              </TouchableOpacity>
 
-              {/* Face guide oval */}
-              <View style={styles.faceGuideContainer}>
-                <View style={styles.faceGuideOval} />
-              </View>
-
-              {/* Instruction */}
-              <View style={styles.cameraBottomSection}>
-                <Text style={styles.cameraInstruction}>
-                  {isRecording
-                    ? 'Xoay đầu từ từ: trái → phải → lên → xuống'
-                    : 'Đặt khuôn mặt vào khung tròn rồi nhấn nút quay'}
-                </Text>
-
-                {/* Angle indicators */}
-                {isRecording && (
-                  <View style={styles.angleRow}>
-                    {ANGLES.map((a) => (
-                      <View key={a.key} style={styles.angleItem}>
-                        <Ionicons name={a.icon} size={18} color="#FFF" />
-                        <Text style={styles.angleLabel}>{a.label}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Record / Stop button */}
-                <View style={styles.recordBtnContainer}>
-                  {!isRecording ? (
-                    <TouchableOpacity style={styles.recordBtn} onPress={handleRecordVideo}>
-                      <View style={styles.recordBtnInner} />
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity style={styles.stopBtn} onPress={handleStopRecording}>
-                      <View style={styles.stopBtnInner} />
-                    </TouchableOpacity>
-                  )}
-                  <Text style={styles.recordHint}>
-                    {isRecording ? 'Nhấn để dừng quay' : 'Nhấn để bắt đầu quay'}
-                  </Text>
+              {isRecording && (
+                <View style={styles.recordingBadge}>
+                  <Animated.View
+                    style={[styles.recordingDot, { transform: [{ scale: pulseAnim }] }]}
+                  />
+                  <Text style={styles.recordingText}>Đang quay</Text>
                 </View>
+              )}
+            </View>
+
+            {/* Face guide oval */}
+            <View style={styles.faceGuideContainer}>
+              <View style={styles.faceGuideOval} />
+            </View>
+
+            {/* Instruction */}
+            <View style={styles.cameraBottomSection}>
+              <Text style={styles.cameraInstruction}>
+                {isRecording
+                  ? 'Xoay đầu từ từ: trái → phải → lên → xuống'
+                  : 'Đặt khuôn mặt vào khung tròn rồi nhấn nút quay'}
+              </Text>
+
+              {/* Angle indicators */}
+              {isRecording && (
+                <View style={styles.angleRow}>
+                  {ANGLES.map((a) => (
+                    <View key={a.key} style={styles.angleItem}>
+                      <Ionicons name={a.icon} size={18} color="#FFF" />
+                      <Text style={styles.angleLabel}>{a.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Record / Stop button */}
+              <View style={{ alignItems: 'center', width: '100%' }}>
+                <View style={styles.recordBtnRow}>
+                  {/* Left: Flip camera button */}
+                  <View style={styles.recordBtnSide}>
+                    {!isRecording && (
+                      <TouchableOpacity
+                        onPress={toggleCameraFacing}
+                        style={styles.flipCameraBtn}
+                      >
+                        <Ionicons name="camera-reverse" size={28} color="#FFF" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Center: Record button */}
+                  <View style={styles.recordBtnCenter}>
+                    {!isRecording ? (
+                      <TouchableOpacity style={styles.recordBtn} onPress={handleRecordVideo}>
+                        <View style={styles.recordBtnInner} />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity style={styles.stopBtn} onPress={handleStopRecording}>
+                        <View style={styles.stopBtnInner} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Right: Empty spacer to keep record button centered */}
+                  <View style={styles.recordBtnSide} />
+                </View>
+
+                <Text style={styles.recordHint}>
+                  {isRecording ? 'Nhấn để dừng quay' : 'Nhấn để bắt đầu quay'}
+                </Text>
               </View>
             </View>
-          </CameraView>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -470,6 +524,19 @@ const FaceRegistration: React.FC = () => {
         >
           <Ionicons name="videocam" size={22} color="#FFF" />
           <Text style={styles.startBtnText}>Bắt đầu đăng ký</Text>
+        </TouchableOpacity>
+
+        {/* Check status button */}
+        <TouchableOpacity
+          style={[styles.startBtn, { backgroundColor: '#F1F5F9', marginTop: 12, shadowOpacity: 0 }]}
+          onPress={() => refetchFaceStatus()}
+          activeOpacity={0.8}
+          disabled={statusFetching}
+        >
+          <Ionicons name="refresh" size={22} color="#3B82F6" />
+          <Text style={[styles.startBtnText, { color: '#3B82F6' }]}>
+            {statusFetching ? 'Đang kiểm tra...' : 'Kiểm tra lại trạng thái'}
+          </Text>
         </TouchableOpacity>
 
         <View style={{ height: 32 }} />
@@ -741,12 +808,14 @@ const styles = StyleSheet.create({
   // ── Camera ──────────────────────────────────────────────────────────
   cameraContainer: {
     flex: 1,
-  },
-  camera: {
-    flex: 1,
+    backgroundColor: '#000',
   },
   cameraOverlay: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.15)',
   },
   cameraTopBar: {
@@ -834,6 +903,28 @@ const styles = StyleSheet.create({
   recordBtnContainer: {
     alignItems: 'center',
   },
+  recordBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  recordBtnSide: {
+    width: 50,
+    alignItems: 'center',
+  },
+  recordBtnCenter: {
+    alignItems: 'center',
+  },
+  flipCameraBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   recordBtn: {
     width: 72,
     height: 72,
@@ -893,8 +984,11 @@ const styles = StyleSheet.create({
   primaryBtn: {
     backgroundColor: '#3B82F6',
     paddingVertical: 14,
-    paddingHorizontal: 40,
+    paddingHorizontal: 24,
     borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryBtnText: {
     fontSize: 16,

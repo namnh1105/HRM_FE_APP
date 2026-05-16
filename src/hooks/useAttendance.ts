@@ -221,7 +221,12 @@ export const useAttendance = () => {
         );
       }
     } catch (error: any) {
-      Alert.alert('Lỗi', error?.message || 'Có lỗi xảy ra khi chấm công');
+      let msg = error?.data?.message ?? error?.data?.errors?.[0] ?? error?.message ?? 'Có lỗi xảy ra khi chấm công';
+      if (typeof msg === 'string' && msg.includes(' - ')) {
+        // Remove error code prefix like "VALIDATION_ERROR - "
+        msg = msg.split(' - ').slice(1).join(' - ');
+      }
+      Alert.alert('Lỗi', msg);
     } finally {
       setIsProcessing(false);
     }

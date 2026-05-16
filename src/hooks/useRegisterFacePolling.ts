@@ -63,8 +63,58 @@ export function useRegisterFacePolling() {
     }
   }, []);
 
-  /** Bắt đầu polling */
-  const startPolling = useCallback(
+  /** Check job status manually */
+  const checkJobStatus = useCallback(async () => {
+    if (!state.jobId) return;
+
+    try {
+      setState((prev) => ({ ...prev, progress: 'Đang kiểm tra...' }));
+      const res = await fetchJobStatus(state.jobId, false).unwrap();
+      const data = res.data;
+
+      if (!data) return;
+
+      const { status, result, error, progress } = data;
+
+      if (status === 'completed') {
+        clearTimers();
+        setState({
+          phase: 'completed',
+          jobStatus: 'completed',
+          jobId: state.jobId,
+          result: result ?? null,
+          error: null,
+          progress: null,
+        });
+        return;
+      }
+
+      if (status === 'failed') {
+        clearTimers();
+        setState({
+          phase: 'failed',
+          jobStatus: 'failed',
+          jobId: state.jobId,
+          result: null,
+          error: error ?? 'Đăng ký khuôn mặt thất bại.',
+          progress: null,
+        });
+        return;
+      }
+
+      // pending | processing
+      setState((prev) => ({
+        ...prev,
+        jobStatus: status,
+        progress: progress ?? (status === 'processing' ? 'Đang phân tích khuôn mặt...' : 'Đang chờ xử lý...'),
+      }));
+    } catch {
+      setState((prev) => ({ ...prev, progress: 'Lỗi mạng, vui lòng thử lại.' }));
+    }
+  }, [fetchJobStatus, state.jobId, clearTimers]);
+
+  /** Bắt đầu theo dõi thủ công */
+  const startTracking = useCallback(
     (jobId: string) => {
       clearTimers();
 
@@ -72,74 +122,21 @@ export function useRegisterFacePolling() {
         ...prev,
         phase: 'polling',
         jobStatus: 'pending',
-        progress: 'Đang chờ xử lý...',
+        progress: 'Đã gửi yêu cầu, vui lòng chờ...',
       }));
 
-      // Timeout tổng
-      timeoutRef.current = setTimeout(() => {
-        clearTimers();
-        setState((prev) => ({
-          ...prev,
-          phase: 'failed',
-          error: 'Quá thời gian chờ xử lý. Vui lòng thử lại sau.',
-        }));
-      }, POLL_TIMEOUT);
-
-      // Poll interval
-      const poll = async () => {
-        try {
-          const res = await fetchJobStatus(jobId, false).unwrap();
-          const data = res.data;
-
-          if (!data) return;
-
-          const { status, result, error, progress } = data;
-
-          if (status === 'completed') {
-            clearTimers();
-            setState({
-              phase: 'completed',
-              jobStatus: 'completed',
-              jobId,
-              result: result ?? null,
-              error: null,
-              progress: null,
-            });
-            return;
-          }
-
-          if (status === 'failed') {
-            clearTimers();
-            setState({
-              phase: 'failed',
-              jobStatus: 'failed',
-              jobId,
-              result: null,
-              error: error ?? 'Đăng ký khuôn mặt thất bại.',
-              progress: null,
-            });
-            return;
-          }
-
-          // pending | processing → cập nhật progress
-          setState((prev) => ({
-            ...prev,
-            jobStatus: status,
-            progress: progress ?? (status === 'processing' ? 'Đang phân tích khuôn mặt...' : 'Đang chờ xử lý...'),
-          }));
-        } catch {
-          // Lỗi network → vẫn tiếp tục poll, không dừng ngay
+      // Gọi lần đầu để lấy status
+      fetchJobStatus(jobId, false).unwrap().then(res => {
+        const data = res.data;
+        if (data && (data.status === 'completed' || data.status === 'failed')) {
+          checkJobStatus();
         }
-      };
-
-      // Poll ngay lần đầu
-      poll();
-      pollingRef.current = setInterval(poll, POLL_INTERVAL);
+      }).catch(() => {});
     },
-    [fetchJobStatus, clearTimers],
+    [fetchJobStatus, clearTimers, checkJobStatus],
   );
 
-  /** Hàm chính: upload video → nhận jobId → bắt đầu polling */
+  /** Hàm chính: upload video → nhận jobId → bắt đầu tracking thủ công */
   const submitRegistration = useCallback(
     async (videoUri: string) => {
       try {
@@ -168,8 +165,8 @@ export function useRegisterFacePolling() {
           jobId,
         }));
 
-        // 2. Bắt đầu polling
-        startPolling(jobId);
+        // 2. Bắt đầu tracking
+        startTracking(jobId);
       } catch (error: any) {
         const msg =
           error?.data?.message ??
@@ -183,7 +180,7 @@ export function useRegisterFacePolling() {
         });
       }
     },
-    [registerFace, startPolling],
+    [registerFace, startTracking, checkJobStatus],
   );
 
   /** Reset về trạng thái ban đầu */
@@ -195,8 +192,9 @@ export function useRegisterFacePolling() {
   return {
     ...state,
     submitRegistration,
+    checkJobStatus,
     reset,
-    /** true khi đang upload hoặc polling */
+    /** true khi đang upload hoặc theo dõi */
     isProcessing: state.phase === 'uploading' || state.phase === 'polling',
   };
 }
