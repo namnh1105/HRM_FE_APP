@@ -9,14 +9,18 @@ import {
   Modal,
   Alert,
   TextInput,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useWorkSchedule,
   HOLIDAYS,
+  getShiftColor,
+  normaliseDate,
 } from '../hooks/useWorkSchedule';
 import { useGetAllEmployeesQuery } from '../store/api/employeeApi';
+import type { EmployeeWorkShift } from '../types/workshift';
 
 const WorkSchedule: React.FC = () => {
   const {
@@ -28,8 +32,15 @@ const WorkSchedule: React.FC = () => {
     refetch,
     weekSchedule,
     assignWorkShift,
+    deleteWorkShift,
     isManager,
+    storeId,
     goBack,
+    refreshing,
+    onRefresh,
+    allAssignments,
+    currentDate,
+    setCurrentDate,
   } = useWorkSchedule();
 
   const { data: employeeRes } = useGetAllEmployeesQuery();
@@ -38,6 +49,7 @@ const WorkSchedule: React.FC = () => {
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [initialEmployeeIds, setInitialEmployeeIds] = useState<string[]>([]);
   const [selectedShiftIds, setSelectedShiftIds] = useState<string[]>([]);
   const [employeeQuery, setEmployeeQuery] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
@@ -50,6 +62,10 @@ const WorkSchedule: React.FC = () => {
   const isPastDate = (dateStr: string) => dateStr < todayStr;
 
   const filteredEmployees = allEmployees.filter((emp) => {
+    // Only show employees that belong to the manager's store, if storeId is present
+    if (isManager && storeId && emp.storeId !== storeId) {
+      return false;
+    }
     const query = employeeQuery.trim().toLowerCase();
     if (!query) return true;
     const name = (emp.fullName || '').toLowerCase();
@@ -63,8 +79,19 @@ const WorkSchedule: React.FC = () => {
     return s.name.toLowerCase().includes(query) || s.code?.toLowerCase()?.includes(query);
   });
 
+  const prevWeek = () => {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() - 7);
+    setCurrentDate(d);
+  };
+  const nextWeek = () => {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + 7);
+    setCurrentDate(d);
+  };
+
   const handleAssign = async () => {
-    if (!selectedDay || selectedEmployeeIds.length === 0 || selectedShiftIds.length === 0) {
+    if (!selectedDay || selectedShiftIds.length === 0) {
       Alert.alert('Thông báo', 'Vui lòng chọn đầy đủ thông tin');
       return;
     }
@@ -75,34 +102,62 @@ const WorkSchedule: React.FC = () => {
     }
 
     try {
-      const tasks: Promise<any>[] = [];
-      selectedEmployeeIds.forEach((employeeId) => {
-        selectedShiftIds.forEach((workShiftId) => {
-          tasks.push(assignWorkShift(employeeId, workShiftId, selectedDay));
-        });
-      });
-      await Promise.all(tasks);
-      Alert.alert('Thành công', 'Đã gán ca làm việc cho nhân viên');
+      // Find removed employees: were in initial, but no longer in selected
+      const removedIds = initialEmployeeIds.filter(id => !selectedEmployeeIds.includes(id));
+      
+      // Find added employees: are in selected, but were not in initial
+      const addedIds = selectedEmployeeIds.filter(id => !initialEmployeeIds.includes(id));
+
+      // 1. Delete removed assignments
+      for (const employeeId of removedIds) {
+        const assignment = allAssignments.find(
+          (a) =>
+            normaliseDate(a.date) === selectedDay &&
+            a.workShiftId === selectedShiftIds[0] &&
+            a.employeeId === employeeId
+        );
+        if (assignment) {
+          await deleteWorkShift(assignment.id);
+        }
+      }
+
+      // 2. Add new assignments
+      for (const employeeId of addedIds) {
+        await assignWorkShift(employeeId, selectedShiftIds[0], selectedDay);
+      }
+
+      await refetch(); // Force refetch to ensure data is updated immediately
+      Alert.alert('Thành công', 'Đã cập nhật ca làm việc thành công');
       setAssignModalVisible(false);
       setSelectedEmployeeIds([]);
+      setInitialEmployeeIds([]);
       setSelectedShiftIds([]);
       setEmployeeQuery('');
       setShowEmployeeDropdown(false);
       setShiftQuery('');
       setShowShiftDropdown(false);
     } catch (err: any) {
-      Alert.alert('Lỗi', err.data?.message || 'Không thể gán ca làm việc');
+      Alert.alert('Lỗi', err.data?.message || 'Không thể cập nhật ca làm việc');
     }
   };
 
-  const openAssignModal = (date: string) => {
+  const openAssignModal = (date: string, shiftId: string) => {
     if (isPastDate(date)) {
       Alert.alert('Thông báo', 'Không thể gán ca cho ngày đã qua');
       return;
     }
     setSelectedDay(date);
-    setSelectedEmployeeIds([]);
-    setSelectedShiftIds([]);
+    
+    // Find already assigned employees for this specific day and shift
+    const existing = allAssignments.filter(
+      (a) => normaliseDate(a.date) === date && a.workShiftId === shiftId
+    );
+    const existingIds = existing.map((a) => a.employeeId);
+    
+    setSelectedEmployeeIds(existingIds);
+    setInitialEmployeeIds(existingIds);
+    
+    setSelectedShiftIds([shiftId]);
     setEmployeeQuery('');
     setShowEmployeeDropdown(false);
     setShiftQuery('');
@@ -137,310 +192,279 @@ const WorkSchedule: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Today's Shifts */}
-        {todayShifts.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Ca hôm nay</Text>
-            <View style={styles.todayCard}>
-              {todayShifts.map((s, idx) => (
-                <View key={idx} style={styles.todayShiftRow}>
-                  <View style={[styles.shiftDot, { backgroundColor: s.color }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.todayShiftName}>{s.name}</Text>
-                    <Text style={styles.employeeNameText}>{s.employees.join(', ')}</Text>
-                    {s.isUnderstaffed && (
-                      <View style={styles.warningRow}>
-                        <Ionicons name="alert-circle" size={12} color="#EF4444" />
-                        <Text style={styles.warningText}>Thiếu nhân sự</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.todayShiftTime}>{s.time}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        {/* Weekly Schedule */}
-        <Text style={styles.sectionTitle}>Lịch tuần này</Text>
-        <View style={styles.weekCard}>
-          {weekSchedule.map((day, idx) => (
-            <View
-              key={idx}
-              style={[
-                styles.dayRow,
-                day.isToday && styles.dayRowToday,
-                idx < weekSchedule.length - 1 && styles.dayRowBorder,
-              ]}
-            >
-              <View style={styles.dayLeft}>
-                <Text
-                  style={[
-                    styles.dayName,
-                    day.isToday && styles.dayNameToday,
-                    day.isWeekend && styles.dayNameWeekend,
-                  ]}
-                >
-                  {day.dayName}
-                </Text>
-                <Text style={styles.dayDate}>{day.date}</Text>
-                {isManager && (
-                  <TouchableOpacity 
-                    style={styles.addBtn}
-                    disabled={isPastDate(day.fullDate)}
-                    onPress={() => openAssignModal(day.fullDate)}
-                  >
-                    <Ionicons name="add-circle-outline" size={16} color={isPastDate(day.fullDate) ? '#94A3B8' : '#3B82F6'} />
-                    <Text style={[styles.addText, isPastDate(day.fullDate) && styles.addTextDisabled]}>Gán ca</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-              {day.shifts.length > 0 ? (
-                <View style={styles.dayShifts}>
-                  {day.shifts.map((s, sIdx) => (
-                    <View key={sIdx} style={styles.dayShift}>
-                      <View style={[styles.shiftIndicator, { backgroundColor: s.color }]} />
-                      <View>
-                        <Text style={styles.dayShiftName}>{s.name}</Text>
-                        <Text style={styles.dayEmployeeName}>{s.employees.join(', ')}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                          {s.isUnderstaffed && (
-                            <Ionicons name="alert-circle" size={10} color="#EF4444" />
-                          )}
-                          <Text style={styles.dayShiftTime}>{s.time}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.dayOff}>Nghỉ</Text>
-              )}
-            </View>
-          ))}
-        </View>
-
-        {/* Modal for Assigning Shift */}
-        <Modal
-          visible={assignModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => {
-            setAssignModalVisible(false);
-            setShowEmployeeDropdown(false);
-            setShowShiftDropdown(false);
-          }}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
+          }
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Gán ca làm việc</Text>
-              <Text style={styles.modalSub}>Ngày: {selectedDay}</Text>
-
-              <Text style={styles.inputLabel}>Nhân viên</Text>
-              <View style={[styles.dropdownContainer, { zIndex: 20 }]}>
-                <TouchableOpacity
-                  style={styles.dropdownTrigger}
-                  onPress={() => {
-                    setShowEmployeeDropdown((prev) => !prev);
-                    setShowShiftDropdown(false);
-                  }}
-                >
-                  <Text style={styles.dropdownTriggerText}>
-                    {selectedEmployeeIds.length > 0
-                      ? `Đã chọn ${selectedEmployeeIds.length} nhân viên`
-                      : 'Chọn nhân viên'}
-                  </Text>
-                  <Ionicons
-                    name={showEmployeeDropdown ? 'chevron-up' : 'chevron-down'}
-                    size={18}
-                    color="#64748B"
-                  />
-                </TouchableOpacity>
-                {showEmployeeDropdown && (
-                  <View style={styles.dropdownPanel}>
-                    <TextInput
-                      placeholder="Tìm nhân viên..."
-                      value={employeeQuery}
-                      onChangeText={(text) => {
-                        setEmployeeQuery(text);
-                      }}
-                      style={styles.searchInput}
-                    />
-                    {selectedEmployeeIds.length > 0 && (
-                      <View style={styles.selectedChips}>
-                        {selectedEmployeeIds.map((id) => {
-                          const emp = allEmployees.find((e) => e.id === id);
-                          if (!emp) return null;
-                          return (
-                            <TouchableOpacity
-                              key={id}
-                              style={styles.chip}
-                              onPress={() =>
-                                setSelectedEmployeeIds((prev) => prev.filter((x) => x !== id))
-                              }
-                            >
-                              <Text style={styles.chipText}>{emp.fullName}</Text>
-                              <Ionicons name="close" size={14} color="#64748B" />
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
-                    <View style={styles.dropdownList}>
-                      <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
-                        {filteredEmployees.length === 0 ? (
-                          <Text style={styles.emptyText}>Không tìm thấy nhân viên</Text>
-                        ) : (
-                          filteredEmployees.map((emp) => (
-                            <TouchableOpacity
-                              key={emp.id}
-                              style={[styles.dropdownItem, selectedEmployeeIds.includes(emp.id) && styles.dropdownItemActive]}
-                              onPress={() => {
-                                setSelectedEmployeeIds((prev) =>
-                                  prev.includes(emp.id)
-                                    ? prev.filter((x) => x !== emp.id)
-                                    : [...prev, emp.id]
-                                );
-                              }}
-                            >
-                              <Text style={[styles.dropdownItemText, selectedEmployeeIds.includes(emp.id) && styles.dropdownItemTextActive]}>
-                                {emp.fullName}
-                              </Text>
-                            </TouchableOpacity>
-                          ))
-                        )}
-                      </ScrollView>
+          {/* Today's Shifts */}
+          {todayShifts.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Ca hôm nay</Text>
+              <View style={styles.todayCard}>
+                {todayShifts.map((s, idx) => (
+                  <View key={idx} style={styles.todayShiftRow}>
+                    <View style={[styles.shiftDot, { backgroundColor: s.color }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.todayShiftName}>{s.name}</Text>
+                      <Text style={styles.employeeNameText}>{s.employees.join(', ')}</Text>
+                      {s.isUnderstaffed && (
+                        <View style={styles.warningRow}>
+                          <Ionicons name="alert-circle" size={12} color="#EF4444" />
+                          <Text style={styles.warningText}>Thiếu nhân sự</Text>
+                        </View>
+                      )}
                     </View>
+                    <Text style={styles.todayShiftTime}>{s.time}</Text>
                   </View>
-                )}
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Week Matrix Schedule */}
+          <View style={styles.monthHeaderRow}>
+            <Text style={styles.sectionTitle}>
+              Tuần {weekSchedule[0]?.date} - {weekSchedule[6]?.date}
+            </Text>
+            <View style={styles.monthControls}>
+              <TouchableOpacity onPress={prevWeek} style={styles.monthBtn}>
+                <Ionicons name="chevron-back" size={20} color="#3B82F6" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={nextWeek} style={styles.monthBtn}>
+                <Ionicons name="chevron-forward" size={20} color="#3B82F6" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.matrixContainer}>
+            <View style={{ flexDirection: 'row' }}>
+              {/* Sticky First Column (Days of Week) */}
+              <View style={styles.stickyCol}>
+                <View style={[styles.matrixHeaderCell, styles.matrixFirstCell, { width: 80 }]}>
+                  <Text style={styles.matrixHeaderText}>Ngày \ Ca</Text>
+                </View>
+                {weekSchedule.map((day) => {
+                  const maxEmps = Math.max(...shifts.map(s => {
+                    const info = day.shifts.find(sh => sh.id === s.id);
+                    return info ? info.employees.length : 0;
+                  }), 1);
+                  const rowHeight = Math.max(80, maxEmps * 18 + 24);
+
+                  return (
+                    <View key={day.fullDate} style={[styles.matrixRowCell, { height: rowHeight, width: 80 }]}>
+                      <Text style={styles.matrixEmpText}>{day.dayName}</Text>
+                      <Text style={{ fontSize: 10, color: '#64748B' }}>{day.date}</Text>
+                    </View>
+                  );
+                })}
               </View>
 
-              <Text style={styles.inputLabel}>Ca làm việc</Text>
-              <View style={[styles.dropdownContainer, { zIndex: 10 }]}>
-                <TouchableOpacity
-                  style={styles.dropdownTrigger}
-                  onPress={() => {
-                    setShowShiftDropdown((prev) => !prev);
-                    setShowEmployeeDropdown(false);
-                  }}
-                >
-                  <Text style={styles.dropdownTriggerText}>
-                    {selectedShiftIds.length > 0
-                      ? `Đã chọn ${selectedShiftIds.length} ca`
-                      : 'Chọn ca làm việc'}
-                  </Text>
-                  <Ionicons
-                    name={showShiftDropdown ? 'chevron-up' : 'chevron-down'}
-                    size={18}
-                    color="#64748B"
-                  />
-                </TouchableOpacity>
-                {showShiftDropdown && (
-                  <View style={styles.dropdownPanel}>
-                    <TextInput
-                      placeholder="Tìm ca làm việc..."
-                      value={shiftQuery}
-                      onChangeText={(text) => {
-                        setShiftQuery(text);
-                      }}
-                      style={styles.searchInput}
-                    />
-                    {selectedShiftIds.length > 0 && (
-                      <View style={styles.selectedChips}>
-                        {selectedShiftIds.map((id) => {
-                          const shift = shifts.find((s) => s.id === id);
-                          if (!shift) return null;
-                          return (
-                            <TouchableOpacity
-                              key={id}
-                              style={styles.chip}
-                              onPress={() =>
-                                setSelectedShiftIds((prev) => prev.filter((x) => x !== id))
-                              }
-                            >
-                              <Text style={styles.chipText}>
-                                {shift.name} ({shift.startTime.slice(0, 5)} - {shift.endTime.slice(0, 5)})
-                              </Text>
-                              <Ionicons name="close" size={14} color="#64748B" />
-                            </TouchableOpacity>
-                          );
-                        })}
+              {/* Scrollable Right Columns (Shifts) */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+                <View>
+                  {/* Header Row (Shifts) */}
+                  <View style={{ flexDirection: 'row' }}>
+                    {shifts.map((s) => (
+                      <View key={s.id} style={[styles.matrixHeaderCell, { width: 140 }]}>
+                        <Text style={[styles.matrixHeaderText, { textAlign: 'center' }]}>{s.name}</Text>
+                        <Text style={{ fontSize: 10, color: '#64748B', textAlign: 'center' }}>
+                          {s.startTime.slice(0, 5)} - {s.endTime.slice(0, 5)}
+                        </Text>
                       </View>
-                    )}
-                    <View style={styles.dropdownList}>
-                      <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
-                        {filteredShifts.length === 0 ? (
-                          <Text style={styles.emptyText}>Không có ca làm việc</Text>
-                        ) : (
-                          filteredShifts.map((s) => (
+                    ))}
+                  </View>
+                  {/* Day Rows */}
+                  {weekSchedule.map((day) => {
+                    const maxEmps = Math.max(...shifts.map(s => {
+                      const info = day.shifts.find(sh => sh.id === s.id);
+                      return info ? info.employees.length : 0;
+                    }), 1);
+                    const rowHeight = Math.max(80, maxEmps * 18 + 24);
+
+                    return (
+                      <View key={day.fullDate} style={{ flexDirection: 'row' }}>
+                        {shifts.map((s) => {
+                          const shiftInfo = day.shifts.find((sh) => sh.id === s.id);
+                          const assignedEmployees = shiftInfo ? shiftInfo.employees : [];
+                          return (
                             <TouchableOpacity
                               key={s.id}
-                              style={[styles.dropdownItem, selectedShiftIds.includes(s.id) && styles.dropdownItemActive]}
-                              onPress={() => {
-                                setSelectedShiftIds((prev) =>
-                                  prev.includes(s.id)
-                                    ? prev.filter((x) => x !== s.id)
-                                    : [...prev, s.id]
-                                );
-                              }}
+                              style={[styles.matrixDataCell, { width: 140, height: rowHeight, padding: 4, justifyContent: 'flex-start' }]}
+                              onPress={() => isManager ? openAssignModal(day.fullDate, s.id) : null}
+                              disabled={isPastDate(day.fullDate) || !isManager}
                             >
-                              <Text style={[styles.dropdownItemText, selectedShiftIds.includes(s.id) && styles.dropdownItemTextActive]}>
-                                {s.name} ({s.startTime.slice(0, 5)} - {s.endTime.slice(0, 5)})
-                              </Text>
+                              {assignedEmployees.length === 0 ? (
+                                <View style={{ flex: 1, justifyContent: 'center' }}><Text style={styles.matrixEmptyCell}>-</Text></View>
+                              ) : (
+                                <View style={{ gap: 2, padding: 4 }}>
+                                  {assignedEmployees.map((empName, i) => (
+                                    <Text key={i} style={{ fontSize: 11, color: '#1E293B' }} numberOfLines={1}>
+                                      • {empName}
+                                    </Text>
+                                  ))}
+                                </View>
+                              )}
                             </TouchableOpacity>
-                          ))
-                        )}
-                      </ScrollView>
-                    </View>
+                          );
+                        })}
+                      </View>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+
+          {/* Modal for Assigning Shift */}
+          <Modal
+            visible={assignModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => {
+              setAssignModalVisible(false);
+            }}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+                <Text style={styles.modalTitle}>Gán nhân viên vào ca</Text>
+
+                <View style={{ marginBottom: 16, marginTop: 8 }}>
+                  <Text style={styles.modalSub}>
+                    <Text style={{ fontWeight: '600' }}>Ngày:</Text> {selectedDay}
+                  </Text>
+                  {selectedShiftIds.length > 0 && (
+                    <Text style={styles.modalSub}>
+                      <Text style={{ fontWeight: '600' }}>Ca:</Text> {shifts.find((s) => s.id === selectedShiftIds[0])?.name}
+                    </Text>
+                  )}
+                </View>
+
+                <Text style={styles.inputLabel}>Chọn Nhân viên</Text>
+
+                <TextInput
+                  placeholder="Tìm nhân viên..."
+                  value={employeeQuery}
+                  onChangeText={setEmployeeQuery}
+                  style={[styles.searchInput, { marginTop: 8, marginBottom: 8 }]}
+                />
+
+                {selectedEmployeeIds.length > 0 && (
+                  <View style={styles.selectedChips}>
+                    {selectedEmployeeIds.map((id) => {
+                      const emp = allEmployees.find((e) => e.id === id);
+                      if (!emp) return null;
+                      const isInitiallyAssigned = initialEmployeeIds.includes(id);
+                      return (
+                        <TouchableOpacity
+                          key={id}
+                          style={[
+                            styles.chip,
+                            isInitiallyAssigned && { backgroundColor: '#D1FAE5' } // light green for initial
+                          ]}
+                          onPress={() =>
+                            setSelectedEmployeeIds((prev) => prev.filter((x) => x !== id))
+                          }
+                        >
+                          <Text style={[
+                            styles.chipText,
+                            isInitiallyAssigned && { color: '#065F46', fontWeight: '600' } // dark green text
+                          ]}>
+                            {emp.fullName}
+                          </Text>
+                          <Ionicons
+                            name="close"
+                            size={14}
+                            color={isInitiallyAssigned ? '#065F46' : '#64748B'}
+                          />
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 )}
-              </View>
 
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={() => {
-                    setAssignModalVisible(false);
-                    setShowEmployeeDropdown(false);
-                    setShowShiftDropdown(false);
-                  }}
-                >
-                  <Text style={styles.cancelText}>Hủy</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.confirmBtn, isAssigning && { opacity: 0.7 }]}
-                  onPress={handleAssign}
-                  disabled={isAssigning}
-                >
-                  {isAssigning ? (
-                    <ActivityIndicator size="small" color="#FFF" />
+                <ScrollView style={{ flexShrink: 1, minHeight: 150 }} keyboardShouldPersistTaps="handled">
+                  {filteredEmployees.length === 0 ? (
+                    <Text style={styles.emptyText}>Không tìm thấy nhân viên</Text>
                   ) : (
-                    <Text style={styles.confirmText}>Xác nhận</Text>
+                    filteredEmployees.map((emp) => {
+                      const isInitiallyAssigned = initialEmployeeIds.includes(emp.id);
+                      const isCurrentlySelected = selectedEmployeeIds.includes(emp.id);
+                      
+                      let itemStyle = styles.dropdownItem;
+                      let textStyle = styles.dropdownItemText;
+                      
+                      if (isCurrentlySelected) {
+                        if (isInitiallyAssigned) {
+                          itemStyle = [styles.dropdownItem, styles.dropdownItemAssigned];
+                          textStyle = [styles.dropdownItemText, styles.dropdownItemTextAssigned];
+                        } else {
+                          itemStyle = [styles.dropdownItem, styles.dropdownItemActive];
+                          textStyle = [styles.dropdownItemText, styles.dropdownItemTextActive];
+                        }
+                      }
+
+                      return (
+                        <TouchableOpacity
+                          key={emp.id}
+                          style={itemStyle}
+                          onPress={() => {
+                            setSelectedEmployeeIds((prev) =>
+                              prev.includes(emp.id)
+                                ? prev.filter((x) => x !== emp.id)
+                                : [...prev, emp.id]
+                            );
+                          }}
+                        >
+                          <Text style={textStyle}>
+                            {emp.fullName} {isInitiallyAssigned && isCurrentlySelected && '(Đã gán)'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })
                   )}
-                </TouchableOpacity>
+                </ScrollView>
+
+                <View style={[styles.modalButtons, { marginTop: 16 }]}>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={() => {
+                      setAssignModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.cancelText}>Hủy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, isAssigning && { opacity: 0.7 }]}
+                    onPress={handleAssign}
+                    disabled={isAssigning}
+                  >
+                    {isAssigning ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <Text style={styles.confirmText}>Xác nhận</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        </Modal>
+          </Modal>
 
-        {/* Holidays */}
-        <Text style={styles.sectionTitle}>Ngày nghỉ lễ sắp tới</Text>
-        {HOLIDAYS.map((h, idx) => (
-          <View key={idx} style={styles.holidayCard}>
-            <View style={styles.holidayIcon}>
-              <Ionicons name="flag" size={18} color="#EF4444" />
+          {HOLIDAYS.map((h, idx) => (
+            <View key={idx} style={styles.holidayCard}>
+              <View style={styles.holidayIcon}>
+                <Ionicons name="flag" size={18} color="#EF4444" />
+              </View>
+              <View style={styles.holidayInfo}>
+                <Text style={styles.holidayName}>{h.name}</Text>
+                <Text style={styles.holidayDate}>{h.date}</Text>
+              </View>
             </View>
-            <View style={styles.holidayInfo}>
-              <Text style={styles.holidayName}>{h.name}</Text>
-              <Text style={styles.holidayDate}>{h.date}</Text>
-            </View>
-          </View>
-        ))}
+          ))}
 
-        <View style={{ height: 32 }} />
-      </ScrollView>
+          <View style={{ height: 32 }} />
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -555,85 +579,96 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
     fontWeight: '600',
   },
-  // Week
-  weekCard: {
-    marginHorizontal: 20,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  dayRow: {
+  // Month Matrix
+  monthHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingRight: 20,
   },
-  dayRowToday: {
+  monthControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 20,
+  },
+  monthBtn: {
+    padding: 6,
     backgroundColor: '#EFF6FF',
+    borderRadius: 8,
   },
-  dayRowBorder: {
+  matrixContainer: {
+    marginHorizontal: 20,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  stickyCol: {
+    backgroundColor: '#F8FAFC',
+    borderRightWidth: 1,
+    borderRightColor: '#E2E8F0',
+    width: 100,
+    zIndex: 10,
+  },
+  matrixHeaderCell: {
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    width: 40,
+  },
+  matrixFirstCell: {
+    width: 100,
+    backgroundColor: '#F1F5F9',
+  },
+  matrixHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  matrixRowCell: {
+    height: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  dayLeft: {
-    flex: 1,
-  },
-  dayName: {
-    fontSize: 14,
+  matrixEmpText: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#1E293B',
   },
-  dayNameToday: {
-    color: '#3B82F6',
-  },
-  dayNameWeekend: {
-    color: '#EF4444',
-  },
-  dayDate: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginTop: 2,
-  },
-  dayShifts: {
-    alignItems: 'flex-end',
-    gap: 6,
-  },
-  dayShift: {
-    flexDirection: 'row',
+  matrixDataCell: {
+    width: 40,
+    height: 48,
+    justifyContent: 'center',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    borderRightWidth: 1,
+    borderRightColor: '#F8FAFC',
   },
-  shiftIndicator: {
-    width: 4,
-    height: 24,
-    borderRadius: 2,
-    marginRight: 8,
+  matrixEmptyCell: {
+    color: '#CBD5E1',
+    fontSize: 12,
   },
-  dayShiftName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#334155',
-    textAlign: 'right',
+  matrixShiftBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 1,
   },
-  dayEmployeeName: {
-    fontSize: 11,
-    color: '#64748B',
-    textAlign: 'right',
-  },
-  dayShiftTime: {
-    fontSize: 11,
-    color: '#94A3B8',
-    textAlign: 'right',
-  },
-  dayOff: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#EF4444',
+  matrixShiftBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
   // Holidays
   holidayCard: {
@@ -802,6 +837,9 @@ const styles = StyleSheet.create({
   dropdownItemActive: {
     backgroundColor: '#3B82F6',
   },
+  dropdownItemAssigned: {
+    backgroundColor: '#10B981',
+  },
   dropdownItemText: {
     fontSize: 14,
     color: '#334155',
@@ -809,6 +847,10 @@ const styles = StyleSheet.create({
   dropdownItemTextActive: {
     color: '#FFF',
     fontWeight: '600',
+  },
+  dropdownItemTextAssigned: {
+    color: '#FFF',
+    fontWeight: '700',
   },
   pickerContainer: {
     borderWidth: 1,

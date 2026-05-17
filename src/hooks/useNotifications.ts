@@ -78,6 +78,17 @@ export const useNotifications = () => {
     refetchUnreadCount();
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      setPage(0);
+      await Promise.all([refetchNotifications(), refetchUnreadCount()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return {
     notifications: allNotifications,
     unreadCount,
@@ -90,5 +101,7 @@ export const useNotifications = () => {
     formatTime: formatRelativeTime,
     markAsRead,
     markAllAsRead,
+    refreshing,
+    onRefresh,
   };
 };

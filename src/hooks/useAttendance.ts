@@ -35,10 +35,10 @@ export const useAttendance = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // RTK Query hooks
-  const { data: todayData, isLoading: todayLoading } =
+  const { data: todayData, isLoading: todayLoading, refetch: refetchToday } =
     useGetAttendanceTodayQuery(undefined, { skip: isManager });
 
-  const { data: storeTodayData, isLoading: storeTodayLoading } =
+  const { data: storeTodayData, isLoading: storeTodayLoading, refetch: refetchStoreToday } =
     useGetStoreAttendanceTodayQuery(storeId || '', { skip: !isManager || !storeId });
 
   // History: last 30 days
@@ -47,25 +47,25 @@ export const useAttendance = () => {
   const today = new Date().toISOString().split('T')[0];
   const startDate = thirtyDaysAgo.toISOString().split('T')[0];
 
-  const { data: historyData, isLoading: historyLoading } = useGetAttendanceHistoryQuery(
+  const { data: historyData, isLoading: historyLoading, refetch: refetchHistory } = useGetAttendanceHistoryQuery(
     { startDate: startDate, endDate: today },
     { skip: isManager }
   );
 
   const { user } = useSelector((state: RootState) => state.auth);
   // Employee profile — needed for more details, but we can get ID from user object
-  const { data: profileData } = useGetMyProfileQuery();
+  const { data: profileData, refetch: refetchProfile } = useGetMyProfileQuery();
   const employeeId = user?.employee?.id || profileData?.data?.id;
 
   // Face registration status
-  const { data: faceStatusData, isLoading: faceStatusLoading } = useGetFaceStatusQuery(undefined, {
+  const { data: faceStatusData, isLoading: faceStatusLoading, refetch: refetchFaceStatus } = useGetFaceStatusQuery(undefined, {
     skip: !employeeId,
   });
   const isFaceRegistered = faceStatusData?.data?.registered ?? false;
   const shouldShowFaceRegistration = Boolean(employeeId) && !faceStatusLoading && !isFaceRegistered;
 
   // My shift assignments — for upcoming shift display
-  const { data: myShiftsData } = useGetMyShiftsTodayQuery();
+  const { data: myShiftsData, refetch: refetchShifts } = useGetMyShiftsTodayQuery();
   const myAssignments = myShiftsData?.data ?? [];
 
   // Face recognition mutations (now go through Java API)
@@ -257,6 +257,22 @@ export const useAttendance = () => {
   const navigateToHistory = () => navigation.navigate('AttendanceHistory');
   const navigateToFaceRegistration = () => navigation.navigate('FaceRegistration');
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const promises = [refetchProfile(), refetchShifts(), refetchFaceStatus()];
+      if (isManager) {
+        promises.push(refetchStoreToday());
+      } else {
+        promises.push(refetchToday(), refetchHistory());
+      }
+      await Promise.all(promises);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return {
     timeStr,
     dateStr,
@@ -277,5 +293,7 @@ export const useAttendance = () => {
     upcomingShift,
     isManager,
     storeAttendance: storeTodayData?.data || [],
+    refreshing,
+    onRefresh,
   };
 };

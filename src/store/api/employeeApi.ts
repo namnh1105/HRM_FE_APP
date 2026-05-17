@@ -19,7 +19,7 @@ export const employeeApi = createApi({
     }),
 
     getAllEmployees: builder.query<ApiResponse<EmployeeProfile[]>, void>({
-      query: () => '/employees',
+      query: () => '/employees?size=1000',
       providesTags: ['Employee'],
     }),
   }),

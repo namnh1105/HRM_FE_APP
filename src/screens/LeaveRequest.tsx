@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,6 +34,8 @@ const LeaveRequestScreen: React.FC = () => {
     formatDate,
     handleCancel,
     navigateToCreate,
+    refreshing,
+    onRefresh,
   } = useLeaveRequests();
 
   const renderItem = ({ item }: { item: LeaveRequest }) => {
@@ -165,6 +168,9 @@ const LeaveRequestScreen: React.FC = () => {
             <Ionicons name="document-text-outline" size={48} color="#CBD5E1" />
             <Text style={styles.emptyText}>Không có đơn nào</Text>
           </View>
+        }
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
         }
       />
     </SafeAreaView>

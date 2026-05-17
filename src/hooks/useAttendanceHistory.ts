@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useGetAttendanceHistoryQuery } from '../store/api/attendanceApi';
 import type { AttendanceRecord } from '../types/attendance';
@@ -47,6 +47,16 @@ export const useAttendanceHistory = () => {
 
   const goBack = () => navigation.goBack();
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return {
     history,
     isLoading,
@@ -58,5 +68,7 @@ export const useAttendanceHistory = () => {
     totalHours,
     absentCount,
     goBack,
+    refreshing,
+    onRefresh,
   };
 };

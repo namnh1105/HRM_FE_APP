@@ -14,6 +14,7 @@ export const useSalary = () => {
     data: myPayrollsData,
     isLoading,
     isError,
+    refetch,
   } = useGetMyPayrollsQuery(undefined);
 
   const salaryHistory: SalaryDetail[] = myPayrollsData?.data ?? [];
@@ -30,6 +31,16 @@ export const useSalary = () => {
     ? salaryHistory.reduce((acc, curr) => acc + curr.netSalary, 0)
     : 0;
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return {
     salaryHistory,
     isLoading,
@@ -42,6 +53,8 @@ export const useSalary = () => {
     goBack,
     isManager,
     totalPayroll,
+    refreshing,
+    onRefresh,
   };
 };
 

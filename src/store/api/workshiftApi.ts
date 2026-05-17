@@ -62,6 +62,12 @@ export const workshiftApi = createApi({
       providesTags: ['EmployeeWorkShift'],
     }),
 
+    /** GET /employee-work-shifts - all active shift assignments */
+    getAllActiveAssignments: builder.query<ApiResponse<EmployeeWorkShift[]>, void>({
+      query: () => '/employee-work-shifts',
+      providesTags: ['EmployeeWorkShift'],
+    }),
+
     /** POST /employee-work-shifts - Assign shift */
     assignWorkShift: builder.mutation<
       ApiResponse<EmployeeWorkShift>,
@@ -71,6 +77,15 @@ export const workshiftApi = createApi({
         url: '/employee-work-shifts',
         method: 'POST',
         body,
+      }),
+      invalidatesTags: ['EmployeeWorkShift'],
+    }),
+
+    /** DELETE /employee-work-shifts/:id - Delete assignment */
+    deleteWorkShift: builder.mutation<ApiResponse<void>, string>({
+      query: (id) => ({
+        url: `/employee-work-shifts/${id}`,
+        method: 'DELETE',
       }),
       invalidatesTags: ['EmployeeWorkShift'],
     }),
@@ -86,5 +101,7 @@ export const {
   useGetEmployeeWorkShiftsQuery,
   useGetEmployeeShiftsByDateQuery,
   useGetStoreWorkShiftsQuery,
+  useGetAllActiveAssignmentsQuery,
   useAssignWorkShiftMutation,
+  useDeleteWorkShiftMutation,
 } = workshiftApi;

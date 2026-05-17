@@ -72,6 +72,16 @@ export const useLeaveRequests = () => {
 
   const navigateToCreate = () => navigation.navigate('CreateLeaveRequest');
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return {
     filterStatus,
     setFilterStatus,
@@ -84,5 +94,7 @@ export const useLeaveRequests = () => {
     formatDate,
     handleCancel,
     navigateToCreate,
+    refreshing,
+    onRefresh,
   };
 };

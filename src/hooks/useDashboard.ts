@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
@@ -10,18 +11,18 @@ export const useDashboard = () => {
   const navigation = useNavigation<any>();
   const { user } = useSelector((state: RootState) => state.auth);
 
-  const { data: notificationRes } = useGetMyNotificationsQuery({ page: 0, size: 5 });
-  const { data: unreadCountRes } = useGetUnreadCountQuery();
+  const { data: notificationRes, refetch: refetchNotifications } = useGetMyNotificationsQuery({ page: 0, size: 5 });
+  const { data: unreadCountRes, refetch: refetchUnreadCount } = useGetUnreadCountQuery();
   
   const allNotifications = notificationRes?.data?.content ?? [];
   const unreadCount = unreadCountRes?.data ?? 0;
   const notifications = allNotifications;
 
-  const { data: attendanceRes, isLoading: isAttendanceLoading } =
+  const { data: attendanceRes, isLoading: isAttendanceLoading, refetch: refetchAttendance } =
     useGetAttendanceTodayQuery(undefined);
-  const { data: leaveRes, isLoading: isLeaveLoading } =
+  const { data: leaveRes, isLoading: isLeaveLoading, refetch: refetchLeave } =
     useGetMyLeaveRequestsQuery(undefined);
-  const { data: payrollRes, isLoading: isPayrollLoading } =
+  const { data: payrollRes, isLoading: isPayrollLoading, refetch: refetchPayroll } =
     useGetMyPayrollsQuery(undefined);
 
   const todayRecord = attendanceRes?.data ?? null;
@@ -114,6 +115,22 @@ export const useDashboard = () => {
   const storeName = user?.employee?.storeName || 'Hệ thống';
   const navigateToNotifications = () => navigation.navigate('Notifications');
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetchNotifications(),
+        refetchUnreadCount(),
+        refetchAttendance(),
+        refetchLeave(),
+        refetchPayroll(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return {
     user,
     todayRecord,
@@ -126,5 +143,7 @@ export const useDashboard = () => {
     getStatusColor,
     getNotificationIcon,
     navigateToNotifications,
+    refreshing,
+    onRefresh,
   };
 };

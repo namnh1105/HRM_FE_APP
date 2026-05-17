@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,8 @@ const Salary: React.FC = () => {
     goBack,
     isManager,
     totalPayroll,
+    refreshing,
+    onRefresh,
   } = useSalary();
 
   return (
@@ -59,7 +62,12 @@ const Salary: React.FC = () => {
       )}
 
       {!isLoading && !isError && salaryHistory.length > 0 && (
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
+        }
+      >
         {/* Month Selector */}
         <ScrollView
           horizontal

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAttendanceHistory } from '../hooks/useAttendanceHistory';
@@ -18,6 +18,8 @@ const AttendanceHistory: React.FC = () => {
     totalHours,
     absentCount,
     goBack,
+    refreshing,
+    onRefresh,
   } = useAttendanceHistory();
 
   const renderItem = ({ item }: { item: AttendanceRecord }) => {
@@ -106,6 +108,9 @@ const AttendanceHistory: React.FC = () => {
           renderItem={renderItem}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3B82F6']} />
+          }
         />
       )}
     </SafeAreaView>

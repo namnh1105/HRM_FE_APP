@@ -18,7 +18,6 @@ const EmployeeDetail: React.FC = () => {
   const { employee } = route.params as { employee: EmployeeProfile };
 
   const infoItems = [
-    { label: 'Mã nhân viên', value: employee.employeeCode, icon: 'barcode-outline' },
     { label: 'Chức vụ', value: employee.position || 'N/A', icon: 'briefcase-outline' },
     { label: 'Bộ phận', value: employee.departmentName || 'N/A', icon: 'business-outline' },
     { label: 'Chi nhánh', value: employee.storeName || 'N/A', icon: 'location-outline' },

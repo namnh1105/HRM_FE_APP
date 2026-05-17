@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   useGetActiveWorkShiftsQuery,
   useGetMyAllShiftsQuery,
   useGetStoreWorkShiftsQuery,
+  useGetAllActiveAssignmentsQuery,
   useAssignWorkShiftMutation,
+  useDeleteWorkShiftMutation,
 } from '../store/api/workshiftApi';
 import { useRole } from './useRole';
 import { formatShiftTime } from '../utils';
@@ -26,7 +28,7 @@ const toLocalDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** Parse date string (may contain 'T') to YYYY-MM-DD only */
-const normaliseDate = (s: string | null): string | null => {
+export const normaliseDate = (s: string | null): string | null => {
   if (!s) return null;
   return s.split('T')[0];
 };
@@ -52,16 +54,17 @@ export interface WeekDay {
 const buildWeekSchedule = (
   allShifts: WorkShift[],
   allAssignments: EmployeeWorkShift[],
+  currentDate: Date,
 ): WeekDay[] => {
   const days: WeekDay[] = [];
   const today = new Date();
   const todayStr = toLocalDateStr(today);
 
-  // Calculate Monday of the current week
-  const startOfWeek = new Date(today);
-  const jsDay = today.getDay(); // 0=Sun, 1=Mon, …, 6=Sat
+  // Calculate Monday of the given currentDate week
+  const startOfWeek = new Date(currentDate);
+  const jsDay = currentDate.getDay(); // 0=Sun, 1=Mon, …, 6=Sat
   const mondayOffset = jsDay === 0 ? -6 : 1 - jsDay;
-  startOfWeek.setDate(today.getDate() + mondayOffset);
+  startOfWeek.setDate(currentDate.getDate() + mondayOffset);
 
   for (let i = 0; i < 7; i++) {
     const date = new Date(startOfWeek);
@@ -78,7 +81,7 @@ const buildWeekSchedule = (
 
     // Group by shiftId
     const shiftGroups: Record<string, WeekDayShift> = {};
-    
+
     dayAssignments.forEach((a) => {
       if (!shiftGroups[a.workShiftId]) {
         shiftGroups[a.workShiftId] = {
@@ -112,15 +115,12 @@ const buildWeekSchedule = (
 
 // Upcoming holidays (static)
 export const HOLIDAYS = [
-  { date: '30/04/2026', name: 'Ngày Giải phóng miền Nam' },
-  { date: '01/05/2026', name: 'Quốc tế Lao động' },
-  { date: '02/09/2026', name: 'Quốc khánh' },
 ];
 
 export const useWorkSchedule = () => {
   const navigation = useNavigation<any>();
   const { isManager, storeId } = useRole();
-  
+
   const {
     data: shiftsData,
     isLoading: isLoadingShifts,
@@ -142,18 +142,38 @@ export const useWorkSchedule = () => {
     refetch: refetchStoreShifts,
   } = useGetStoreWorkShiftsQuery(storeId || '', { skip: !isManager || !storeId });
 
+  const {
+    data: allStoreShiftsData,
+    isLoading: isLoadingAllStoreShifts,
+    error: allStoreShiftsError,
+    refetch: refetchAllStoreShifts,
+  } = useGetAllActiveAssignmentsQuery(undefined, { skip: !isManager || !!storeId });
+
   console.log('[useWorkSchedule] isManager:', isManager, 'storeId:', storeId);
 
   const [assignShift, { isLoading: isAssigning }] = useAssignWorkShiftMutation();
+  const [deleteShift, { isLoading: isDeleting }] = useDeleteWorkShiftMutation();
 
   const shifts = shiftsData?.data ?? [];
-  const allAssignments = isManager ? (storeShiftsData?.data ?? []) : (myShiftsData?.data ?? []);
-  const isLoading = isLoadingShifts || (isManager ? isLoadingStoreShifts : isLoadingMyShifts);
-  const error = shiftsError || (isManager ? storeShiftsError : myShiftsError);
+  const allAssignments = isManager
+    ? (storeId ? (storeShiftsData?.data ?? []) : (allStoreShiftsData?.data ?? []))
+    : (myShiftsData?.data ?? []);
+
+  const isLoading = isLoadingShifts ||
+    (isManager
+      ? (storeId ? isLoadingStoreShifts : isLoadingAllStoreShifts)
+      : isLoadingMyShifts);
+
+  const error = shiftsError ||
+    (isManager
+      ? (storeId ? storeShiftsError : allStoreShiftsError)
+      : myShiftsError);
+
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   const weekSchedule = useMemo(
-    () => buildWeekSchedule(shifts, allAssignments),
-    [shifts, allAssignments],
+    () => buildWeekSchedule(shifts, allAssignments, currentDate),
+    [shifts, allAssignments, currentDate],
   );
 
   const todayShifts = useMemo(
@@ -161,19 +181,48 @@ export const useWorkSchedule = () => {
     [weekSchedule],
   );
 
-  const refetch = () => {
-    refetchShifts();
-    if (isManager && storeId) {
-      refetchStoreShifts();
-    } else if (!isManager) {
-      refetchMyShifts();
+  const refetch = async () => {
+    const promises = [refetchShifts()];
+    if (isManager) {
+      if (storeId) {
+        promises.push(refetchStoreShifts());
+      } else {
+        promises.push(refetchAllStoreShifts());
+      }
+    } else {
+      promises.push(refetchMyShifts());
     }
+    await Promise.all(promises);
   };
 
   const goBack = () => navigation.goBack();
 
   const assignWorkShift = async (employeeId: string, workShiftId: string, date: string) => {
     return assignShift({ employeeId, workShiftId, date }).unwrap();
+  };
+
+  const deleteWorkShift = async (id: string) => {
+    return deleteShift(id).unwrap();
+  };
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const promises = [refetchShifts()];
+      if (isManager) {
+        if (storeId) {
+          promises.push(refetchStoreShifts());
+        } else {
+          promises.push(refetchAllStoreShifts());
+        }
+      } else {
+        promises.push(refetchMyShifts());
+      }
+      await Promise.all(promises);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return {
@@ -185,7 +234,15 @@ export const useWorkSchedule = () => {
     refetch,
     weekSchedule,
     assignWorkShift,
+    deleteWorkShift,
     isManager,
+    storeId,
     goBack,
+    refreshing,
+    onRefresh,
+    allAssignments,
+    currentDate,
+    setCurrentDate,
+    isDeleting,
   };
 };
